@@ -1,9 +1,35 @@
+///////////////////////////////////////////////////////////////////////////////////
+/// OpenGL Mathematics (glm.g-truc.net)
+///
+/// Copyright (c) 2005 - 2013 G-Truc Creation (www.g-truc.net)
+/// Permission is hereby granted, free of charge, to any person obtaining a copy
+/// of this software and associated documentation files (the "Software"), to deal
+/// in the Software without restriction, including without limitation the rights
+/// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+/// copies of the Software, and to permit persons to whom the Software is
+/// furnished to do so, subject to the following conditions:
+/// 
+/// The above copyright notice and this permission notice shall be included in
+/// all copies or substantial portions of the Software.
+/// 
+/// Restrictions:
+///		By making use of the Software for military purposes, you choose to make
+///		a Bunny unhappy.
+/// 
+/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+/// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+/// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+/// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+/// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+/// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+/// THE SOFTWARE.
+///
 /// @ref gtx_io
 /// @file glm/gtx/io.hpp
+/// @date 2013-11-22 / 2014-11-25
 /// @author Jan P Springer (regnirpsj@gmail.com)
 ///
 /// @see core (dependence)
-/// @see gtc_matrix_access (dependence)
 /// @see gtc_quaternion (dependence)
 ///
 /// @defgroup gtx_io GLM_GTX_io
@@ -11,11 +37,12 @@
 /// 
 /// @brief std::[w]ostream support for glm types
 ///
-/// std::[w]ostream support for glm types + precision/width/etc. manipulators
-/// based on howard hinnant's std::chrono io proposal
-/// [http://home.roadrunner.com/~hinnant/bloomington/chrono_io.html]
+///        std::[w]ostream support for glm types + precision/width/etc. manipulators
+///        based on howard hinnant's std::chrono io proposal
+///        [http://home.roadrunner.com/~hinnant/bloomington/chrono_io.html]
 ///
 /// <glm/gtx/io.hpp> needs to be included to use these functionalities.
+///////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
@@ -23,7 +50,7 @@
 #include "../glm.hpp"
 #include "../gtx/quaternion.hpp"
 
-#if GLM_MESSAGES == GLM_MESSAGES_ENABLED && !defined(GLM_EXT_INCLUDED)
+#if(defined(GLM_MESSAGES) && !defined(glm_ext))
 # pragma message("GLM: GLM_GTX_io extension included")
 #endif
 
@@ -59,8 +86,8 @@ namespace glm
 			char_type  newline;
 			order_type order;
 
-			GLM_FUNC_DECL explicit format_punct(size_t a = 0);
-			GLM_FUNC_DECL explicit format_punct(format_punct const&);
+			explicit format_punct(size_t a = 0);
+			explicit format_punct(format_punct const&);
 		};
 
 		template <typename CTy, typename CTr = std::char_traits<CTy> >
@@ -68,8 +95,8 @@ namespace glm
 
 		public:
 
-			GLM_FUNC_DECL explicit basic_state_saver(std::basic_ios<CTy,CTr>&);
-			GLM_FUNC_DECL ~basic_state_saver();
+			explicit basic_state_saver(std::basic_ios<CTy,CTr>&);
+					~basic_state_saver();
 
 		private:
 
@@ -86,7 +113,7 @@ namespace glm
 			char_type       fill_;
 			locale_type     locale_;
 
-			GLM_FUNC_DECL basic_state_saver& operator=(basic_state_saver const&);
+			basic_state_saver& operator=(basic_state_saver const&);
 		};
 
 		typedef basic_state_saver<char>     state_saver;
@@ -97,14 +124,14 @@ namespace glm
 		{
 		public:
 
-			GLM_FUNC_DECL explicit basic_format_saver(std::basic_ios<CTy,CTr>&);
-			GLM_FUNC_DECL ~basic_format_saver();
+			explicit basic_format_saver(std::basic_ios<CTy,CTr>&);
+					~basic_format_saver();
 
 		private:
 
 			basic_state_saver<CTy> const bss_;
 
-			GLM_FUNC_DECL basic_format_saver& operator=(basic_format_saver const&);
+			basic_format_saver& operator=(basic_format_saver const&);
 		};
 
 		typedef basic_format_saver<char>     format_saver;
@@ -114,14 +141,14 @@ namespace glm
 		{
 			unsigned value;
 
-			GLM_FUNC_DECL explicit precision(unsigned);
+			explicit precision(unsigned);
 		};
 
 		struct width
 		{
 			unsigned value;
 
-			GLM_FUNC_DECL explicit width(unsigned);
+			explicit width(unsigned);
 		};
 
 		template <typename CTy>
@@ -129,14 +156,14 @@ namespace glm
 		{
 			CTy value[3];
 
-			GLM_FUNC_DECL explicit delimeter(CTy /* left */, CTy /* right */, CTy /* separator */ = ',');
+			explicit delimeter(CTy /* left */, CTy /* right */, CTy /* separator */ = ',');
 		};
 
 		struct order
 		{
 			order_type value;
 
-			GLM_FUNC_DECL explicit order(order_type);
+			explicit order(order_type);
 		};
 
 		// functions, inlined (inline)
@@ -187,9 +214,17 @@ namespace glm
 	template <typename CTy, typename CTr, typename T, precision P>
 	GLM_FUNC_DECL std::basic_ostream<CTy,CTr>& operator<<(std::basic_ostream<CTy,CTr>&, tmat4x4<T,P> const&);
 
-  template <typename CTy, typename CTr, typename T, precision P>
-	GLM_FUNC_DECL std::basic_ostream<CTy,CTr> & operator<<(std::basic_ostream<CTy,CTr> &,
-                                                         std::pair<tmat4x4<T,P> const, tmat4x4<T,P> const> const &);
+	template <typename CTy, typename CTr, typename T, precision P>
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr> & operator<<(
+		std::basic_ostream<CTy,CTr> &,
+		std::pair<tmat4x4<T,P> const,
+		tmat4x4<T,P> const> const &);
+
+	template <typename CTy, typename CTr, typename T, precision P>
+	GLM_FUNC_DECL std::basic_ostream<CTy,CTr> & operator<<(
+		std::basic_ostream<CTy,CTr> &,
+		std::pair<tmat4x4<T,P>,
+		tmat4x4<T,P> > const &);
 
 	/// @}
 }//namespace glm
