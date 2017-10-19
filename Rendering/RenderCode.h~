@@ -1,0 +1,14 @@
+#ifndef RENDERCODE_H
+#define RENDERCODE_H
+
+#include "../Objects/Triangle.h"
+#include <vector>
+#include <time.h>
+using namespace std;
+
+class Renderer_Example {
+	public:
+		double render(vector<Triangle>*,int*,int*,int*,int*);
+}
+
+#endif

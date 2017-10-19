@@ -1,0 +1,11 @@
+#ifndef COMPOSITION_H
+#define COMPOSITION_H
+
+using namespace std;
+
+class Composition {
+	public:
+		virtual void composition(int, int, int**, int**, int**, int**, int*, int*, int*, int*) = 0;
+};
+
+#endif 

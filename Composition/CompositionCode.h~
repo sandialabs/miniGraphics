@@ -1,0 +1,10 @@
+#ifndef COMPOSITIONCODE_H
+#define COMPOSITIONCODE_H
+
+#include <time.h>
+#include<iostream>
+using namespace std;
+
+double composition(int*, int*, int*, int*, int*, int*, int*);
+
+#endif

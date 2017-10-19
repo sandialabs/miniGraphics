@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../lib/libIceTGL.a  CMakeFiles/IceTGL.dir/gl_state.c.o CMakeFiles/IceTGL.dir/gl_draw.c.o CMakeFiles/IceTGL.dir/gl_image.c.o
+/usr/bin/ranlib ../../lib/libIceTGL.a
