@@ -43,3 +43,6 @@ target_link_libraries(run PRIVATE
   ${GLEW_LIBRARIES}
   ${GLFW_LIBRARIES}
   )
+target_compile_features(run PRIVATE
+  cxx_raw_string_literals
+  )
