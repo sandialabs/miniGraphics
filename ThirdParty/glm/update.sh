@@ -11,12 +11,11 @@ readonly repo="https://github.com/g-truc/glm.git"
 readonly tag="0.9.8.5"
 
 readonly paths="
-manual.md
+copying.txt
 readme.md
 
 glm/*.hpp
 glm/detail/*
-glm/ext/*
 glm/gtc/*
 glm/gtx/*
 glm/simd/*
