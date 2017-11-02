@@ -15,6 +15,8 @@
 files_to_match=(
     "*.cpp"
     "*.hpp"
+    "*.vertexshader"
+    "*.fragmentshader"
 )
 
 # This is a list of paths to skip
