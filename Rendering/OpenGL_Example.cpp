@@ -78,7 +78,7 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	glBindVertexArray(VertexArrayID);
 
 	// Create and compile our GLSL program from the shaders
-	GLuint programID = LoadShaders( "Rendering/OpenGL_common/TransformVertexShader.vertexshader", "Rendering/OpenGL_common/ColorFragmentShader.fragmentshader" );
+	GLuint programID = LoadShaders();
 
 	// Get a handle for our "MVP" uniform
 	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
@@ -177,7 +177,7 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
 
 	// Create and compile our GLSL program from the shaders
-	GLuint quad_programID = LoadShaders( "Rendering/OpenGL_common/TransformVertexShader.vertexshader", "Rendering/OpenGL_common/ColorFragmentShader.fragmentshader"  );
+	GLuint quad_programID = LoadShaders();
 	GLuint texID = glGetUniformLocation(quad_programID, "renderedTexture");
 	GLuint timeID = glGetUniformLocation(quad_programID, "time");
 	
