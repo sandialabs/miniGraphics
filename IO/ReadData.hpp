@@ -17,10 +17,10 @@
 
 #include "../Objects/Triangle.hpp"
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 using namespace std;
 
-vector<Triangle> readData (char s[],int resolution[3]);
+vector<Triangle> readData(char s[], int resolution[3]);
 
 #endif

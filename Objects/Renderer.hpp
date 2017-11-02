@@ -9,14 +9,14 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-#include "Triangle.hpp"
 #include <vector>
+#include "Triangle.hpp"
 
 using namespace std;
 
 class Renderer {
-	public:
-		virtual void render(vector<Triangle>*,int*,int*,int*,int*,float*) = 0;
+ public:
+  virtual void render(vector<Triangle>*, int*, int*, int*, int*, float*) = 0;
 };
 
-#endif 
+#endif

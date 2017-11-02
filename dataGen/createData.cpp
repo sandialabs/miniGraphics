@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 using namespace std;
 
@@ -23,55 +23,54 @@ int resolution = 100;
 
 int num_triangles = 10;
 
-
 double fRand(double fMin, double fMax) {
-    double f = (double)rand() / RAND_MAX;
-    return fMin + f * (fMax - fMin);
+  double f = (double)rand() / RAND_MAX;
+  return fMin + f * (fMax - fMin);
 }
 
 void createVertices(ofstream& myfile) {
-	myfile << "#Vertices" << endl;	
-	for (int i = 0; i < num_triangles * 3; i++) {
-		double x = fRand(range_min,range_max);
-		double y = fRand(range_min,range_max);
-		double z = fRand(range_min,range_max);
-		
-		myfile << x << "," << y << "," << z << endl;
-	}
+  myfile << "#Vertices" << endl;
+  for (int i = 0; i < num_triangles * 3; i++) {
+    double x = fRand(range_min, range_max);
+    double y = fRand(range_min, range_max);
+    double z = fRand(range_min, range_max);
+
+    myfile << x << "," << y << "," << z << endl;
+  }
 }
 
 void createTriangles(ofstream& myfile) {
-	myfile << "#Triangles" << endl;	
-	for (int i = 0; i < num_triangles; i++) {
-		double t1 = 0 + i*3;
-		double t2 = 1 + i*3;
-		double t3 = 2 + i*3;
-		
-		myfile << t1 << "," << t2 << "," << t3 << endl;
-	}
+  myfile << "#Triangles" << endl;
+  for (int i = 0; i < num_triangles; i++) {
+    double t1 = 0 + i * 3;
+    double t2 = 1 + i * 3;
+    double t3 = 2 + i * 3;
+
+    myfile << t1 << "," << t2 << "," << t3 << endl;
+  }
 }
 
 void createColors(ofstream& myfile) {
-	myfile << "#Colors" << endl;
-	for (int i = 0; i < num_triangles; i++) {
-		double r = rand() % 256;
-		double g = rand() % 256;
-		double b = rand() % 256;
-		
-		myfile << i << "," << r << "," << g << "," << b << endl;
-	}
+  myfile << "#Colors" << endl;
+  for (int i = 0; i < num_triangles; i++) {
+    double r = rand() % 256;
+    double g = rand() % 256;
+    double b = rand() % 256;
+
+    myfile << i << "," << r << "," << g << "," << b << endl;
+  }
 }
 
 int main(int argv, char* argc[]) {
-	srand(time(0));
-	ofstream myfile ("triangles.dat");
-	if (myfile.is_open()) {
-		myfile << "#Resolution" << endl;
-		myfile << resolution << "," << resolution << "," << resolution << endl;
-		createVertices(myfile);
-		createTriangles(myfile);
-		createColors(myfile);
-		myfile.close();
-	}
-	return 0;
+  srand(time(0));
+  ofstream myfile("triangles.dat");
+  if (myfile.is_open()) {
+    myfile << "#Resolution" << endl;
+    myfile << resolution << "," << resolution << "," << resolution << endl;
+    createVertices(myfile);
+    createTriangles(myfile);
+    createColors(myfile);
+    myfile.close();
+  }
+  return 0;
 }
