@@ -9,7 +9,7 @@
 #ifndef OPENGL_EXAMPLE_H
 #define OPENGL_EXAMPLE_H
 
-#include "../Objects/Renderer.h"
+#include "../Objects/Renderer.hpp"
 
 // Include standard headers
 #include <stdio.h>

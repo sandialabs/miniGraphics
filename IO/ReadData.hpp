@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-#include "../Objects/Triangle.h"
+#include "../Objects/Triangle.hpp"
 
 #include <iostream>
 #include <fstream>

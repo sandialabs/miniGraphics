@@ -6,7 +6,7 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "Composition_Example.h"
+#include "Composition_Example.hpp"
 
 void Composition_Example::composition(int num_ims, int res_size, int** im_red, int** im_green, int** im_blue, float** im_depth,
                                         int* c_red, int* c_green, int* c_blue,float* c_depth) {

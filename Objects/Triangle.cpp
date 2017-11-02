@@ -6,7 +6,7 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "Triangle.h"
+#include "Triangle.hpp"
 
 Triangle::Triangle () {
 	color = new int[3];

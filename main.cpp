@@ -12,11 +12,11 @@
 
 #include <time.h>
 
-#include "Rendering/Renderer_Example.h"
-#include "Rendering/OpenGL_Example.h"
-#include "Composition/Composition_Example.h"
-//#include "Composition/IceT_Example.h"
-#include "IO/ReadData.h"
+#include "Rendering/Renderer_Example.hpp"
+#include "Rendering/OpenGL_Example.hpp"
+#include "Composition/Composition_Example.hpp"
+//#include "Composition/IceT_Example.hpp"
+#include "IO/ReadData.hpp"
 
 using namespace std;
 

@@ -9,7 +9,7 @@
 #ifndef RENDERER_EXAMPLE_H
 #define RENDERER_EXAMPLE_H
 
-#include "../Objects/Renderer.h"
+#include "../Objects/Renderer.hpp"
 #include <iostream>
 
 using namespace std;

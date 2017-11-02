@@ -6,7 +6,7 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "IceT_Example.h"
+#include "IceT_Example.hpp"
 
 //#define NUM_TILES_X 2
 //#define NUM_TILES_Y 2

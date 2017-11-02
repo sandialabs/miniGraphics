@@ -6,7 +6,7 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "Renderer_Example.h"
+#include "Renderer_Example.hpp"
 #include <math.h>
 #include <algorithm>
 

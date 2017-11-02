@@ -6,7 +6,7 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "OpenGL_Example.h"
+#include "OpenGL_Example.hpp"
 #include "OpenGL_common/shader.hpp"
 
 void OpenGL_Example::readTriangles(vector<Triangle>* tris, GLfloat* v_buffer, GLfloat* c_buffer, int* resolution) {

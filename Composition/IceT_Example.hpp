@@ -9,7 +9,7 @@
 #ifndef ICET_EXAMPLE_H
 #define ICET_EXAMPLE_H
 
-#include "../Objects/Composition.h"
+#include "../Objects/Composition.hpp"
 #include <GL/gl.h>
 #include <GL/glut.h>
 

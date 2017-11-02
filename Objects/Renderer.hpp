@@ -6,18 +6,17 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef COMPOSITION_EXAMPLE_H
-#define COMPOSITION_EXAMPLE_H
+#ifndef RENDERER_H
+#define RENDERER_H
 
-#include "../Objects/Composition.h"
-#include <time.h>
-#include <iostream>
+#include "Triangle.hpp"
+#include <vector>
+
 using namespace std;
 
-class Composition_Example : public Composition {
-	private:
-		
+class Renderer {
 	public:
-		void composition(int, int, int**, int**, int**, float**, int*, int*, int*, float*);
+		virtual void render(vector<Triangle>*,int*,int*,int*,int*,float*) = 0;
 };
-#endif
+
+#endif 

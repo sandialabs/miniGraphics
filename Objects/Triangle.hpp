@@ -6,17 +6,26 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef RENDERER_H
-#define RENDERER_H
+#ifndef TRIANGLE_H
+#define TRIANGLE_H
 
-#include "Triangle.h"
-#include <vector>
+#include "Vertex.hpp"
+#include <iostream>
 
 using namespace std;
 
-class Renderer {
+class Triangle {
 	public:
-		virtual void render(vector<Triangle>*,int*,int*,int*,int*,float*) = 0;
+		Vertex v1,v2,v3;
+		int *color;
+		double opacity;
+		Triangle ();
+		Triangle (const Triangle&);
+		Triangle(Vertex,Vertex,Vertex); 
+		void addColor(int,int,int);
+		void addOpacity(double);
+		void addFeatures(int,int,int,double);
+		void print();
 };
 
 #endif 
