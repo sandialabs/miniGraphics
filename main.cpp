@@ -13,7 +13,7 @@
 #include <time.h>
 
 #include "Composition/Composition_Example.hpp"
-#include "Rendering/OpenGL_Example.hpp"
+//#include "Rendering/OpenGL_Example.hpp"
 #include "Rendering/Renderer_Example.hpp"
 //#include "Composition/IceT_Example.hpp"
 #include "IO/ReadData.hpp"
@@ -155,8 +155,8 @@ int main(int argv, char* argc[]) {
   }
 
   // INITIALIZE RENDER
-  //    Renderer_Example R;
-  OpenGL_Example R;
+  Renderer_Example R;
+  //  OpenGL_Example R;
 
   // INITIALIZE COMPOSITION
   Composition_Example C;
