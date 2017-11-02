@@ -101,22 +101,22 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 
 	// Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
 	// A cube has 6 faces with 2 triangles each, so this makes 6*2=12 triangles, and 12*3 vertices
-	GLfloat g_vertex_buffer_data[3*3*triangles->size()];
+	vector<GLfloat> g_vertex_buffer_data(3*3*triangles->size());
 	
 	// One color for each vertex. They were generated randomly.
-	GLfloat g_color_buffer_data[3*3*triangles->size()];
+	vector<GLfloat> g_color_buffer_data(3*3*triangles->size());
 	
-	readTriangles(triangles, g_vertex_buffer_data, g_color_buffer_data,resolution);
+	readTriangles(triangles, &g_vertex_buffer_data.front(), &g_color_buffer_data.front(), resolution);
 	
 	GLuint vertexbuffer;
 	glGenBuffers(1, &vertexbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, g_vertex_buffer_data.size(), &g_vertex_buffer_data.front(), GL_STATIC_DRAW);
 
 	GLuint colorbuffer;
 	glGenBuffers(1, &colorbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, g_color_buffer_data.size(), &g_color_buffer_data.front(), GL_STATIC_DRAW);
 	
 	// ---------------------------------------------
 	// Render to Texture - specific code begins here
