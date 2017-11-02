@@ -1,5 +1,6 @@
 #include "Renderer_Example.h"
 #include <math.h>
+#include <algorithm>
 
 
 void Renderer_Example::calcPlane(double* D, double* R, double* C, double* B,

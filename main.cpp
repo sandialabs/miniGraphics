@@ -7,7 +7,7 @@
 #include "Rendering/Renderer_Example.h"
 #include "Rendering/OpenGL_Example.h"
 #include "Composition/Composition_Example.h"
-#include "Composition/IceT_Example.h"
+//#include "Composition/IceT_Example.h"
 #include "IO/ReadData.h"
 
 using namespace std;
