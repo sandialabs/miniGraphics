@@ -6,21 +6,18 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef READDATA_H
-#define READDATA_H
+#ifndef COMPOSITION_EXAMPLE_H
+#define COMPOSITION_EXAMPLE_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <cstring>
-#include <string>
-#include <vector>
-
-#include "../Objects/Triangle.h"
-
+#include <time.h>
 #include <iostream>
-#include <fstream>
+#include "../Objects/Composition.hpp"
 using namespace std;
 
-vector<Triangle> readData (char s[],int resolution[3]);
-
+class Composition_Example : public Composition {
+ private:
+ public:
+  void composition(
+      int, int, int**, int**, int**, float**, int*, int*, int*, float*);
+};
 #endif

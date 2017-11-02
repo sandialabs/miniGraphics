@@ -9,7 +9,7 @@
 #ifndef OPENGL_EXAMPLE_H
 #define OPENGL_EXAMPLE_H
 
-#include "../Objects/Renderer.h"
+#include "../Objects/Renderer.hpp"
 
 // Include standard headers
 #include <stdio.h>
@@ -29,12 +29,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 using namespace glm;
 
-
 class OpenGL_Example : public Renderer {
-	private:
-		void readTriangles(vector<Triangle>*,GLfloat*,GLfloat*,int*);
-	public:
-		void render(vector<Triangle>*,int*,int*,int*,int*,float*);
+ private:
+  void readTriangles(vector<Triangle>*, GLfloat*, GLfloat*, int*);
+
+ public:
+  void render(vector<Triangle>*, int*, int*, int*, int*, float*);
 };
 
-#endif 
+#endif
