@@ -28,9 +28,8 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
 			VertexShaderCode += "\n" + Line;
 		VertexShaderStream.close();
 	}else{
-		printf("Impossible to open %s. Are you in the right directory ? Don't forget to read the FAQ !\n", vertex_file_path);
-		getchar();
-		return 0;
+		cerr << "Impossible to open " << vertex_file_path << ". Are you in the right directory?" << endl;
+		exit(1);
 	}
 
 	// Read the Fragment Shader code from the file

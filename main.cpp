@@ -42,30 +42,30 @@ void run(R_T R, C_T C, vector<Triangle> triangles,int* resolution) {
     
     int r_size = resolution[1] * resolution[2];
     for (int im = 0; im < num_ims; im++) {
-    	    // INITIALIZE RENDER SPACE
+		// INITIALIZE RENDER SPACE
 	    int* s_red = new int[r_size];
 	    int* s_green = new int[r_size];
 	    int* s_blue = new int[r_size];
 	    float* s_depth = new float[r_size];
 	    for (int i = 0; i < r_size; i++) {
-	    		s_red[i] = init_red;
-	    		s_green[i] = init_green;
-	    		s_blue[i] = init_blue;
-	    		s_depth[i] = init_depth;
+			s_red[i] = init_red;
+			s_green[i] = init_green;
+			s_blue[i] = init_blue;
+			s_depth[i] = init_depth;
 	    }
 	    vector<Triangle>* temp_ts = new vector<Triangle>(triangles.begin() + im*(triangles.size() / num_ims),
 	                                                     triangles.begin() + (im+1)*(triangles.size() / num_ims));
-	    
-    	    R.render(temp_ts, resolution,s_red,s_green,s_blue,s_depth);
+
+		R.render(temp_ts, resolution,s_red,s_green,s_blue,s_depth);
     	        	    
-         im_red[im] = s_red;
-         im_green[im] = s_green;
-         im_blue[im] = s_blue;
-         im_depth[im] = s_depth;
+		im_red[im] = s_red;
+		im_green[im] = s_green;
+		im_blue[im] = s_blue;
+		im_depth[im] = s_depth;
     }
     clock_t r_end = clock();
     double r_time_spent = (double)(r_end - r_begin) / CLOCKS_PER_SEC;
-    printf("RENDER: %f seconds\n",r_time_spent);
+	cout << "RENDER: " << r_time_spent << " seconds" << endl;
     
     
     //PRINT FOR SANITY CHECK
@@ -130,6 +130,7 @@ int main(int argv, char* argc[]) {
     
     vector<Triangle> triangles = readData(s,resolution);
 	if (triangles.size() < 1) {
+		cerr << "Could not read triangles" << endl;
 		return 1;
 	}
     
@@ -140,7 +141,7 @@ int main(int argv, char* argc[]) {
     // INITIALIZE COMPOSITION
     Composition_Example C;
 //    IceT_Example C;
-    
+
     run(R,C,triangles,resolution);
     
     return 0;

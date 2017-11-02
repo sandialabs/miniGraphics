@@ -34,9 +34,8 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	// Initialize GLFW
 	if( !glfwInit() )
 	{
-		fprintf( stderr, "Failed to initialize GLFW\n" );
-//		getchar();
-		return ;
+		cerr << "Failed to initialize GLFW" << endl;
+		exit(1);
 	}
 
 	glfwWindowHint(GLFW_SAMPLES, 4);
@@ -47,22 +46,20 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 	
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( resolution[1], resolution[2], "Tutorial 04 - Colored Cube", NULL, NULL);
+	window = glfwCreateWindow( resolution[1], resolution[2], "miniGraphics", NULL, NULL);
 	if( window == NULL ){
-		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
-		getchar();
+		cerr << "Failed to open GLFW window." << endl;
 		glfwTerminate();
-		return ;
+		exit(1);
 	}
 	glfwMakeContextCurrent(window);
 
 	// Initialize GLEW
 	glewExperimental = true; // Needed for core profile
 	if (glewInit() != GLEW_OK) {
-		fprintf(stderr, "Failed to initialize GLEW\n");
-		getchar();
+		cerr << "Failed to initialize GLEW" << endl;
 		glfwTerminate();
-		return ;
+		exit(1);
 	}
 
 	// Ensure we can capture the escape key being pressed below
