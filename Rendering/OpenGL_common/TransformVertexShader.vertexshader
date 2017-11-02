@@ -1,3 +1,4 @@
+R"(
 #version 330 core
 
 // Input vertex data, different for all executions of this shader.
@@ -18,4 +19,4 @@ void main(){
 	// to produce the color of each fragment
 	fragmentColor = vertexColor;
 }
-
+)"

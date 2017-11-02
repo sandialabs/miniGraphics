@@ -34,9 +34,8 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	// Initialize GLFW
 	if( !glfwInit() )
 	{
-		fprintf( stderr, "Failed to initialize GLFW\n" );
-		getchar();
-		return ;
+		cerr << "Failed to initialize GLFW" << endl;
+		exit(1);
 	}
 
 	glfwWindowHint(GLFW_SAMPLES, 4);
@@ -47,22 +46,20 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 	
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( resolution[1], resolution[2], "Tutorial 04 - Colored Cube", NULL, NULL);
+	window = glfwCreateWindow( resolution[1], resolution[2], "miniGraphics", NULL, NULL);
 	if( window == NULL ){
-		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
-		getchar();
+		cerr << "Failed to open GLFW window." << endl;
 		glfwTerminate();
-		return ;
+		exit(1);
 	}
 	glfwMakeContextCurrent(window);
 
 	// Initialize GLEW
 	glewExperimental = true; // Needed for core profile
 	if (glewInit() != GLEW_OK) {
-		fprintf(stderr, "Failed to initialize GLEW\n");
-		getchar();
+		cerr << "Failed to initialize GLEW" << endl;
 		glfwTerminate();
-		return ;
+		exit(1);
 	}
 
 	// Ensure we can capture the escape key being pressed below
@@ -81,7 +78,7 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	glBindVertexArray(VertexArrayID);
 
 	// Create and compile our GLSL program from the shaders
-	GLuint programID = LoadShaders( "Rendering/OpenGL_common/TransformVertexShader.vertexshader", "Rendering/OpenGL_common/ColorFragmentShader.fragmentshader" );
+	GLuint programID = LoadShaders();
 
 	// Get a handle for our "MVP" uniform
 	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
@@ -101,22 +98,22 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 
 	// Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
 	// A cube has 6 faces with 2 triangles each, so this makes 6*2=12 triangles, and 12*3 vertices
-	GLfloat g_vertex_buffer_data[3*3*triangles->size()];
+	vector<GLfloat> g_vertex_buffer_data(3*3*triangles->size());
 	
 	// One color for each vertex. They were generated randomly.
-	GLfloat g_color_buffer_data[3*3*triangles->size()];
+	vector<GLfloat> g_color_buffer_data(3*3*triangles->size());
 	
-	readTriangles(triangles, g_vertex_buffer_data, g_color_buffer_data,resolution);
+	readTriangles(triangles, &g_vertex_buffer_data.front(), &g_color_buffer_data.front(), resolution);
 	
 	GLuint vertexbuffer;
 	glGenBuffers(1, &vertexbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, g_vertex_buffer_data.size(), &g_vertex_buffer_data.front(), GL_STATIC_DRAW);
 
 	GLuint colorbuffer;
 	glGenBuffers(1, &colorbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, g_color_buffer_data.size(), &g_color_buffer_data.front(), GL_STATIC_DRAW);
 	
 	// ---------------------------------------------
 	// Render to Texture - specific code begins here
@@ -180,7 +177,7 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
 
 	// Create and compile our GLSL program from the shaders
-	GLuint quad_programID = LoadShaders( "Rendering/OpenGL_common/TransformVertexShader.vertexshader", "Rendering/OpenGL_common/ColorFragmentShader.fragmentshader"  );
+	GLuint quad_programID = LoadShaders();
 	GLuint texID = glGetUniformLocation(quad_programID, "renderedTexture");
 	GLuint timeID = glGetUniformLocation(quad_programID, "time");
 	
