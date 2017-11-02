@@ -1,5 +1,12 @@
 ---
 Language:        Cpp
 BasedOnStyle:  Google
+
+# Either put all arguments on one line or each on its own line
+BinPackArguments: false
+BinPackParameters: false
+
+# Allow some extra lines if we want to space things out a bit more
+MaxEmptyLinesToKeep: 4
 ...
 

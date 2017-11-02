@@ -64,9 +64,9 @@ vector<Triangle> readData(char s[], int resolution[3]) {
         double *temp_v = new double[3];
         doubleSplit(const_cast<char *>(line.c_str()), temp_v, 3);
 
-        Vertex VV =
-            *(new Vertex(temp_v[0] * max_point[0], temp_v[1] * max_point[1],
-                         temp_v[2] * max_point[2]));
+        Vertex VV = *(new Vertex(temp_v[0] * max_point[0],
+                                 temp_v[1] * max_point[1],
+                                 temp_v[2] * max_point[2]));
 
         vertices->push_back(VV);
         delete[] temp_v;
@@ -74,9 +74,9 @@ vector<Triangle> readData(char s[], int resolution[3]) {
         int *temp_t = new int[3];
         intSplit(const_cast<char *>(line.c_str()), temp_t, 3);
 
-        Triangle TT =
-            *(new Triangle(vertices->at(temp_t[0]), vertices->at(temp_t[1]),
-                           vertices->at(temp_t[2])));
+        Triangle TT = *(new Triangle(vertices->at(temp_t[0]),
+                                     vertices->at(temp_t[1]),
+                                     vertices->at(temp_t[2])));
 
         triangles->push_back(TT);
         delete[] temp_t;

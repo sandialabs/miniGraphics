@@ -36,7 +36,9 @@ void Vertex::getVector(Vertex* other, double result[]) {
   result[2] = other->p3 - p3;
 }
 
-void Vertex::getVector(double first, double second, double third,
+void Vertex::getVector(double first,
+                       double second,
+                       double third,
                        double* result) {
   result[0] = first - p1;
   result[1] = second - p2;

@@ -18,10 +18,17 @@ class Renderer_Example : public Renderer {
  private:
   void calcPlane(double*, double*, double*, double*, Vertex*, Vertex*, Vertex*);
   int whichSide(Vertex*, double, double, double, Vertex*);
-  bool correctSide(Vertex*, Vertex*, Vertex*, double*, double*, double*, double,
-                   double, double);
-  bool planeThroughCube(Vertex*, double*, double*, double*, double, double,
-                        double);
+  bool correctSide(Vertex*,
+                   Vertex*,
+                   Vertex*,
+                   double*,
+                   double*,
+                   double*,
+                   double,
+                   double,
+                   double);
+  bool planeThroughCube(
+      Vertex*, double*, double*, double*, double, double, double);
   bool isIn(double*, double*, double*, double*, Triangle*, int, int, int);
   int tripleMin(double, double, double);
   int tripleMax(double, double, double);

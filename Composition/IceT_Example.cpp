@@ -20,9 +20,15 @@
 // static int winId;
 static IceTContext icetContext;
 
-void IceT_Example::composition(int num_ims, int res_size, int** im_red,
-                               int** im_green, int** im_blue, float** im_depth,
-                               int* c_red, int* c_green, int* c_blue,
+void IceT_Example::composition(int num_ims,
+                               int res_size,
+                               int** im_red,
+                               int** im_green,
+                               int** im_blue,
+                               float** im_depth,
+                               int* c_red,
+                               int* c_green,
+                               int* c_blue,
                                float* c_depth) {
   int rank, numProc;
   IceTCommunicator icetComm;

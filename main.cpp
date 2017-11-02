@@ -109,8 +109,16 @@ void run(R_T R, C_T C, vector<Triangle> triangles, int* resolution) {
 
   // COMPOSITION SECTION
   clock_t c_begin = clock();
-  C.composition(num_ims, c_size, im_red, im_green, im_blue, im_depth, c_red,
-                c_green, c_blue, c_depth);
+  C.composition(num_ims,
+                c_size,
+                im_red,
+                im_green,
+                im_blue,
+                im_depth,
+                c_red,
+                c_green,
+                c_blue,
+                c_depth);
   clock_t c_end = clock();
 
   double c_time_spent = (double)(c_end - c_begin) / CLOCKS_PER_SEC;

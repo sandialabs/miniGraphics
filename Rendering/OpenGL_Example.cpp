@@ -9,8 +9,10 @@
 #include "OpenGL_Example.hpp"
 #include "OpenGL_common/shader.hpp"
 
-void OpenGL_Example::readTriangles(vector<Triangle>* tris, GLfloat* v_buffer,
-                                   GLfloat* c_buffer, int* resolution) {
+void OpenGL_Example::readTriangles(vector<Triangle>* tris,
+                                   GLfloat* v_buffer,
+                                   GLfloat* c_buffer,
+                                   int* resolution) {
   for (int i = 0; i < tris->size(); i++) {
     Triangle* t = &tris->at(i);
 
@@ -36,8 +38,11 @@ void OpenGL_Example::readTriangles(vector<Triangle>* tris, GLfloat* v_buffer,
   }
 }
 
-void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution,
-                            int* s_red, int* s_green, int* s_blue,
+void OpenGL_Example::render(vector<Triangle>* triangles,
+                            int* resolution,
+                            int* s_red,
+                            int* s_green,
+                            int* s_blue,
                             float* s_depth) {
   GLFWwindow* window;
 
@@ -56,8 +61,8 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution,
   glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 
   // Open a window and create its OpenGL context
-  window = glfwCreateWindow(resolution[1], resolution[2], "miniGraphics", NULL,
-                            NULL);
+  window = glfwCreateWindow(
+      resolution[1], resolution[2], "miniGraphics", NULL, NULL);
   if (window == NULL) {
     cerr << "Failed to open GLFW window." << endl;
     glfwTerminate();
@@ -119,20 +124,26 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution,
   // One color for each vertex. They were generated randomly.
   vector<GLfloat> g_color_buffer_data(3 * 3 * triangles->size());
 
-  readTriangles(triangles, &g_vertex_buffer_data.front(),
-                &g_color_buffer_data.front(), resolution);
+  readTriangles(triangles,
+                &g_vertex_buffer_data.front(),
+                &g_color_buffer_data.front(),
+                resolution);
 
   GLuint vertexbuffer;
   glGenBuffers(1, &vertexbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-  glBufferData(GL_ARRAY_BUFFER, g_vertex_buffer_data.size(),
-               &g_vertex_buffer_data.front(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER,
+               g_vertex_buffer_data.size(),
+               &g_vertex_buffer_data.front(),
+               GL_STATIC_DRAW);
 
   GLuint colorbuffer;
   glGenBuffers(1, &colorbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
-  glBufferData(GL_ARRAY_BUFFER, g_color_buffer_data.size(),
-               &g_color_buffer_data.front(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER,
+               g_color_buffer_data.size(),
+               &g_color_buffer_data.front(),
+               GL_STATIC_DRAW);
 
   // ---------------------------------------------
   // Render to Texture - specific code begins here
@@ -155,8 +166,15 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution,
   glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
   // Give an empty image to OpenGL ( the last "0" means "empty" )
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowWidth, windowHeight, 0, GL_RGB,
-               GL_UNSIGNED_BYTE, 0);
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGB,
+               windowWidth,
+               windowHeight,
+               0,
+               GL_RGB,
+               GL_UNSIGNED_BYTE,
+               0);
 
   // Poor filtering
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -168,14 +186,14 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution,
   GLuint depthrenderbuffer;
   glGenRenderbuffers(1, &depthrenderbuffer);
   glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, windowWidth,
-                        windowHeight);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                            GL_RENDERBUFFER, depthrenderbuffer);
+  glRenderbufferStorage(
+      GL_RENDERBUFFER, GL_DEPTH_COMPONENT, windowWidth, windowHeight);
+  glFramebufferRenderbuffer(
+      GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
 
   // Set "renderedTexture" as our colour attachement #0
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderedTexture,
-                       0);
+  glFramebufferTexture(
+      GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderedTexture, 0);
 
   // Set the list of draw buffers.
   GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
@@ -187,15 +205,33 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution,
 
   // The fullscreen quad's FBO
   static const GLfloat g_quad_vertex_buffer_data[] = {
-      -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, -1.0f, 1.0f, 0.0f,
-      -1.0f, 1.0f,  0.0f, 1.0f, -1.0f, 0.0f, 1.0f,  1.0f, 0.0f,
+      -1.0f,
+      -1.0f,
+      0.0f,
+      1.0f,
+      -1.0f,
+      0.0f,
+      -1.0f,
+      1.0f,
+      0.0f,
+      -1.0f,
+      1.0f,
+      0.0f,
+      1.0f,
+      -1.0f,
+      0.0f,
+      1.0f,
+      1.0f,
+      0.0f,
   };
 
   GLuint quad_vertexbuffer;
   glGenBuffers(1, &quad_vertexbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data),
-               g_quad_vertex_buffer_data, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER,
+               sizeof(g_quad_vertex_buffer_data),
+               g_quad_vertex_buffer_data,
+               GL_STATIC_DRAW);
 
   // Create and compile our GLSL program from the shaders
   GLuint quad_programID = LoadShaders();
@@ -246,7 +282,8 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution,
 
   // Draw the triangle !
   glDrawArrays(
-      GL_TRIANGLES, 0,
+      GL_TRIANGLES,
+      0,
       triangles->size() * 3);  // 12*3 indices starting at 0 -> 12 triangles
 
   glDisableVertexAttribArray(0);

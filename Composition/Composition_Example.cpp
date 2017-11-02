@@ -8,10 +8,15 @@
 
 #include "Composition_Example.hpp"
 
-void Composition_Example::composition(int num_ims, int res_size, int** im_red,
-                                      int** im_green, int** im_blue,
-                                      float** im_depth, int* c_red,
-                                      int* c_green, int* c_blue,
+void Composition_Example::composition(int num_ims,
+                                      int res_size,
+                                      int** im_red,
+                                      int** im_green,
+                                      int** im_blue,
+                                      float** im_depth,
+                                      int* c_red,
+                                      int* c_green,
+                                      int* c_blue,
                                       float* c_depth) {
   for (int i = 0; i < num_ims; i++) {
     for (int j = 0; j < res_size; j++) {

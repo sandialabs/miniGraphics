@@ -24,7 +24,7 @@ using namespace std;
 class IceT_Example : public Composition {
  private:
  public:
-  void composition(int, int, int**, int**, int**, float**, int*, int*, int*,
-                   float*);
+  void composition(
+      int, int, int**, int**, int**, float**, int*, int*, int*, float*);
 };
 #endif

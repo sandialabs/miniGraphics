@@ -10,8 +10,13 @@
 #include <math.h>
 #include <algorithm>
 
-void Renderer_Example::calcPlane(double* D, double* R, double* C, double* B,
-                                 Vertex* v1, Vertex* v2, Vertex* v3) {
+void Renderer_Example::calcPlane(double* D,
+                                 double* R,
+                                 double* C,
+                                 double* B,
+                                 Vertex* v1,
+                                 Vertex* v2,
+                                 Vertex* v3) {
   double v12[3] = {v2->p1 - v1->p1, v2->p2 - v1->p2, v2->p3 - v1->p3};
   double v13[3] = {v3->p1 - v1->p1, v3->p2 - v1->p2, v3->p3 - v1->p3};
 
@@ -22,8 +27,8 @@ void Renderer_Example::calcPlane(double* D, double* R, double* C, double* B,
   *B = *D * v2->p1 + *R * v2->p2 + *C * v2->p3;
 }
 
-int Renderer_Example::whichSide(Vertex* v, double d, double r, double c,
-                                Vertex* norm) {
+int Renderer_Example::whichSide(
+    Vertex* v, double d, double r, double c, Vertex* norm) {
   Vertex* temp = new Vertex(d - v->p1, r - v->p2, c - v->p3);
   double result = norm->dotProduct(temp);
   if (result == 0)
@@ -34,9 +39,15 @@ int Renderer_Example::whichSide(Vertex* v, double d, double r, double c,
     return 1;
 }
 
-bool Renderer_Example::correctSide(Vertex* v1, Vertex* v2, Vertex* v3,
-                                   double* D, double* R, double* C, double d,
-                                   double r, double c) {
+bool Renderer_Example::correctSide(Vertex* v1,
+                                   Vertex* v2,
+                                   Vertex* v3,
+                                   double* D,
+                                   double* R,
+                                   double* C,
+                                   double d,
+                                   double r,
+                                   double c) {
   Vertex* vt = new Vertex(*v1, *D, *R, *C);
   double Dt, Rt, Ct, Bt;
   this->calcPlane(&Dt, &Rt, &Ct, &Bt, v1, v2, vt);
@@ -57,9 +68,8 @@ bool Renderer_Example::correctSide(Vertex* v1, Vertex* v2, Vertex* v3,
   return false;
 }
 
-bool Renderer_Example::planeThroughCube(Vertex* vr, double* D, double* R,
-                                        double* C, double d, double r,
-                                        double c) {
+bool Renderer_Example::planeThroughCube(
+    Vertex* vr, double* D, double* R, double* C, double d, double r, double c) {
   int prev = -100;
   int result = -100;
   Vertex* norm = new Vertex(*D, *R, *C);
@@ -77,8 +87,14 @@ bool Renderer_Example::planeThroughCube(Vertex* vr, double* D, double* R,
   return false;
 }
 
-bool Renderer_Example::isIn(double* D, double* R, double* C, double* B,
-                            Triangle* t, int d, int r, int c) {
+bool Renderer_Example::isIn(double* D,
+                            double* R,
+                            double* C,
+                            double* B,
+                            Triangle* t,
+                            int d,
+                            int r,
+                            int c) {
   if (this->planeThroughCube(&t->v1, D, R, C, d, r, c)) {
     Vertex* v1 = &t->v1;
     Vertex* v2 = &t->v2;
@@ -99,8 +115,12 @@ int Renderer_Example::tripleMax(double x, double y, double z) {
   return (int)max(max(x, y), max(y, z));
 }
 
-void Renderer_Example::fillTriangle(int* s_red, int* s_green, int* s_blue,
-                                    float* s_depth, Triangle* t, int* res) {
+void Renderer_Example::fillTriangle(int* s_red,
+                                    int* s_green,
+                                    int* s_blue,
+                                    float* s_depth,
+                                    Triangle* t,
+                                    int* res) {
   double D, R, C, B;
   this->calcPlane(&D, &R, &C, &B, &t->v1, &t->v2, &t->v3);
 
@@ -133,8 +153,11 @@ void Renderer_Example::fillTriangle(int* s_red, int* s_green, int* s_blue,
   }
 }
 
-void Renderer_Example::render(vector<Triangle>* triangles, int* resolution,
-                              int* s_red, int* s_green, int* s_blue,
+void Renderer_Example::render(vector<Triangle>* triangles,
+                              int* resolution,
+                              int* s_red,
+                              int* s_green,
+                              int* s_blue,
                               float* s_depth) {
   for (int i = 0; i < triangles->size(); i++) {
     Triangle* t = &triangles->at(i);
