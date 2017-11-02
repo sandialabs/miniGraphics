@@ -129,6 +129,9 @@ int main(int argv, char* argc[]) {
     int resolution[3] = {0,0,0};
     
     vector<Triangle> triangles = readData(s,resolution);
+	if (triangles.size() < 1) {
+		return 1;
+	}
     
     // INITIALIZE RENDER
 //    Renderer_Example R;

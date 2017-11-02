@@ -35,7 +35,7 @@ void OpenGL_Example::render(vector<Triangle>* triangles, int* resolution, int* s
 	if( !glfwInit() )
 	{
 		fprintf( stderr, "Failed to initialize GLFW\n" );
-		getchar();
+//		getchar();
 		return ;
 	}
 
