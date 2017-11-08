@@ -17,6 +17,8 @@ add_executable(createData dataGen/createData.cpp)
 
 set(srcs
   main.cpp
+  Objects/Image.cpp
+  Objects/ImageRGBAUByteColorFloatDepth.cpp
   Objects/Triangle.cpp
   Objects/Vertex.cpp
   IO/ReadData.cpp

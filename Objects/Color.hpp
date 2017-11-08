@@ -62,7 +62,7 @@ class Color {
     }
   }
 
-  unsigned char GetComponentAsByte(int i) {
+  unsigned char GetComponentAsByte(int i) const {
     // We need this to match what OpenGL/Mesa do.
     // Why?  Well, we need to set glClearColor
     // using floats, but the frame buffer comes
@@ -92,14 +92,14 @@ class Color {
   void GetRGBA(unsigned char& r,
                unsigned char& g,
                unsigned char& b,
-               unsigned char& a) {
+               unsigned char& a) const {
     r = GetComponentAsByte(0);
     g = GetComponentAsByte(1);
     b = GetComponentAsByte(2);
     a = GetComponentAsByte(3);
   }
 
-  float RawBrightness() {
+  float RawBrightness() const {
     return (Components[0] + Components[1] + Components[2]) / 3.;
   }
 
