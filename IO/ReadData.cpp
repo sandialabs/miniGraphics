@@ -99,7 +99,7 @@ vector<Triangle> readData(char s[], int resolution[3]) {
   }
 
   else
-    cout << "Unable to open file" << s << endl;
+    cout << "Unable to open file " << s << endl;
 
   return *triangles;
 }

@@ -45,6 +45,6 @@ void Vertex::getVector(double first,
   result[2] = third - p3;
 }
 
-double Vertex::dotProduct(Vertex* other) {
+double Vertex::dotProduct(const Vertex* other) const {
   return p1 * other->p1 + p2 * other->p2 + p3 * other->p3;
 }

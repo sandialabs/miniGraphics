@@ -12,30 +12,35 @@
 #include <iostream>
 #include "../Objects/Renderer.hpp"
 
-using namespace std;
-
 class Renderer_Example : public Renderer {
  private:
-  void calcPlane(double*, double*, double*, double*, Vertex*, Vertex*, Vertex*);
-  int whichSide(Vertex*, double, double, double, Vertex*);
-  bool correctSide(Vertex*,
-                   Vertex*,
-                   Vertex*,
-                   double*,
-                   double*,
-                   double*,
+  void calcPlane(double *,
+                 double *,
+                 double *,
+                 double *,
+                 const Vertex *,
+                 const Vertex *,
+                 const Vertex *);
+  int whichSide(const Vertex *, double, double, double, const Vertex *);
+  bool correctSide(const Vertex *,
+                   const Vertex *,
+                   const Vertex *,
+                   double *,
+                   double *,
+                   double *,
                    double,
                    double,
                    double);
   bool planeThroughCube(
-      Vertex*, double*, double*, double*, double, double, double);
-  bool isIn(double*, double*, double*, double*, Triangle*, int, int, int);
+      const Vertex *, double *, double *, double *, double, double, double);
+  bool isIn(
+      double *, double *, double *, double *, const Triangle &, int, int, int);
   int tripleMin(double, double, double);
   int tripleMax(double, double, double);
-  void fillTriangle(int*, int*, int*, float*, Triangle*, int*);
+  void fillTriangle(Image *image, const Triangle &triangle);
 
  public:
-  void render(vector<Triangle>*, int*, int*, int*, int*, float*);
+  void render(const std::vector<Triangle> &triangles, Image *image) final;
 };
 
 #endif

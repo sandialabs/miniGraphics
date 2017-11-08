@@ -17,9 +17,12 @@ add_executable(createData dataGen/createData.cpp)
 
 set(srcs
   main.cpp
+  Objects/Image.cpp
+  Objects/ImageRGBAUByteColorFloatDepth.cpp
   Objects/Triangle.cpp
   Objects/Vertex.cpp
   IO/ReadData.cpp
+  IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp
   #Rendering/OpenGL_Example.cpp
   #Rendering/OpenGL_common/shader.cpp
@@ -27,11 +30,18 @@ set(srcs
   #Composition/IceT_Example.cpp
   )
 
+set(headers
+  Objects/Color.hpp
+  Objects/Composition.hpp
+  Objects/Renderer.hpp
+  )
+set_source_files_properties(${headers} HEADER_ONLY TRUE)
+
 #find_package(OpenGL REQUIRED)
 #find_package(GLEW REQUIRED)
 #find_package(GLFW REQUIRED)
 
-add_executable(run ${srcs})
+add_executable(run ${srcs} ${headers})
 target_include_directories(run PRIVATE
 #  ${OPENGL_INCLUDE_DIR}
 #  ${GLEW_INCLUDE_DIRS}

@@ -6,17 +6,6 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef RENDERER_H
-#define RENDERER_H
-
 #include "Image.hpp"
-#include "Triangle.hpp"
 
-#include <vector>
-
-class Renderer {
- public:
-  virtual void render(const std::vector<Triangle>& triangles, Image* image) = 0;
-};
-
-#endif
+Image::~Image() {}
