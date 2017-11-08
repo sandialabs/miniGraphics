@@ -59,7 +59,7 @@ class Image {
   /// \brief Gets the depth at the given x and y location
   ///
   /// Return value not defined if this image does not have a depth plane.
-  virtual float getDepth(int x, int y) const {
+  float getDepth(int x, int y) const {
     return this->getDepth(this->pixelIndex(x, y));
   }
 
@@ -71,7 +71,7 @@ class Image {
   /// \brief Sets the depth at the given x and y location.
   ///
   /// If this image does not have a depth plane, this does nothing.
-  virtual void setDepth(int x, int y, float depth) {
+  void setDepth(int x, int y, float depth) {
     this->setDepth(this->pixelIndex(x, y), depth);
   }
 

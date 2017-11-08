@@ -10,10 +10,14 @@
 #define RENDERER_EXAMPLE_H
 
 #include <iostream>
+
 #include "../Objects/Renderer.hpp"
+
+#include <glm/vec3.hpp>
 
 class Renderer_Example : public Renderer {
  private:
+#if 0
   void calcPlane(double *,
                  double *,
                  double *,
@@ -37,10 +41,18 @@ class Renderer_Example : public Renderer {
       double *, double *, double *, double *, const Triangle &, int, int, int);
   int tripleMin(double, double, double);
   int tripleMax(double, double, double);
-  void fillTriangle(Image *image, const Triangle &triangle);
+#endif
+  void fillLine(Image* image,
+                int y,
+                const glm::vec3& edgeDir1,
+                const glm::vec3& edgeBase1,
+                const glm::vec3& edgeDir2,
+                const glm::vec3& edgeBase2,
+                const Color& color);
+  void fillTriangle(Image* image, const Triangle& triangle);
 
  public:
-  void render(const std::vector<Triangle> &triangles, Image *image) final;
+  void render(const std::vector<Triangle>& triangles, Image* image) final;
 };
 
 #endif
