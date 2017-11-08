@@ -13,6 +13,7 @@
 #include <time.h>
 
 #include <memory>
+#include <sstream>
 #include <vector>
 
 #include "Composition/Composition_Example.hpp"
@@ -20,6 +21,7 @@
 #include "Rendering/Renderer_Example.hpp"
 //#include "Composition/IceT_Example.hpp"
 #include "IO/ReadData.hpp"
+#include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
 
 int max(int a, int b) {
@@ -59,19 +61,11 @@ void run(R_T R, C_T C, vector<Triangle> triangles, int* resolution) {
   double r_time_spent = (double)(r_end - r_begin) / CLOCKS_PER_SEC;
   cout << "RENDER: " << r_time_spent << " seconds" << endl;
 
-  // PRINT FOR SANITY CHECK
+  // SAVE FOR SANITY CHECK
   for (int d = 0; d < numImages; d++) {
-    cout << "IMAGE: " << d << endl;
-    for (int j = 0; j < resolution[1]; j++) {
-      for (int k = 0; k < resolution[2]; k++) {
-        Color color = images[d]->getColor(k, j);
-        int max_color =
-            max(color.GetComponentAsByte(0),
-                max(color.GetComponentAsByte(1), color.GetComponentAsByte(2)));
-        cout << "(" << max_color << ')';
-      }
-      cout << endl;
-    }
+    std::stringstream filename;
+    filename << "rendered" << d << ".ppm";
+    SavePPM(*images[d], filename.str());
   }
 
   // COMPOSITION SECTION
@@ -84,25 +78,8 @@ void run(R_T R, C_T C, vector<Triangle> triangles, int* resolution) {
   double c_time_spent = (double)(c_end - c_begin) / CLOCKS_PER_SEC;
   printf("COMPOSITION: %f seconds\n", c_time_spent);
 
-  // PRINT FOR SANITY CHECK
-  int count2 = 0;
-  for (int j = 0; j < resolution[1]; j++) {
-    for (int k = 0; k < resolution[2]; k++) {
-      Color color = images[0]->getColor(k, j);
-      int max_color =
-          max(color.GetComponentAsByte(0),
-              max(color.GetComponentAsByte(1), color.GetComponentAsByte(2)));
-      cout << "(" << max_color << ')';
-
-      //			cout << " (" << c_red[count2] << ',' <<
-      // c_green[count2] << ',' << c_blue[count2] << ')';
-      count2++;
-    }
-    cout << endl;
-  }
-
-  // (OPTIONAL) DISPLAY IMAGE SECTION
-  // TODO: set up framework
+  // SAVE FOR SANITY CHECK
+  SavePPM(*images[0], "composite.ppm");
 }
 
 int main(int argv, char* argc[]) {

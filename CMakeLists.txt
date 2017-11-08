@@ -22,6 +22,7 @@ set(srcs
   Objects/Triangle.cpp
   Objects/Vertex.cpp
   IO/ReadData.cpp
+  IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp
   #Rendering/OpenGL_Example.cpp
   #Rendering/OpenGL_common/shader.cpp
