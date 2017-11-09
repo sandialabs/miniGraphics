@@ -17,6 +17,9 @@ ImageRGBAUByteColorFloatDepth::ImageRGBAUByteColorFloatDepth(int _width,
       depthBuffer(new std::vector<float>(_width * _height)) {}
 
 Color ImageRGBAUByteColorFloatDepth::getColor(int pixelIndex) const {
+  assert(pixelIndex >= 0);
+  assert(pixelIndex < this->getNumberOfPixels());
+
   const unsigned char *colorArray = this->getColorBuffer() + 4 * pixelIndex;
 
   Color color;
@@ -30,6 +33,9 @@ Color ImageRGBAUByteColorFloatDepth::getColor(int pixelIndex) const {
 
 void ImageRGBAUByteColorFloatDepth::setColor(int pixelIndex,
                                              const Color &color) {
+  assert(pixelIndex >= 0);
+  assert(pixelIndex < this->getNumberOfPixels());
+
   unsigned char *colorArray = this->getColorBuffer() + 4 * pixelIndex;
 
   colorArray[0] = color.GetComponentAsByte(0);
@@ -39,10 +45,16 @@ void ImageRGBAUByteColorFloatDepth::setColor(int pixelIndex,
 }
 
 float ImageRGBAUByteColorFloatDepth::getDepth(int pixelIndex) const {
+  assert(pixelIndex >= 0);
+  assert(pixelIndex < this->getNumberOfPixels());
+
   return this->getDepthBuffer()[pixelIndex];
 }
 
 void ImageRGBAUByteColorFloatDepth::setDepth(int pixelIndex, float depth) {
+  assert(pixelIndex >= 0);
+  assert(pixelIndex < this->getNumberOfPixels());
+
   this->getDepthBuffer()[pixelIndex] = depth;
 }
 

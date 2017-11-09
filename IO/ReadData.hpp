@@ -9,18 +9,13 @@
 #ifndef READDATA_H
 #define READDATA_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <cstring>
+#include "../Objects/Mesh.hpp"
+
 #include <string>
-#include <vector>
 
-#include "../Objects/Triangle.hpp"
-
-#include <fstream>
-#include <iostream>
-using namespace std;
-
-vector<Triangle> readData(char s[], int resolution[3]);
+bool readData(const std::string& filename,
+              Mesh& mesh,
+              int& imageWidth,
+              int& imageHeight);
 
 #endif

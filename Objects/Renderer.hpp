@@ -10,13 +10,13 @@
 #define RENDERER_H
 
 #include "Image.hpp"
-#include "Triangle.hpp"
+#include "Mesh.hpp"
 
 #include <vector>
 
 class Renderer {
  public:
-  virtual void render(const std::vector<Triangle>& triangles, Image* image) = 0;
+  virtual void render(const Mesh& mesh, Image* image) = 0;
 };
 
 #endif
