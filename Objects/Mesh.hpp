@@ -1,0 +1,85 @@
+// miniGraphics is distributed under the OSI-approved BSD 3-clause License.
+// See LICENSE.txt for details.
+//
+// Copyright (c) 2017
+// National Technology & Engineering Solutions of Sandia, LLC (NTESS). Under
+// the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
+// certain rights in this software.
+
+#ifndef MESH_HPP
+#define MESH_HPP
+
+#include <vector>
+
+#include "Triangle.hpp"
+
+#include <glm/vec3.hpp>
+
+class Mesh {
+ private:
+  std::vector<float> pointCoordinates;   // Three (x,y,z) coordinates per vertex
+  std::vector<int> triangleConnections;  // Three indices per triangle
+  std::vector<float> triangleColors;  // Four (r,g,b,a) components per triangle
+
+  int numberOfVertices;
+  int numberOfTriangles;
+
+ public:
+  Mesh();
+  Mesh(int numVertices, int numTriangles);
+  ~Mesh();
+
+  int getNumberOfVertices() const { return this->numberOfVertices; }
+  void setNumberOfVertices(int numVertices);
+
+  int getNumberOfTriangles() const { return this->numberOfTriangles; }
+  void setNumberOfTriangles(int numTriangles);
+
+  float* getPointCoordinatesBuffer(int vertexIndex = 0) {
+    assert((vertexIndex >= 0) && (vertexIndex) <= this->getNumberOfVertices());
+    return &this->pointCoordinates.front() + (3 * vertexIndex);
+  }
+  const float* getPointCoordinatesBuffer(int vertexIndex = 0) const {
+    assert((vertexIndex >= 0) && (vertexIndex) <= this->getNumberOfVertices());
+    return &this->pointCoordinates.front() + (3 * vertexIndex);
+  }
+
+  int* getTriangleConnectionsBuffer(int triangleIndex = 0) {
+    assert((triangleIndex >= 0) &&
+           (triangleIndex <= this->getNumberOfTriangles()));
+    return &this->triangleConnections.front() + (3 * triangleIndex);
+  }
+  const int* getTriangleConnectionsBuffer(int triangleIndex = 0) const {
+    assert((triangleIndex >= 0) &&
+           (triangleIndex <= this->getNumberOfTriangles()));
+    return &this->triangleConnections.front() + (3 * triangleIndex);
+  }
+
+  float* getTriangleColorsBuffer(int triangleIndex = 0) {
+    assert((triangleIndex >= 0) &&
+           (triangleIndex <= this->getNumberOfTriangles()));
+    return &this->triangleColors.front() + (4 * triangleIndex);
+  }
+  const float* getTriangleColorsBuffer(int triangleIndex) const {
+    assert((triangleIndex >= 0) &&
+           (triangleIndex <= this->getNumberOfTriangles()));
+    return &this->triangleColors.front() + (4 * triangleIndex);
+  }
+
+  glm::vec3 getPointCoordinates(int vertexIndex) const;
+  Triangle getTriangle(int triangleIndex) const;
+
+  void setVertex(int vertexIndex, const glm::vec3& pointCoordinate);
+  void setTriangle(int triangleIndex,
+                   const int vertexIndices[3],
+                   const Color& color = Color(1, 1, 1, 1));
+  void setColor(int triangleIndex, const Color& color);
+
+  void addVertex(const glm::vec3& pointCoordinate);
+  void addTriangle(const int vertexIndices[3],
+                   const Color& color = Color(1, 1, 1, 1));
+
+  Mesh copySubset(int beginTriangleIndex, int endTriangleIndex) const;
+};
+
+#endif  // MESH_HPP

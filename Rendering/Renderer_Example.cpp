@@ -44,16 +44,16 @@ inline void Renderer_Example::fillLine(Image *image,
 }
 
 void Renderer_Example::fillTriangle(Image *image, const Triangle &triangle) {
-  Color color;
-  color.SetComponentFromByte(0, triangle.color[0]);
-  color.SetComponentFromByte(1, triangle.color[1]);
-  color.SetComponentFromByte(2, triangle.color[2]);
+  const Color &color = triangle.color;
 
   // Sort vertices by location along Y axis.
-  // TODO: vertices in weird z, y, x order. Fix that.
-  glm::vec3 vMin(triangle.v1.p3, triangle.v1.p2, triangle.v1.p1);
-  glm::vec3 vMid(triangle.v2.p3, triangle.v2.p2, triangle.v2.p1);
-  glm::vec3 vMax(triangle.v3.p3, triangle.v3.p2, triangle.v3.p1);
+  glm::vec3 vMin = triangle.vertex[0];
+  glm::vec3 vMid = triangle.vertex[1];
+  glm::vec3 vMax = triangle.vertex[2];
+
+  std::cout << vMin.x << " " << vMin.y << " " << vMin.z << std::endl;
+  std::cout << vMid.x << " " << vMid.y << " " << vMid.z << std::endl;
+  std::cout << vMax.x << " " << vMax.y << " " << vMax.z << std::endl;
 
   if (vMin.y > vMid.y) {
     std::swap(vMin, vMid);
@@ -65,6 +65,7 @@ void Renderer_Example::fillTriangle(Image *image, const Triangle &triangle) {
     std::swap(vMid, vMax);
   }
 
+  // Get vectors along edge point from min to max.
   glm::vec3 dirMin2Max = vMax - vMin;
   glm::vec3 dirMin2Mid = vMid - vMin;
   glm::vec3 dirMid2Max = vMax - vMid;
@@ -73,22 +74,23 @@ void Renderer_Example::fillTriangle(Image *image, const Triangle &triangle) {
   int yMid = std::max((int)vMid.y, 0);
   int yMax = std::min((int)vMax.y, image->getHeight());
 
+  // Rasterize bottom half
   for (int y = yMin; y < yMid; ++y) {
     this->fillLine(image, y, dirMin2Max, vMin, dirMin2Mid, vMin, color);
   }
 
+  // Rasterize top half
   for (int y = yMid; y < yMax; ++y) {
     this->fillLine(image, y, dirMin2Max, vMin, dirMid2Max, vMax, color);
   }
 }
 
-void Renderer_Example::render(const std::vector<Triangle> &triangles,
-                              Image *image) {
+void Renderer_Example::render(const Mesh &mesh, Image *image) {
   // TODO: depth resolution is broken. When fixed, changed this back to the
   // defaults.
   image->clear(Color(0, 0, 0), 100.0f);
 
-  for (int i = 0; i < triangles.size(); i++) {
-    this->fillTriangle(image, triangles.at(i));
+  for (int i = 0; i < mesh.getNumberOfTriangles(); i++) {
+    this->fillTriangle(image, mesh.getTriangle(i));
   }
 }

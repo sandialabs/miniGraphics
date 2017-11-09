@@ -30,7 +30,7 @@ int max(int a, int b) {
 }
 
 template <class R_T, class C_T>
-void run(R_T R, C_T C, vector<Triangle> triangles, int* resolution) {
+void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
   // INITIALIZE IMAGES SPACES
   int numImages = 2;
   std::vector<std::shared_ptr<Image>> images;
@@ -42,18 +42,14 @@ void run(R_T R, C_T C, vector<Triangle> triangles, int* resolution) {
 
   for (int imageIndex = 0; imageIndex < numImages; imageIndex++) {
     // INITIALIZE RENDER SPACE
-    // Yeah, I don't understand resolution. Indices 1 and 2 appear to be the
-    // y and x resolution of the image. Index 0 is some bizarre scaling of the
-    // depth.
     std::shared_ptr<Image> image;
-    image.reset(
-        new ImageRGBAUByteColorFloatDepth(resolution[2], resolution[1]));
+    image.reset(new ImageRGBAUByteColorFloatDepth(imageWidth, imageHeight));
 
-    std::vector<Triangle> tempTriangles(
-        triangles.begin() + imageIndex * (triangles.size() / numImages),
-        triangles.begin() + (imageIndex + 1) * (triangles.size() / numImages));
+    Mesh tempMesh = mesh.copySubset(
+        imageIndex * (mesh.getNumberOfTriangles() / numImages),
+        (imageIndex + 1) * (mesh.getNumberOfTriangles() / numImages));
 
-    R.render(tempTriangles, image.get());
+    R.render(tempMesh, image.get());
 
     images.push_back(image);
   }
@@ -84,12 +80,13 @@ void run(R_T R, C_T C, vector<Triangle> triangles, int* resolution) {
 
 int main(int argv, char* argc[]) {
   // LOAD TRIANGLES
-  char s[] = "TEST_TRIANGLE.dat";
-  //    char s[] = "triangles.dat";
-  int resolution[3] = {0, 0, 0};
+  std::string filename("TEST_TRIANGLE.dat");
+  //  std::string filename("triangles.dat");
+  int imageWidth;
+  int imageHeight;
 
-  vector<Triangle> triangles = readData(s, resolution);
-  if (triangles.size() < 1) {
+  Mesh mesh;
+  if (!readData(filename, mesh, imageWidth, imageHeight)) {
     cerr << "Could not read triangles" << endl;
     return 1;
   }
@@ -102,7 +99,7 @@ int main(int argv, char* argc[]) {
   Composition_Example C;
   //    IceT_Example C;
 
-  run(R, C, triangles, resolution);
+  run(R, C, mesh, imageWidth, imageHeight);
 
   return 0;
 }

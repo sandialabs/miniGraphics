@@ -19,8 +19,7 @@ set(srcs
   main.cpp
   Objects/Image.cpp
   Objects/ImageRGBAUByteColorFloatDepth.cpp
-  Objects/Triangle.cpp
-  Objects/Vertex.cpp
+  Objects/Mesh.cpp
   IO/ReadData.cpp
   IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp
@@ -34,6 +33,7 @@ set(headers
   Objects/Color.hpp
   Objects/Composition.hpp
   Objects/Renderer.hpp
+  Objects/Triangle.hpp
   )
 set_source_files_properties(${headers} HEADER_ONLY TRUE)
 

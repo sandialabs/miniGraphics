@@ -17,31 +17,6 @@
 
 class Renderer_Example : public Renderer {
  private:
-#if 0
-  void calcPlane(double *,
-                 double *,
-                 double *,
-                 double *,
-                 const Vertex *,
-                 const Vertex *,
-                 const Vertex *);
-  int whichSide(const Vertex *, double, double, double, const Vertex *);
-  bool correctSide(const Vertex *,
-                   const Vertex *,
-                   const Vertex *,
-                   double *,
-                   double *,
-                   double *,
-                   double,
-                   double,
-                   double);
-  bool planeThroughCube(
-      const Vertex *, double *, double *, double *, double, double, double);
-  bool isIn(
-      double *, double *, double *, double *, const Triangle &, int, int, int);
-  int tripleMin(double, double, double);
-  int tripleMax(double, double, double);
-#endif
   void fillLine(Image* image,
                 int y,
                 const glm::vec3& edgeDir1,
@@ -52,7 +27,7 @@ class Renderer_Example : public Renderer {
   void fillTriangle(Image* image, const Triangle& triangle);
 
  public:
-  void render(const std::vector<Triangle>& triangles, Image* image) final;
+  void render(const Mesh& mesh, Image* image) final;
 };
 
 #endif
