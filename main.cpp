@@ -25,6 +25,7 @@
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
 
 #include <glm/mat4x4.hpp>
+#include <glm/trigonometric.hpp>
 #include <glm/vector_relational.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -36,7 +37,7 @@ static void print(const glm::vec3& vec) {
 }
 
 static void print(const glm::mat4x4& matrix) {
-  std::cout << matrix[0][0] << "\t" << matrix[1][0] << "\t" << matrix[0][0]
+  std::cout << matrix[0][0] << "\t" << matrix[1][0] << "\t" << matrix[2][0]
             << "\t" << matrix[3][0] << std::endl;
   std::cout << matrix[0][1] << "\t" << matrix[1][1] << "\t" << matrix[2][1]
             << "\t" << matrix[3][1] << std::endl;
@@ -57,16 +58,31 @@ void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
   glm::vec3 boundsMax = mesh.getBoundsMax();
   glm::vec3 width = boundsMax - boundsMin;
   glm::vec3 center = 0.5f * (boundsMax + boundsMin);
+  float dist = glm::sqrt(glm::dot(width, width));
 
-  glm::mat4x4 modelview = glm::lookAt(
-      center - glm::vec3(0, 0, width.z), center, glm::vec3(0, 1, 0));
+  float thetaRotation = 25.0f;
+  float phiRotation = 15.0f;
+  float zoom = 1.0f;
 
-  glm::mat4x4 projection = glm::ortho(-width.x / 2,
-                                      width.x / 2,
-                                      -width.y / 2,
-                                      width.y / 2,
-                                      width.z / 3,
-                                      2 * width.z);
+  glm::mat4x4 modelview = identityTransform();
+
+  // Move to in front of camera.
+  modelview = glm::translate(modelview, -glm::vec3(0, 0, 1.5f * dist));
+
+  // Rotate geometry for interesting perspectives.
+  modelview =
+      glm::rotate(modelview, glm::radians(phiRotation), glm::vec3(1, 0, 0));
+  modelview =
+      glm::rotate(modelview, glm::radians(thetaRotation), glm::vec3(0, 1, 0));
+
+  // Center geometry at origin.
+  modelview = glm::translate(modelview, -center);
+
+  glm::mat4x4 projection =
+      glm::perspective(glm::radians(45.0f / zoom),
+                       (float)imageWidth / (float)imageHeight,
+                       dist / 3,
+                       2 * dist);
 
   // RENDER SECTION
   clock_t r_begin = clock();

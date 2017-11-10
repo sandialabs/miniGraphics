@@ -18,7 +18,7 @@ bool SavePPM(const Image& image, const std::string& filename) {
   file << image.getWidth() << " " << image.getHeight() << std::endl;
   file << 255 << std::endl;
 
-  for (int y = image.getHeight()-1; y >= 0; --y) {
+  for (int y = image.getHeight() - 1; y >= 0; --y) {
     for (int x = 0; x < image.getWidth(); ++x) {
       Color color = image.getColor(x, y);
       file << color.GetComponentAsByte(0);
