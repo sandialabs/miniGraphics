@@ -28,6 +28,11 @@ static void print(const glm::mat4x4 &matrix) {
             << "\t" << matrix[3][3] << std::endl;
 }
 
+template<typename T>
+static inline void clamp(T &variable, T min, T max) {
+  variable = std::max(min, std::min(max, variable));
+}
+
 inline void Renderer_Example::fillLine(Image *image,
                                        int y,
                                        const glm::vec3 &edgeDir1,
@@ -37,6 +42,9 @@ inline void Renderer_Example::fillLine(Image *image,
                                        const Color &color) {
   float interp1 = ((float)y - edgeBase1.y) / edgeDir1.y;
   float interp2 = ((float)y - edgeBase2.y) / edgeDir2.y;
+
+  clamp(interp1, 0.0f, 1.0f);
+  clamp(interp2, 0.0f, 1.0f);
 
   glm::vec3 left;
   glm::vec3 right;
@@ -91,9 +99,13 @@ void Renderer_Example::fillTriangle(Image *image,
   glm::vec3 dirMin2Mid = vMid - vMin;
   glm::vec3 dirMid2Max = vMax - vMid;
 
-  int yMin = std::max((int)vMin.y, 0);
-  int yMid = std::max((int)vMid.y, 0);
-  int yMax = std::min((int)vMax.y, image->getHeight());
+  int yMin = (int)vMin.y;
+  int yMid = (int)vMid.y;
+  int yMax = (int)vMax.y;
+
+  clamp(yMin, 0, image->getHeight());
+  clamp(yMid, 0, image->getHeight());
+  clamp(yMax, 0, image->getHeight());
 
   // Rasterize bottom half
   for (int y = yMin; y < yMid; ++y) {
@@ -102,7 +114,7 @@ void Renderer_Example::fillTriangle(Image *image,
 
   // Rasterize top half
   for (int y = yMid; y < yMax; ++y) {
-    this->fillLine(image, y, dirMin2Max, vMin, dirMid2Max, vMax, color);
+    this->fillLine(image, y, dirMin2Max, vMin, dirMid2Max, vMid, color);
   }
 }
 
