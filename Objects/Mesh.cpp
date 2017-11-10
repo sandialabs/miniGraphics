@@ -22,15 +22,52 @@ Mesh::Mesh(int numVertices, int numTriangles) {
 
 Mesh::~Mesh() {}
 
+void Mesh::updateBounds() const {
+  if (this->boundsValid) {
+    return;
+  }
+
+  // Technically, this changes the state, but logically the state is the same,
+  // so we consider this OK.
+  Mesh *mutableMesh = const_cast<Mesh *>(this);
+  mutableMesh->computeBounds();
+}
+
+void Mesh::computeBounds() {
+  assert(!this->boundsValid);
+
+  this->boundsMin = glm::vec3(std::numeric_limits<float>::max(),
+                              std::numeric_limits<float>::max(),
+                              std::numeric_limits<float>::max());
+  this->boundsMax = glm::vec3(std::numeric_limits<float>::min(),
+                              std::numeric_limits<float>::min(),
+                              std::numeric_limits<float>::min());
+
+  int numVerts = this->getNumberOfVertices();
+  for (int vertexIndex = 0; vertexIndex < numVerts; ++vertexIndex) {
+    glm::vec3 p = this->getPointCoordinates(vertexIndex);
+
+    this->boundsMin.x = std::min(this->boundsMin.x, p.x);
+    this->boundsMin.y = std::min(this->boundsMin.y, p.y);
+    this->boundsMin.z = std::min(this->boundsMin.z, p.z);
+
+    this->boundsMax.x = std::max(this->boundsMax.x, p.x);
+    this->boundsMax.y = std::max(this->boundsMax.y, p.y);
+    this->boundsMax.z = std::max(this->boundsMax.z, p.z);
+  }
+}
+
 void Mesh::setNumberOfVertices(int numVertices) {
   this->numberOfVertices = numVertices;
   this->pointCoordinates.resize(3 * numVertices);
+  this->boundsValid = false;
 }
 
 void Mesh::setNumberOfTriangles(int numTriangles) {
   this->numberOfTriangles = numTriangles;
   this->triangleConnections.resize(3 * numTriangles);
   this->triangleColors.resize(4 * numTriangles);
+  this->boundsValid = false;
 }
 
 inline glm::vec3 Mesh::getPointCoordinates(int vertexIndex) const {
@@ -56,6 +93,7 @@ void Mesh::setVertex(int vertexIndex, const glm::vec3 &pointCoordinate) {
   v[0] = pointCoordinate.x;
   v[1] = pointCoordinate.y;
   v[2] = pointCoordinate.z;
+  this->boundsValid = false;
 }
 
 void Mesh::setTriangle(int triangleIndex,
@@ -87,6 +125,7 @@ void Mesh::addVertex(const glm::vec3 &pointCoordinate) {
   this->pointCoordinates.push_back(pointCoordinate.y);
   this->pointCoordinates.push_back(pointCoordinate.z);
   ++this->numberOfVertices;
+  this->boundsValid = false;
 }
 
 void Mesh::addTriangle(const int vertexIndices[3], const Color &color) {
@@ -149,4 +188,14 @@ Mesh Mesh::copySubset(int beginTriangleIndex, int endTriangleIndex) const {
             outputMesh.getTriangleColorsBuffer());
 
   return outputMesh;
+}
+
+const glm::vec3 &Mesh::getBoundsMin() const {
+  this->updateBounds();
+  return this->boundsMin;
+}
+
+const glm::vec3 &Mesh::getBoundsMax() const {
+  this->updateBounds();
+  return this->boundsMax;
 }

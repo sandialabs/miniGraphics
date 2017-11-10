@@ -75,7 +75,8 @@ bool readData(const std::string &filename,
       floatSplit(const_cast<char *>(line.c_str()), temp_v, 3);
 
       // Correct weird z, y, x order
-      glm::vec3 vertex(temp_v[2]*imageWidth, temp_v[1]*imageHeight, temp_v[0]);
+      glm::vec3 vertex(
+          temp_v[2] * imageWidth, temp_v[1] * imageHeight, temp_v[0]);
 
       mesh.addVertex(vertex);
     } else if (curr == 't') {

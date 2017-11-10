@@ -24,6 +24,13 @@ class Mesh {
   int numberOfVertices;
   int numberOfTriangles;
 
+  glm::vec3 boundsMin;
+  glm::vec3 boundsMax;
+  bool boundsValid;
+
+  void updateBounds() const;
+  void computeBounds();
+
  public:
   Mesh();
   Mesh(int numVertices, int numTriangles);
@@ -37,6 +44,7 @@ class Mesh {
 
   float* getPointCoordinatesBuffer(int vertexIndex = 0) {
     assert((vertexIndex >= 0) && (vertexIndex) <= this->getNumberOfVertices());
+    this->boundsValid = false;
     return &this->pointCoordinates.front() + (3 * vertexIndex);
   }
   const float* getPointCoordinatesBuffer(int vertexIndex = 0) const {
@@ -80,6 +88,9 @@ class Mesh {
                    const Color& color = Color(1, 1, 1, 1));
 
   Mesh copySubset(int beginTriangleIndex, int endTriangleIndex) const;
+
+  const glm::vec3& getBoundsMin() const;
+  const glm::vec3& getBoundsMax() const;
 };
 
 #endif  // MESH_HPP

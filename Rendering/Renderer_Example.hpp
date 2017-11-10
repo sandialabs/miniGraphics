@@ -24,10 +24,16 @@ class Renderer_Example : public Renderer {
                 const glm::vec3& edgeDir2,
                 const glm::vec3& edgeBase2,
                 const Color& color);
-  void fillTriangle(Image* image, const Triangle& triangle);
+  void fillTriangle(Image* image,
+                    const Triangle& triangle,
+                    const glm::mat4x4& modelview,
+                    const glm::mat4x4& projection);
 
  public:
-  void render(const Mesh& mesh, Image* image) final;
+  void render(const Mesh& mesh,
+              Image* image,
+              const glm::mat4x4& modelview,
+              const glm::mat4x4& projection) final;
 };
 
 #endif
