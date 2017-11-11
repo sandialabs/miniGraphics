@@ -12,11 +12,16 @@
 #include "Image.hpp"
 #include "Mesh.hpp"
 
+#include <glm/mat4x4.hpp>
+
 #include <vector>
 
 class Renderer {
  public:
-  virtual void render(const Mesh& mesh, Image* image) = 0;
+  virtual void render(const Mesh& mesh,
+                      Image* image,
+                      const glm::mat4x4& modelview,
+                      const glm::mat4x4& projection) = 0;
 };
 
 #endif

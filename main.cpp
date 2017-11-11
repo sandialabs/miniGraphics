@@ -24,9 +24,27 @@
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
 
-int max(int a, int b) {
-  if (a > b) return a;
-  return b;
+#include <glm/mat4x4.hpp>
+#include <glm/trigonometric.hpp>
+#include <glm/vector_relational.hpp>
+
+#include <glm/gtc/matrix_transform.hpp>
+
+static glm::mat4x4 identityTransform() { return glm::mat4x4(1.0f); }
+
+static void print(const glm::vec3& vec) {
+  std::cout << vec[0] << "\t" << vec[1] << "\t" << vec[2] << std::endl;
+}
+
+static void print(const glm::mat4x4& matrix) {
+  std::cout << matrix[0][0] << "\t" << matrix[1][0] << "\t" << matrix[2][0]
+            << "\t" << matrix[3][0] << std::endl;
+  std::cout << matrix[0][1] << "\t" << matrix[1][1] << "\t" << matrix[2][1]
+            << "\t" << matrix[3][1] << std::endl;
+  std::cout << matrix[0][2] << "\t" << matrix[1][2] << "\t" << matrix[2][2]
+            << "\t" << matrix[3][2] << std::endl;
+  std::cout << matrix[0][3] << "\t" << matrix[1][3] << "\t" << matrix[2][3]
+            << "\t" << matrix[3][3] << std::endl;
 }
 
 template <class R_T, class C_T>
@@ -34,6 +52,37 @@ void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
   // INITIALIZE IMAGES SPACES
   int numImages = 2;
   std::vector<std::shared_ptr<Image>> images;
+
+  // SET UP PROJECTION MATRICES
+  glm::vec3 boundsMin = mesh.getBoundsMin();
+  glm::vec3 boundsMax = mesh.getBoundsMax();
+  glm::vec3 width = boundsMax - boundsMin;
+  glm::vec3 center = 0.5f * (boundsMax + boundsMin);
+  float dist = glm::sqrt(glm::dot(width, width));
+
+  float thetaRotation = 25.0f;
+  float phiRotation = 15.0f;
+  float zoom = 1.0f;
+
+  glm::mat4x4 modelview = identityTransform();
+
+  // Move to in front of camera.
+  modelview = glm::translate(modelview, -glm::vec3(0, 0, 1.5f * dist));
+
+  // Rotate geometry for interesting perspectives.
+  modelview =
+      glm::rotate(modelview, glm::radians(phiRotation), glm::vec3(1, 0, 0));
+  modelview =
+      glm::rotate(modelview, glm::radians(thetaRotation), glm::vec3(0, 1, 0));
+
+  // Center geometry at origin.
+  modelview = glm::translate(modelview, -center);
+
+  glm::mat4x4 projection =
+      glm::perspective(glm::radians(45.0f / zoom),
+                       (float)imageWidth / (float)imageHeight,
+                       dist / 3,
+                       2 * dist);
 
   // RENDER SECTION
   clock_t r_begin = clock();
@@ -49,7 +98,7 @@ void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
         imageIndex * (mesh.getNumberOfTriangles() / numImages),
         (imageIndex + 1) * (mesh.getNumberOfTriangles() / numImages));
 
-    R.render(tempMesh, image.get());
+    R.render(tempMesh, image.get(), modelview, projection);
 
     images.push_back(image);
   }

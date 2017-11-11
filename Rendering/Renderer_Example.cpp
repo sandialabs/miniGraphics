@@ -7,9 +7,31 @@
 // certain rights in this software.
 
 #include "Renderer_Example.hpp"
+
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <math.h>
 #include <algorithm>
 
+static void print(const glm::vec3 &vec) {
+  std::cout << vec[0] << "\t" << vec[1] << "\t" << vec[2] << std::endl;
+}
+
+static void print(const glm::mat4x4 &matrix) {
+  std::cout << matrix[0][0] << "\t" << matrix[1][0] << "\t" << matrix[0][0]
+            << "\t" << matrix[3][0] << std::endl;
+  std::cout << matrix[0][1] << "\t" << matrix[1][1] << "\t" << matrix[2][1]
+            << "\t" << matrix[3][1] << std::endl;
+  std::cout << matrix[0][2] << "\t" << matrix[1][2] << "\t" << matrix[2][2]
+            << "\t" << matrix[3][2] << std::endl;
+  std::cout << matrix[0][3] << "\t" << matrix[1][3] << "\t" << matrix[2][3]
+            << "\t" << matrix[3][3] << std::endl;
+}
+
+template<typename T>
+static inline void clamp(T &variable, T min, T max) {
+  variable = std::max(min, std::min(max, variable));
+}
 
 inline void Renderer_Example::fillLine(Image *image,
                                        int y,
@@ -20,6 +42,9 @@ inline void Renderer_Example::fillLine(Image *image,
                                        const Color &color) {
   float interp1 = ((float)y - edgeBase1.y) / edgeDir1.y;
   float interp2 = ((float)y - edgeBase2.y) / edgeDir2.y;
+
+  clamp(interp1, 0.0f, 1.0f);
+  clamp(interp2, 0.0f, 1.0f);
 
   glm::vec3 left;
   glm::vec3 right;
@@ -43,17 +68,21 @@ inline void Renderer_Example::fillLine(Image *image,
   }
 }
 
-void Renderer_Example::fillTriangle(Image *image, const Triangle &triangle) {
+void Renderer_Example::fillTriangle(Image *image,
+                                    const Triangle &triangle,
+                                    const glm::mat4x4 &modelview,
+                                    const glm::mat4x4 &projection) {
   const Color &color = triangle.color;
 
-  // Sort vertices by location along Y axis.
-  glm::vec3 vMin = triangle.vertex[0];
-  glm::vec3 vMid = triangle.vertex[1];
-  glm::vec3 vMax = triangle.vertex[2];
+  glm::ivec4 viewport(0, 0, image->getWidth(), image->getHeight());
 
-  std::cout << vMin.x << " " << vMin.y << " " << vMin.z << std::endl;
-  std::cout << vMid.x << " " << vMid.y << " " << vMid.z << std::endl;
-  std::cout << vMax.x << " " << vMax.y << " " << vMax.z << std::endl;
+  // Sort vertices by location along Y axis.
+  glm::vec3 vMin =
+      glm::project(triangle.vertex[0], modelview, projection, viewport);
+  glm::vec3 vMid =
+      glm::project(triangle.vertex[1], modelview, projection, viewport);
+  glm::vec3 vMax =
+      glm::project(triangle.vertex[2], modelview, projection, viewport);
 
   if (vMin.y > vMid.y) {
     std::swap(vMin, vMid);
@@ -70,9 +99,13 @@ void Renderer_Example::fillTriangle(Image *image, const Triangle &triangle) {
   glm::vec3 dirMin2Mid = vMid - vMin;
   glm::vec3 dirMid2Max = vMax - vMid;
 
-  int yMin = std::max((int)vMin.y, 0);
-  int yMid = std::max((int)vMid.y, 0);
-  int yMax = std::min((int)vMax.y, image->getHeight());
+  int yMin = (int)vMin.y;
+  int yMid = (int)vMid.y;
+  int yMax = (int)vMax.y;
+
+  clamp(yMin, 0, image->getHeight());
+  clamp(yMid, 0, image->getHeight());
+  clamp(yMax, 0, image->getHeight());
 
   // Rasterize bottom half
   for (int y = yMin; y < yMid; ++y) {
@@ -81,16 +114,17 @@ void Renderer_Example::fillTriangle(Image *image, const Triangle &triangle) {
 
   // Rasterize top half
   for (int y = yMid; y < yMax; ++y) {
-    this->fillLine(image, y, dirMin2Max, vMin, dirMid2Max, vMax, color);
+    this->fillLine(image, y, dirMin2Max, vMin, dirMid2Max, vMid, color);
   }
 }
 
-void Renderer_Example::render(const Mesh &mesh, Image *image) {
-  // TODO: depth resolution is broken. When fixed, changed this back to the
-  // defaults.
-  image->clear(Color(0, 0, 0), 100.0f);
+void Renderer_Example::render(const Mesh &mesh,
+                              Image *image,
+                              const glm::mat4x4 &modelview,
+                              const glm::mat4x4 &projection) {
+  image->clear();
 
   for (int i = 0; i < mesh.getNumberOfTriangles(); i++) {
-    this->fillTriangle(image, mesh.getTriangle(i));
+    this->fillTriangle(image, mesh.getTriangle(i), modelview, projection);
   }
 }
