@@ -73,7 +73,12 @@ static void print(const glm::mat4x4& matrix) {
 }
 
 template <class R_T, class C_T>
-void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
+void run(R_T R,
+         C_T C,
+         const Mesh& mesh,
+         int imageWidth,
+         int imageHeight,
+         bool writeImages) {
   // INITIALIZE IMAGES SPACES
   int numImages = 2;
   std::vector<std::shared_ptr<Image>> images;
@@ -132,10 +137,12 @@ void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
   cout << "RENDER: " << r_time_spent << " seconds" << endl;
 
   // SAVE FOR SANITY CHECK
-  for (int d = 0; d < numImages; d++) {
-    std::stringstream filename;
-    filename << "rendered" << d << ".ppm";
-    SavePPM(*images[d], filename.str());
+  if (writeImages) {
+    for (int d = 0; d < numImages; d++) {
+      std::stringstream filename;
+      filename << "rendered" << d << ".ppm";
+      SavePPM(*images[d], filename.str());
+    }
   }
 
   // COMPOSITION SECTION
@@ -149,10 +156,13 @@ void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
   printf("COMPOSITION: %f seconds\n", c_time_spent);
 
   // SAVE FOR SANITY CHECK
-  SavePPM(*images[0], "composite.ppm");
+  if (writeImages) {
+    SavePPM(*images[0], "composite.ppm");
+  }
 }
 
-enum optionIndex { DUMMY, HELP, WIDTH, HEIGHT };
+enum optionIndex { DUMMY, HELP, WIDTH, HEIGHT, WRITE_IMAGE };
+enum enableIndex { DISABLE, ENABLE };
 
 int main(int argc, char* argv[]) {
   std::stringstream usagestringstream("USAGE: ");
@@ -164,21 +174,28 @@ int main(int argc, char* argv[]) {
   std::vector<option::Descriptor> usage;
   // clang-format off
   usage.push_back(
-    {DUMMY,  0, "",  "",      option::Arg::None, usagestring.c_str()});
+    {DUMMY,       0,      "",  "",      option::Arg::None, usagestring.c_str()});
   usage.push_back(
-    {HELP,   0, "h", "help",   option::Arg::None,
-     "  --help, -h     Print this message and exit."});
+    {HELP,        0,      "h", "help",   option::Arg::None,
+     "  --help, -h           Print this message and exit."});
   usage.push_back(
-    {WIDTH,  0, "",  "width",  PositiveIntArg,
-     "  --width=<num>  Set the width of the image (default 1100)."});
+    {WIDTH,       0,      "",  "width",  PositiveIntArg,
+     "  --width=<num>        Set the width of the image (default 1100)."});
   usage.push_back(
-    {HEIGHT, 0, "",  "height", PositiveIntArg,
-     "  --height=<num> Set the height of the image (default 900)."});
+    {HEIGHT,      0,      "",  "height", PositiveIntArg,
+     "  --height=<num>       Set the height of the image (default 900)."});
+  usage.push_back(
+    {WRITE_IMAGE, ENABLE, "", "enable-write-image", option::Arg::None,
+     "  --enable-write-image Turn on writing of composited image (default)."});
+  usage.push_back(
+    {WRITE_IMAGE, DISABLE, "", "disable-write-image", option::Arg::None,
+     "  --disable-write-image Turn off writing of composited image."});
   usage.push_back({0, 0, 0, 0, 0, 0});
   // clang-format on
 
   int imageWidth = 1100;
   int imageHeight = 900;
+  bool writeImages = true;
 
   option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
@@ -209,6 +226,10 @@ int main(int argc, char* argv[]) {
     imageHeight = atoi(options[HEIGHT].arg);
   }
 
+  if (options[WRITE_IMAGE]) {
+    writeImages = (options[WRITE_IMAGE].last()->type() == ENABLE);
+  }
+
   // LOAD TRIANGLES
   std::string filename("TEST_TRIANGLE.dat");
   //  std::string filename("triangles.dat");
@@ -227,7 +248,7 @@ int main(int argc, char* argv[]) {
   Composition_Example C;
   //    IceT_Example C;
 
-  run(R, C, mesh, imageWidth, imageHeight);
+  run(R, C, mesh, imageWidth, imageHeight, writeImages);
 
   return 0;
 }
