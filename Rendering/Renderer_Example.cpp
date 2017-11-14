@@ -28,7 +28,7 @@ static void print(const glm::mat4x4 &matrix) {
             << "\t" << matrix[3][3] << std::endl;
 }
 
-template<typename T>
+template <typename T>
 static inline void clamp(T &variable, T min, T max) {
   variable = std::max(min, std::min(max, variable));
 }

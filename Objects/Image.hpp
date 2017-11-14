@@ -27,12 +27,12 @@ class Image {
   int getNumberOfPixels() const { return this->getWidth() * this->getHeight(); }
 
   /// \brief Converts x/y location in image to a pixel index.
-  int pixelIndex(int x, int y) const { return y * this->getHeight() + x; }
+  int pixelIndex(int x, int y) const { return y * this->getWidth() + x; }
 
   /// \brief Converts a pixel index to the x/y location.
   void xyIndices(int pixelIndex, int& x, int& y) {
-    x = pixelIndex % this->getHeight();
-    y = pixelIndex / this->getHeight();
+    x = pixelIndex % this->getWidth();
+    y = pixelIndex / this->getWidth();
   }
 
   /// \brief Gets the color of the n'th pixel.
