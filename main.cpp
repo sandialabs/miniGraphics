@@ -30,6 +30,31 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <optionparser.h>
+
+static option::ArgStatus PositiveIntArg(const option::Option& option,
+                                        bool messageOnError) {
+  if (option.arg != nullptr) {
+    int value = atoi(option.arg);
+    if (value < 1) {
+      if (messageOnError) {
+        std::cerr << "Option " << option.name
+                  << " requires a positive integer argument. Argument '"
+                  << option.arg << "' is not valid." << std::endl;
+      }
+      return option::ARG_ILLEGAL;
+    } else {
+      return option::ARG_OK;
+    }
+  } else {
+    if (messageOnError) {
+      std::cerr << "Option " << option.name << " requires an integer argument."
+                << std::endl;
+    }
+    return option::ARG_ILLEGAL;
+  }
+}
+
 static glm::mat4x4 identityTransform() { return glm::mat4x4(1.0f); }
 
 static void print(const glm::vec3& vec) {
@@ -48,7 +73,12 @@ static void print(const glm::mat4x4& matrix) {
 }
 
 template <class R_T, class C_T>
-void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
+void run(R_T R,
+         C_T C,
+         const Mesh& mesh,
+         int imageWidth,
+         int imageHeight,
+         bool writeImages) {
   // INITIALIZE IMAGES SPACES
   int numImages = 2;
   std::vector<std::shared_ptr<Image>> images;
@@ -107,10 +137,12 @@ void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
   cout << "RENDER: " << r_time_spent << " seconds" << endl;
 
   // SAVE FOR SANITY CHECK
-  for (int d = 0; d < numImages; d++) {
-    std::stringstream filename;
-    filename << "rendered" << d << ".ppm";
-    SavePPM(*images[d], filename.str());
+  if (writeImages) {
+    for (int d = 0; d < numImages; d++) {
+      std::stringstream filename;
+      filename << "rendered" << d << ".ppm";
+      SavePPM(*images[d], filename.str());
+    }
   }
 
   // COMPOSITION SECTION
@@ -124,18 +156,86 @@ void run(R_T R, C_T C, const Mesh& mesh, int imageWidth, int imageHeight) {
   printf("COMPOSITION: %f seconds\n", c_time_spent);
 
   // SAVE FOR SANITY CHECK
-  SavePPM(*images[0], "composite.ppm");
+  if (writeImages) {
+    SavePPM(*images[0], "composite.ppm");
+  }
 }
 
-int main(int argv, char* argc[]) {
+enum optionIndex { DUMMY, HELP, WIDTH, HEIGHT, WRITE_IMAGE };
+enum enableIndex { DISABLE, ENABLE };
+
+int main(int argc, char* argv[]) {
+  std::stringstream usagestringstream("USAGE: ");
+  usagestringstream << argv[0] << " [options] <data_file>\n\n";
+  usagestringstream << "Options:";
+
+  std::string usagestring = usagestringstream.str();
+
+  std::vector<option::Descriptor> usage;
+  // clang-format off
+  usage.push_back(
+    {DUMMY,       0,      "",  "",      option::Arg::None, usagestring.c_str()});
+  usage.push_back(
+    {HELP,        0,      "h", "help",   option::Arg::None,
+     "  --help, -h           Print this message and exit."});
+  usage.push_back(
+    {WIDTH,       0,      "",  "width",  PositiveIntArg,
+     "  --width=<num>        Set the width of the image (default 1100)."});
+  usage.push_back(
+    {HEIGHT,      0,      "",  "height", PositiveIntArg,
+     "  --height=<num>       Set the height of the image (default 900)."});
+  usage.push_back(
+    {WRITE_IMAGE, ENABLE, "", "enable-write-image", option::Arg::None,
+     "  --enable-write-image Turn on writing of composited image (default)."});
+  usage.push_back(
+    {WRITE_IMAGE, DISABLE, "", "disable-write-image", option::Arg::None,
+     "  --disable-write-image Turn off writing of composited image."});
+  usage.push_back({0, 0, 0, 0, 0, 0});
+  // clang-format on
+
+  int imageWidth = 1100;
+  int imageHeight = 900;
+  bool writeImages = true;
+
+  option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
+  std::vector<option::Option> options(stats.options_max);
+  std::vector<option::Option> buffer(stats.buffer_max);
+  option::Parser parse(
+      &usage.front(), argc - 1, argv + 1, &options.front(), &buffer.front());
+
+  if (parse.error()) {
+    return 1;
+  }
+
+  if (options[HELP]) {
+    option::printUsage(std::cout, &usage.front());
+    return 0;
+  }
+
+  if (options[DUMMY]) {
+    std::cerr << "Unknown option: " << options[DUMMY].name << std::endl;
+    option::printUsage(std::cerr, &usage.front());
+    return 1;
+  }
+
+  if (options[WIDTH]) {
+    imageWidth = atoi(options[WIDTH].arg);
+  }
+
+  if (options[HEIGHT]) {
+    imageHeight = atoi(options[HEIGHT].arg);
+  }
+
+  if (options[WRITE_IMAGE]) {
+    writeImages = (options[WRITE_IMAGE].last()->type() == ENABLE);
+  }
+
   // LOAD TRIANGLES
   std::string filename("TEST_TRIANGLE.dat");
   //  std::string filename("triangles.dat");
-  int imageWidth;
-  int imageHeight;
 
   Mesh mesh;
-  if (!readData(filename, mesh, imageWidth, imageHeight)) {
+  if (!readData(filename, mesh)) {
     cerr << "Could not read triangles" << endl;
     return 1;
   }
@@ -148,7 +248,7 @@ int main(int argv, char* argc[]) {
   Composition_Example C;
   //    IceT_Example C;
 
-  run(R, C, mesh, imageWidth, imageHeight);
+  run(R, C, mesh, imageWidth, imageHeight, writeImages);
 
   return 0;
 }

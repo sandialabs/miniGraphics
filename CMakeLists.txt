@@ -47,6 +47,7 @@ target_include_directories(run PRIVATE
 #  ${GLEW_INCLUDE_DIRS}
 #  ${GLFW_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glm/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/optionparser/include
   )
 target_link_libraries(run PRIVATE
 #  ${OPENGL_LIBRARIES}

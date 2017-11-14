@@ -35,10 +35,7 @@ void floatSplit(char line[], float result[], int size) {
   }
 }
 
-bool readData(const std::string &filename,
-              Mesh &mesh,
-              int &imageWidth,
-              int &imageHeight) {
+bool readData(const std::string &filename, Mesh &mesh) {
   std::string line;
   std::ifstream myfile(filename);
   if (!myfile.is_open()) {
@@ -66,10 +63,11 @@ bool readData(const std::string &filename,
     }
 
     if (curr == 'r') {
-      floatSplit(const_cast<char *>(line.c_str()), max_point, 3);
+      // Don't care any more
+      // floatSplit(const_cast<char *>(line.c_str()), max_point, 3);
       // Odd ordering of x, y, z
-      imageWidth = (int)max_point[2];
-      imageHeight = (int)max_point[1];
+      // imageWidth = (int)max_point[2];
+      // imageHeight = (int)max_point[1];
     } else if (curr == 'v') {
       float temp_v[3];
       floatSplit(const_cast<char *>(line.c_str()), temp_v, 3);

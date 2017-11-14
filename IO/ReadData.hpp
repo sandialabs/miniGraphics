@@ -13,9 +13,6 @@
 
 #include <string>
 
-bool readData(const std::string& filename,
-              Mesh& mesh,
-              int& imageWidth,
-              int& imageHeight);
+bool readData(const std::string& filename, Mesh& mesh);
 
 #endif
