@@ -31,10 +31,21 @@ using namespace glm;
 
 class OpenGL_Example : public Renderer {
  private:
-  void readTriangles(vector<Triangle>*, GLfloat*, GLfloat*, int*);
+  void readTriangles(const Mesh& mesh,
+                     std::vector<GLfloat>& vBuffer,
+                     std::vector<GLfloat>& cBuffer);
+
+  GLFWwindow* window;
+  GLuint programID;
 
  public:
-  void render(vector<Triangle>*, int*, int*, int*, int*, float*);
+  OpenGL_Example();
+  ~OpenGL_Example();
+
+  void render(const Mesh& mesh,
+              Image* image,
+              const glm::mat4x4& modelview,
+              const glm::mat4x4& projection);
 };
 
 #endif

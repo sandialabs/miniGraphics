@@ -16,13 +16,16 @@
 #include <sstream>
 #include <vector>
 
-#include "Composition/Composition_Example.hpp"
-//#include "Rendering/OpenGL_Example.hpp"
+#include "miniGraphicsConfig.h"
+
 #include "Rendering/Renderer_Example.hpp"
-//#include "Composition/IceT_Example.hpp"
 #include "IO/ReadData.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
+
+#ifdef MINIGRAPHICS_ENABLE_OPENGL
+#include "Rendering/OpenGL_Example.hpp"
+#endif
 
 #include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
@@ -72,9 +75,7 @@ static void print(const glm::mat4x4& matrix) {
             << "\t" << matrix[3][3] << std::endl;
 }
 
-template <class R_T, class C_T>
-void run(R_T R,
-         C_T C,
+void run(Renderer* renderer,
          const Mesh& mesh,
          int imageWidth,
          int imageHeight,
@@ -128,13 +129,13 @@ void run(R_T R,
         imageIndex * (mesh.getNumberOfTriangles() / numImages),
         (imageIndex + 1) * (mesh.getNumberOfTriangles() / numImages));
 
-    R.render(tempMesh, image.get(), modelview, projection);
+    renderer->render(tempMesh, image.get(), modelview, projection);
 
     images.push_back(image);
   }
   clock_t r_end = clock();
   double r_time_spent = (double)(r_end - r_begin) / CLOCKS_PER_SEC;
-  cout << "RENDER: " << r_time_spent << " seconds" << endl;
+  std::cout << "RENDER: " << r_time_spent << " seconds" << std::endl;
 
   // SAVE FOR SANITY CHECK
   if (writeImages) {
@@ -161,8 +162,9 @@ void run(R_T R,
   }
 }
 
-enum optionIndex { DUMMY, HELP, WIDTH, HEIGHT, WRITE_IMAGE };
+enum optionIndex { DUMMY, HELP, WIDTH, HEIGHT, WRITE_IMAGE, RENDERER };
 enum enableIndex { DISABLE, ENABLE };
+enum renderType { SIMPLE_RASTER, OPENGL };
 
 int main(int argc, char* argv[]) {
   std::stringstream usagestringstream("USAGE: ");
@@ -174,28 +176,38 @@ int main(int argc, char* argv[]) {
   std::vector<option::Descriptor> usage;
   // clang-format off
   usage.push_back(
-    {DUMMY,       0,      "",  "",      option::Arg::None, usagestring.c_str()});
+    {DUMMY,       0,             "",  "",      option::Arg::None, usagestring.c_str()});
   usage.push_back(
-    {HELP,        0,      "h", "help",   option::Arg::None,
-     "  --help, -h           Print this message and exit."});
+    {HELP,        0,             "h", "help",   option::Arg::None,
+     "  --help, -h             Print this message and exit."});
   usage.push_back(
-    {WIDTH,       0,      "",  "width",  PositiveIntArg,
-     "  --width=<num>        Set the width of the image (default 1100)."});
+    {WIDTH,       0,             "",  "width",  PositiveIntArg,
+     "  --width=<num>          Set the width of the image (default 1100)."});
   usage.push_back(
-    {HEIGHT,      0,      "",  "height", PositiveIntArg,
-     "  --height=<num>       Set the height of the image (default 900)."});
+    {HEIGHT,      0,             "",  "height", PositiveIntArg,
+     "  --height=<num>         Set the height of the image (default 900)."});
   usage.push_back(
-    {WRITE_IMAGE, ENABLE, "", "enable-write-image", option::Arg::None,
-     "  --enable-write-image Turn on writing of composited image (default)."});
+    {WRITE_IMAGE, ENABLE,        "",  "enable-write-image", option::Arg::None,
+     "  --enable-write-image   Turn on writing of composited image (default)."});
   usage.push_back(
-    {WRITE_IMAGE, DISABLE, "", "disable-write-image", option::Arg::None,
-     "  --disable-write-image Turn off writing of composited image."});
+    {WRITE_IMAGE, DISABLE,       "",  "disable-write-image", option::Arg::None,
+     "  --disable-write-image  Turn off writing of composited image."});
+  usage.push_back(
+    {RENDERER,    SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
+     "  --render-simple-raster Use simple triangle rasterization when\n"
+     "                         rendering (default)."});
+#ifdef MINIGRAPHICS_ENABLE_OPENGL
+  usage.push_back(
+    {RENDERER,    OPENGL,        "",  "render-opengl", option::Arg::None,
+     "  --render-opengl        Use OpenGL hardware when rendering."});
+#endif
   usage.push_back({0, 0, 0, 0, 0, 0});
   // clang-format on
 
   int imageWidth = 1100;
   int imageHeight = 900;
   bool writeImages = true;
+  std::auto_ptr<Renderer> renderer(new Renderer_Example);
 
   option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
@@ -230,25 +242,33 @@ int main(int argc, char* argv[]) {
     writeImages = (options[WRITE_IMAGE].last()->type() == ENABLE);
   }
 
+  if (options[RENDERER]) {
+    switch (options[RENDERER].last()->type()) {
+      case SIMPLE_RASTER:
+        // Renderer initialized to simple raster already.
+        break;
+#ifdef MINIGRAPHICS_ENABLE_OPENGL
+      case OPENGL:
+        renderer.reset(new OpenGL_Example);
+        break;
+#endif
+      default:
+        std::cerr << "Internal error: bad render option." << std::endl;
+        return 1;
+    }
+  }
+
   // LOAD TRIANGLES
   std::string filename("TEST_TRIANGLE.dat");
   //  std::string filename("triangles.dat");
 
   Mesh mesh;
   if (!readData(filename, mesh)) {
-    cerr << "Could not read triangles" << endl;
+    std::cerr << "Could not read triangles" << std::endl;
     return 1;
   }
 
-  // INITIALIZE RENDER
-  Renderer_Example R;
-  //  OpenGL_Example R;
-
-  // INITIALIZE COMPOSITION
-  Composition_Example C;
-  //    IceT_Example C;
-
-  run(R, C, mesh, imageWidth, imageHeight, writeImages);
+  run(renderer.get(), mesh, imageWidth, imageHeight, writeImages);
 
   return 0;
 }
