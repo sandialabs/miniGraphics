@@ -18,10 +18,10 @@
 
 #include "miniGraphicsConfig.h"
 
-#include "Rendering/Renderer_Example.hpp"
 #include "IO/ReadData.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
+#include "Rendering/Renderer_Example.hpp"
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
 #include "Rendering/OpenGL_Example.hpp"

@@ -15,8 +15,8 @@
 #include "../Objects/ImageRGBAUByteColorFloatDepth.hpp"
 
 void OpenGL_Example::readTriangles(const Mesh& mesh,
-                                   std::vector<GLfloat> &vBuffer,
-                                   std::vector<GLfloat> &cBuffer) {
+                                   std::vector<GLfloat>& vBuffer,
+                                   std::vector<GLfloat>& cBuffer) {
   int numTriangles = mesh.getNumberOfTriangles();
 
   vBuffer.resize(numTriangles * 3 * 3);
@@ -204,8 +204,7 @@ void OpenGL_Example::render(const Mesh& mesh,
   glDrawBuffers(1, DrawBuffers);  // "1" is the size of DrawBuffers
 
   // Always check that our framebuffer is ok
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-  {
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
     std::cerr << "Failed to create framebuffer." << std::endl;
     return;
   }
@@ -232,9 +231,9 @@ void OpenGL_Example::render(const Mesh& mesh,
 
   // Create and compile our GLSL program from the shaders
   GLuint quad_programID = LoadShaders();
-  //GLuint texID =
+  // GLuint texID =
   glGetUniformLocation(quad_programID, "renderedTexture");
-  //GLuint timeID =
+  // GLuint timeID =
   glGetUniformLocation(quad_programID, "time");
 
   glBindFramebuffer(GL_FRAMEBUFFER, FramebufferName);
@@ -278,15 +277,12 @@ void OpenGL_Example::render(const Mesh& mesh,
                         );
 
   // Draw the triangles !
-  glDrawArrays(
-      GL_TRIANGLES,
-      0,
-      mesh.getNumberOfTriangles() * 3);
+  glDrawArrays(GL_TRIANGLES, 0, mesh.getNumberOfTriangles() * 3);
 
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
 
-  ImageRGBAUByteColorFloatDepth *rgbaDepthImage =
+  ImageRGBAUByteColorFloatDepth* rgbaDepthImage =
       dynamic_cast<ImageRGBAUByteColorFloatDepth*>(image);
   if (rgbaDepthImage != nullptr) {
     glReadPixels(0,
