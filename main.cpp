@@ -35,6 +35,8 @@
 
 #include <optionparser.h>
 
+#include <mpi.h>
+
 static option::ArgStatus PositiveIntArg(const option::Option& option,
                                         bool messageOnError) {
   if (option.arg != nullptr) {
@@ -167,6 +169,8 @@ enum enableIndex { DISABLE, ENABLE };
 enum renderType { SIMPLE_RASTER, OPENGL };
 
 int main(int argc, char* argv[]) {
+  MPI_Init(&argc, &argv);
+
   std::stringstream usagestringstream("USAGE: ");
   usagestringstream << argv[0] << " [options] <data_file>\n\n";
   usagestringstream << "Options:";
@@ -269,6 +273,8 @@ int main(int argc, char* argv[]) {
   }
 
   run(renderer.get(), mesh, imageWidth, imageHeight, writeImages);
+
+  MPI_Finalize();
 
   return 0;
 }

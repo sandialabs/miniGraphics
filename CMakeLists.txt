@@ -20,6 +20,8 @@ option(MINIGRAPHICS_ENABLE_OPENGL
   OFF
   )
 
+find_package(MPI REQUIRED)
+
 set(srcs
   main.cpp
   Objects/Image.cpp
@@ -43,9 +45,16 @@ set(include_dirs
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glm/include
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/optionparser/include
+  ${MPI_CXX_INCLUDE_PATH}
   )
 
 set(libs
+  ${MPI_CXX_LINK_FLAGS}
+  ${MPI_CXX_LIBRARIES}
+  )
+
+set(cxx_flags
+  ${MPI_CXX_COMPILE_FLAGS}
   )
 
 if(WIN32)
@@ -92,6 +101,8 @@ set_source_files_properties(${headers} HEADER_ONLY TRUE)
 target_include_directories(run PRIVATE ${include_dirs})
 
 target_link_libraries(run PRIVATE ${libs})
+
+target_compile_options(run PRIVATE ${cxx_flags})
 
 target_compile_features(run PRIVATE
   cxx_raw_string_literals
