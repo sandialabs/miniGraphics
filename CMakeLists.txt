@@ -15,6 +15,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${miniGraphics_CMAKE_MODULE_PATH})
 
 add_executable(createData dataGen/createData.cpp)
 
+option(MINIGRAPHICS_ENABLE_OPENGL
+  "Turn on/off the OpenGL rendering system."
+  OFF
+  )
+
 set(srcs
   main.cpp
   Objects/Image.cpp
@@ -23,37 +28,66 @@ set(srcs
   IO/ReadData.cpp
   IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp
-  #Rendering/OpenGL_Example.cpp
-  #Rendering/OpenGL_common/shader.cpp
   Composition/Composition_Example.cpp
-  #Composition/IceT_Example.cpp
   )
 
 set(headers
+  ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Objects/Color.hpp
   Objects/Composition.hpp
   Objects/Renderer.hpp
   Objects/Triangle.hpp
   )
-set_source_files_properties(${headers} HEADER_ONLY TRUE)
 
-#find_package(OpenGL REQUIRED)
-#find_package(GLEW REQUIRED)
-#find_package(GLFW REQUIRED)
-
-add_executable(run ${srcs} ${headers})
-target_include_directories(run PRIVATE
-#  ${OPENGL_INCLUDE_DIR}
-#  ${GLEW_INCLUDE_DIRS}
-#  ${GLFW_INCLUDE_DIRS}
+set(include_dirs
+  ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glm/include
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/optionparser/include
   )
-target_link_libraries(run PRIVATE
-#  ${OPENGL_LIBRARIES}
-#  ${GLEW_LIBRARIES}
-#  ${GLFW_LIBRARIES}
+
+set(libs
   )
+
+if(MINIGRAPHICS_ENABLE_OPENGL)
+  message(WARNING
+    "OpenGL rendering currently is not working. "
+    "It will (potentially) compile, and it looks like it runs correctly, "
+    "but it does not create valid images.")
+
+  find_package(OpenGL REQUIRED)
+  find_package(GLEW REQUIRED)
+  find_package(GLFW REQUIRED)
+
+  set(srcs ${srcs}
+    Rendering/OpenGL_Example.cpp
+    Rendering/OpenGL_common/shader.cpp
+    )
+
+  set(include_dirs ${include_dirs}
+    ${OPENGL_INCLUDE_DIR}
+    ${GLEW_INCLUDE_DIRS}
+    ${GLFW_INCLUDE_DIRS}
+    )
+
+  set(libs ${libs}
+    ${OPENGL_LIBRARIES}
+    ${GLEW_LIBRARIES}
+    ${GLFW_LIBRARIES}
+    )
+endif()
+
+configure_file(miniGraphicsConfig.h.in
+  ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
+  )
+
+add_executable(run ${srcs} ${headers})
+
+set_source_files_properties(${headers} HEADER_ONLY TRUE)
+
+target_include_directories(run PRIVATE ${include_dirs})
+
+target_link_libraries(run PRIVATE ${libs})
+
 target_compile_features(run PRIVATE
   cxx_raw_string_literals
   )

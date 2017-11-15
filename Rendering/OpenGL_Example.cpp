@@ -6,49 +6,55 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
+// TODO: THIS CODE IS BROKEN RIGHT NOW. THE OPENGL RENDERING DOES NOT WORK.
+// Someone needs to fix this in order for readings to be valid.
+
 #include "OpenGL_Example.hpp"
 #include "OpenGL_common/shader.hpp"
 
-void OpenGL_Example::readTriangles(vector<Triangle>* tris,
-                                   GLfloat* v_buffer,
-                                   GLfloat* c_buffer,
-                                   int* resolution) {
-  for (int i = 0; i < tris->size(); i++) {
-    Triangle* t = &tris->at(i);
+#include "../Objects/ImageRGBAUByteColorFloatDepth.hpp"
 
-    v_buffer[i * 9 + 0] = 2.0f * (float)t->v1.p1 / resolution[0] - 1.0f;
-    v_buffer[i * 9 + 1] = 2.0f * (float)t->v1.p2 / resolution[1] - 1.0f;
-    v_buffer[i * 9 + 2] = 2.0f * (float)t->v1.p3 / resolution[2] - 1.0f;
-    v_buffer[i * 9 + 3] = 2.0f * (float)t->v2.p1 / resolution[0] - 1.0f;
-    v_buffer[i * 9 + 4] = 2.0f * (float)t->v2.p2 / resolution[1] - 1.0f;
-    v_buffer[i * 9 + 5] = 2.0f * (float)t->v2.p3 / resolution[2] - 1.0f;
-    v_buffer[i * 9 + 6] = 2.0f * (float)t->v3.p1 / resolution[0] - 1.0f;
-    v_buffer[i * 9 + 7] = 2.0f * (float)t->v3.p2 / resolution[1] - 1.0f;
-    v_buffer[i * 9 + 8] = 2.0f * (float)t->v3.p3 / resolution[2] - 1.0f;
+void OpenGL_Example::readTriangles(const Mesh& mesh,
+                                   std::vector<GLfloat> &vBuffer,
+                                   std::vector<GLfloat> &cBuffer) {
+  int numTriangles = mesh.getNumberOfTriangles();
 
-    c_buffer[i * 9 + 0] = (float)t->color[0] / 256.0f;
-    c_buffer[i * 9 + 1] = (float)t->color[1] / 256.0f;
-    c_buffer[i * 9 + 2] = (float)t->color[2] / 256.0f;
-    c_buffer[i * 9 + 3] = (float)t->color[0] / 256.0f;
-    c_buffer[i * 9 + 4] = (float)t->color[1] / 256.0f;
-    c_buffer[i * 9 + 5] = (float)t->color[2] / 256.0f;
-    c_buffer[i * 9 + 6] = (float)t->color[0] / 256.0f;
-    c_buffer[i * 9 + 7] = (float)t->color[1] / 256.0f;
-    c_buffer[i * 9 + 8] = (float)t->color[2] / 256.0f;
+  vBuffer.resize(numTriangles * 3 * 3);
+  cBuffer.resize(numTriangles * 3 * 3);
+
+  for (int triangleIndex = 0; triangleIndex < numTriangles; ++triangleIndex) {
+    Triangle triangle = mesh.getTriangle(triangleIndex);
+
+    vBuffer[triangleIndex * 9 + 0] = triangle.vertex[0].x;
+    vBuffer[triangleIndex * 9 + 1] = triangle.vertex[0].y;
+    vBuffer[triangleIndex * 9 + 2] = triangle.vertex[0].z;
+
+    vBuffer[triangleIndex * 9 + 3] = triangle.vertex[1].x;
+    vBuffer[triangleIndex * 9 + 4] = triangle.vertex[1].y;
+    vBuffer[triangleIndex * 9 + 5] = triangle.vertex[1].z;
+
+    vBuffer[triangleIndex * 9 + 6] = triangle.vertex[2].x;
+    vBuffer[triangleIndex * 9 + 7] = triangle.vertex[2].y;
+    vBuffer[triangleIndex * 9 + 8] = triangle.vertex[2].z;
+
+    cBuffer[triangleIndex * 9 + 0] = triangle.color.Components[0];
+    cBuffer[triangleIndex * 9 + 1] = triangle.color.Components[1];
+    cBuffer[triangleIndex * 9 + 2] = triangle.color.Components[2];
+
+    cBuffer[triangleIndex * 9 + 3] = triangle.color.Components[0];
+    cBuffer[triangleIndex * 9 + 4] = triangle.color.Components[1];
+    cBuffer[triangleIndex * 9 + 5] = triangle.color.Components[2];
+
+    cBuffer[triangleIndex * 9 + 6] = triangle.color.Components[0];
+    cBuffer[triangleIndex * 9 + 7] = triangle.color.Components[1];
+    cBuffer[triangleIndex * 9 + 8] = triangle.color.Components[2];
   }
 }
 
-void OpenGL_Example::render(vector<Triangle>* triangles,
-                            int* resolution,
-                            int* s_red,
-                            int* s_green,
-                            int* s_blue,
-                            float* s_depth) {
-  GLFWwindow* window;
-
+OpenGL_Example::OpenGL_Example() {
   // Initialize GLFW
   if (!glfwInit()) {
-    cerr << "Failed to initialize GLFW" << endl;
+    std::cerr << "Failed to initialize GLFW" << std::endl;
     exit(1);
   }
 
@@ -61,27 +67,49 @@ void OpenGL_Example::render(vector<Triangle>* triangles,
   glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 
   // Open a window and create its OpenGL context
-  window = glfwCreateWindow(
-      resolution[1], resolution[2], "miniGraphics", NULL, NULL);
-  if (window == NULL) {
-    cerr << "Failed to open GLFW window." << endl;
+  this->window = glfwCreateWindow(100, 100, "miniGraphics", NULL, NULL);
+  if (this->window == NULL) {
+    std::cerr << "Failed to open GLFW window." << std::endl;
     glfwTerminate();
     exit(1);
   }
-  glfwMakeContextCurrent(window);
+  glfwMakeContextCurrent(this->window);
 
   // Initialize GLEW
   glewExperimental = true;  // Needed for core profile
   if (glewInit() != GLEW_OK) {
-    cerr << "Failed to initialize GLEW" << endl;
+    std::cerr << "Failed to initialize GLEW" << std::endl;
     glfwTerminate();
     exit(1);
   }
 
   // Ensure we can capture the escape key being pressed below
-  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+  glfwSetInputMode(this->window, GLFW_STICKY_KEYS, GL_TRUE);
 
-  // Dark blue background
+  // Create and compile our GLSL program from the shaders
+  this->programID = LoadShaders();
+}
+
+OpenGL_Example::~OpenGL_Example() {
+  glfwMakeContextCurrent(this->window);
+  glDeleteProgram(this->programID);
+
+  // Close OpenGL window and terminate GLFW
+  glfwDestroyWindow(this->window);
+  glfwTerminate();
+}
+
+void OpenGL_Example::render(const Mesh& mesh,
+                            Image* image,
+                            const glm::mat4x4& modelview,
+                            const glm::mat4x4& projection) {
+  int windowWidth = image->getWidth();
+  int windowHeight = image->getHeight();
+
+  glfwSetWindowSize(this->window, windowWidth, windowHeight);
+  glfwMakeContextCurrent(this->window);
+
+  // Black background
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
   // Enable depth test
@@ -93,64 +121,40 @@ void OpenGL_Example::render(vector<Triangle>* triangles,
   glGenVertexArrays(1, &VertexArrayID);
   glBindVertexArray(VertexArrayID);
 
-  // Create and compile our GLSL program from the shaders
-  GLuint programID = LoadShaders();
-
   // Get a handle for our "MVP" uniform
   GLuint MatrixID = glGetUniformLocation(programID, "MVP");
 
-  // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit
-  // <-> 100 units
-  glm::mat4 Projection = glm::perspective(180.0f, 4.0f / 4.0f, 0.1f, 100.0f);
-  // Camera matrix
-  glm::mat4 View = glm::lookAt(
-      glm::vec3(1.5, 0, 0),  // Camera is at (4,3,-3), in World Space
-      glm::vec3(0, 0, 0),    // and looks at the origin
-      glm::vec3(0, 0, 1)     // Head is up (set to 0,-1,0 to look upside-down)
-      );
-  // Model matrix : an identity matrix (model will be at the origin)
-  glm::mat4 Model = glm::mat4(1.0f);
-  // Our ModelViewProjection : multiplication of our 3 matrices
-  glm::mat4 MVP =
-      Projection * View *
-      Model;  // Remember, matrix multiplication is the other way around
+  glm::mat4 MVP = projection * modelview;
 
   // Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive
-  // vertices give a triangle.
-  // A cube has 6 faces with 2 triangles each, so this makes 6*2=12 triangles,
-  // and 12*3 vertices
-  vector<GLfloat> g_vertex_buffer_data(3 * 3 * triangles->size());
+  // vertices give a triangle. We could probably speed things up by using the
+  // indices in the mesh directly, but that is for future work.
+  std::vector<GLfloat> vertexBufferData;
 
-  // One color for each vertex. They were generated randomly.
-  vector<GLfloat> g_color_buffer_data(3 * 3 * triangles->size());
+  // One color for each vertex.
+  std::vector<GLfloat> colorBufferData;
 
-  readTriangles(triangles,
-                &g_vertex_buffer_data.front(),
-                &g_color_buffer_data.front(),
-                resolution);
+  readTriangles(mesh, vertexBufferData, colorBufferData);
 
   GLuint vertexbuffer;
   glGenBuffers(1, &vertexbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
   glBufferData(GL_ARRAY_BUFFER,
-               g_vertex_buffer_data.size(),
-               &g_vertex_buffer_data.front(),
+               vertexBufferData.size(),
+               &vertexBufferData.front(),
                GL_STATIC_DRAW);
 
   GLuint colorbuffer;
   glGenBuffers(1, &colorbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
   glBufferData(GL_ARRAY_BUFFER,
-               g_color_buffer_data.size(),
-               &g_color_buffer_data.front(),
+               colorBufferData.size(),
+               &colorBufferData.front(),
                GL_STATIC_DRAW);
 
   // ---------------------------------------------
   // Render to Texture - specific code begins here
   // ---------------------------------------------
-  int windowWidth = resolution[1];
-  int windowHeight = resolution[2];
-
   // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth
   // buffer.
   GLuint FramebufferName = 0;
@@ -168,12 +172,12 @@ void OpenGL_Example::render(vector<Triangle>* triangles,
   // Give an empty image to OpenGL ( the last "0" means "empty" )
   glTexImage2D(GL_TEXTURE_2D,
                0,
-               GL_RGB,
+               GL_RGBA,
                windowWidth,
                windowHeight,
                0,
-               GL_RGB,
-               GL_UNSIGNED_BYTE,
+               GL_RGBA,
+               GL_FLOAT,
                0);
 
   // Poor filtering
@@ -201,45 +205,38 @@ void OpenGL_Example::render(vector<Triangle>* triangles,
 
   // Always check that our framebuffer is ok
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+  {
+    std::cerr << "Failed to create framebuffer." << std::endl;
     return;
+  }
 
+  // clang-format off
   // The fullscreen quad's FBO
-  static const GLfloat g_quad_vertex_buffer_data[] = {
-      -1.0f,
-      -1.0f,
-      0.0f,
-      1.0f,
-      -1.0f,
-      0.0f,
-      -1.0f,
-      1.0f,
-      0.0f,
-      -1.0f,
-      1.0f,
-      0.0f,
-      1.0f,
-      -1.0f,
-      0.0f,
-      1.0f,
-      1.0f,
-      0.0f,
+  static const GLfloat quadVertexBufferData[] = {
+      -1.0f, -1.0f, 0.0f,
+      1.0f, -1.0f, 0.0f,
+      -1.0f, 1.0f, 0.0f,
+      -1.0f, 1.0f, 0.0f,
+      1.0f, -1.0f, 0.0f,
+      1.0f, 1.0f, 0.0f,
   };
+  // clang-format on
 
   GLuint quad_vertexbuffer;
   glGenBuffers(1, &quad_vertexbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
   glBufferData(GL_ARRAY_BUFFER,
-               sizeof(g_quad_vertex_buffer_data),
-               g_quad_vertex_buffer_data,
+               sizeof(quadVertexBufferData),
+               quadVertexBufferData,
                GL_STATIC_DRAW);
 
   // Create and compile our GLSL program from the shaders
   GLuint quad_programID = LoadShaders();
-  GLuint texID = glGetUniformLocation(quad_programID, "renderedTexture");
-  GLuint timeID = glGetUniformLocation(quad_programID, "time");
+  //GLuint texID =
+  glGetUniformLocation(quad_programID, "renderedTexture");
+  //GLuint timeID =
+  glGetUniformLocation(quad_programID, "time");
 
-  //	int count = 0;
-  //	do{
   glBindFramebuffer(GL_FRAMEBUFFER, FramebufferName);
   glViewport(0, 0, windowWidth, windowHeight);  // Render on the whole
                                                 // framebuffer, complete from
@@ -250,7 +247,7 @@ void OpenGL_Example::render(vector<Triangle>* triangles,
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Use our shader
-  glUseProgram(programID);
+  glUseProgram(this->programID);
 
   // Send our transformation to the currently bound shader,
   // in the "MVP" uniform
@@ -280,46 +277,44 @@ void OpenGL_Example::render(vector<Triangle>* triangles,
                         (void*)0   // array buffer offset
                         );
 
-  // Draw the triangle !
+  // Draw the triangles !
   glDrawArrays(
       GL_TRIANGLES,
       0,
-      triangles->size() * 3);  // 12*3 indices starting at 0 -> 12 triangles
+      mesh.getNumberOfTriangles() * 3);
 
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
 
-  for (int x = 0; x < resolution[1]; x++) {
-    for (int y = 0; y < resolution[2]; y++) {
-      std::vector<unsigned char> pick_color(1 * 1 * 3);
-      glReadPixels(y, x, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pick_color[0]);
-      std::vector<float> pick_depth(1 * 1 * 1);
-      glReadPixels(y, x, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &pick_depth[0]);
-
-      s_red[x * resolution[1] + y] = (int)pick_color[0];
-      s_green[x * resolution[1] + y] = (int)pick_color[1];
-      s_blue[x * resolution[1] + y] = (int)pick_color[2];
-      s_depth[x * resolution[1] + y] = (float)pick_depth[0];
-      pick_color.clear();
-      pick_depth.clear();
-    }
+  ImageRGBAUByteColorFloatDepth *rgbaDepthImage =
+      dynamic_cast<ImageRGBAUByteColorFloatDepth*>(image);
+  if (rgbaDepthImage != nullptr) {
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 rgbaDepthImage->getColorBuffer());
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_DEPTH_COMPONENT,
+                 GL_FLOAT,
+                 rgbaDepthImage->getDepthBuffer());
+  } else {
+    std::cerr << "Image type not supported for OpenGL." << std::endl;
+    exit(1);
   }
 
   // Swap buffers
   //		glfwPollEvents();
-  //		glfwSwapBuffers(window);
-  //
-  //		if (count == 0)
-  //			break;
-  //		count++;
-  //	} // Check if the ESC key was pressed or the window was closed
-  //	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
-  //		   glfwWindowShouldClose(window) == 0 );
+  //		glfwSwapBuffers(this->window);
 
   // Cleanup VBO and shader
   glDeleteBuffers(1, &vertexbuffer);
   glDeleteBuffers(1, &colorbuffer);
-  glDeleteProgram(programID);
   glDeleteVertexArrays(1, &VertexArrayID);
 
   glDeleteFramebuffers(1, &FramebufferName);
@@ -327,9 +322,4 @@ void OpenGL_Example::render(vector<Triangle>* triangles,
   glDeleteRenderbuffers(1, &depthrenderbuffer);
   glDeleteBuffers(1, &quad_vertexbuffer);
   glDeleteVertexArrays(1, &VertexArrayID);
-
-  // Close OpenGL window and terminate GLFW
-  glfwTerminate();
-
-  return;
 }

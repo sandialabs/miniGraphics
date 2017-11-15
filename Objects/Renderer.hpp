@@ -22,6 +22,8 @@ class Renderer {
                       Image* image,
                       const glm::mat4x4& modelview,
                       const glm::mat4x4& projection) = 0;
+
+  virtual ~Renderer() = default;
 };
 
 #endif
