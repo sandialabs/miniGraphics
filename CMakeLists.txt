@@ -30,7 +30,6 @@ set(srcs
   IO/ReadData.cpp
   IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp
-  Composition/Composition_Example.cpp
   )
 
 set(headers
