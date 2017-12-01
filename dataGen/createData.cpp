@@ -62,7 +62,7 @@ void createColors(ofstream& myfile) {
 }
 
 int main(int argv, char* argc[]) {
-  srand(time(0));
+  srand(static_cast<unsigned int>(time(0)));
   ofstream myfile("triangles.dat");
   if (myfile.is_open()) {
     myfile << "#Resolution" << endl;

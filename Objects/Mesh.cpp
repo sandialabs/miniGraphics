@@ -8,6 +8,7 @@
 
 #include "Mesh.hpp"
 
+#include <algorithm>
 #include <map>
 
 Mesh::Mesh() {
