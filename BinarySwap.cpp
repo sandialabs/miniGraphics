@@ -1,0 +1,121 @@
+// miniGraphics is distributed under the OSI-approved BSD 3-clause License.
+// See LICENSE.txt for details.
+//
+// Copyright (c) 2017
+// National Technology & Engineering Solutions of Sandia, LLC (NTESS). Under
+// the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
+// certain rights in this software.
+
+#include "BinarySwap.hpp"
+
+enum PairRole { PAIR_ROLE_EVEN, PAIR_ROLE_ODD };
+
+static bool isPowerOfTwo(int x) {
+  while (x > 1) {
+    if ((x % 2) != 0) {
+      return false;
+    }
+    x /= 2;
+  }
+  return true;
+}
+
+std::unique_ptr<Image> BinarySwap::compose(Image *localImage,
+                                           MPI_Comm communicator) {
+  // Binary-swap is a recursive algorithm. We start with a process group with
+  // all the processes, then divide and conquer the group until we only have
+  // groups of size 1.
+  MPI_Comm workingCommunicator;
+  MPI_Comm_dup(communicator, &workingCommunicator);
+
+  int rank;
+  MPI_Comm_rank(workingCommunicator, &rank);
+
+  int numProc;
+  MPI_Comm_size(workingCommunicator, &numProc);
+
+  std::unique_ptr<Image> workingImage = localImage->shallowCopy();
+
+  // This version of binary swap only works if the communicator size is a power
+  // of two.
+  if (!isPowerOfTwo(numProc)) {
+    std::cerr << "Binary-swap only works with powers-of-two processors"
+              << std::endl;
+    exit(1);
+  }
+
+  while (numProc > 1) {
+    // At each iteration of the binary-swap algorithm, divide the image in half.
+    std::unique_ptr<Image> topHalf =
+        workingImage->copySubrange(0, workingImage->getNumberOfPixels() / 2);
+    std::unique_ptr<Image> bottomHalf =
+        workingImage->copySubrange(workingImage->getNumberOfPixels() / 2,
+                                   workingImage->getNumberOfPixels());
+
+    std::unique_ptr<Image> toKeep;
+    std::unique_ptr<Image> toSend;
+
+    int partnerRank;
+
+    // At each iteration of the binary-swap algorithm, each process pairs with
+    // one other process. Because we want to have a correct front-to-back
+    // ordering of images (and the mini-app arranges the communicator ranks
+    // reflect the order of the images), we pair with a process adjacent to
+    // ours. We use whether the rank is even or odd to determine which member
+    // of the pair we are.
+    PairRole role;
+    if (rank % 2 == 0) {
+      // The "even" role has the smaller rank. It has the image that goes on
+      // top, and we will collect the first half of the image.
+      role = PAIR_ROLE_EVEN;
+      toKeep.swap(topHalf);
+      toSend.swap(bottomHalf);
+      partnerRank = rank + 1;
+    } else {
+      // The "odd" role has the larger rank. It has the image that goes on
+      // the bottom, and we will collect the second half of the image.
+      role = PAIR_ROLE_ODD;
+      toKeep.swap(bottomHalf);
+      toSend.swap(topHalf);
+      partnerRank = rank - 1;
+    }
+
+    // Receive our half of the image and send out our partner's half.
+    std::unique_ptr<Image> recvImage = toKeep->createNew();
+    std::vector<MPI_Request> recvRequests =
+        recvImage->IReceive(partnerRank, workingCommunicator);
+    std::vector<MPI_Request> sendRequests =
+        toSend->ISend(partnerRank, workingCommunicator);
+
+    // Wait for my image to come in.
+    std::vector<MPI_Status> statuses(recvRequests.size());
+    MPI_Waitall(recvRequests.size(), &recvRequests.front(), &statuses.front());
+
+    // Blend the incoming image and set the workingImage to the result.
+    switch (role) {
+      case PAIR_ROLE_EVEN:
+        workingImage = toKeep->blend(recvImage.get());
+        break;
+      case PAIR_ROLE_ODD:
+        workingImage = recvImage->blend(toKeep.get());
+        break;
+    }
+
+    // Create a sub-communicator containing all the processes with same portion
+    // of the image as me.
+    MPI_Comm subCommunicator;
+    MPI_Comm_split(
+        workingCommunicator, static_cast<int>(role), rank, &subCommunicator);
+
+    // Decend into the sub-communicator and repeat.
+    MPI_Comm_free(&workingCommunicator);
+    workingCommunicator = subCommunicator;
+    MPI_Comm_rank(workingCommunicator, &rank);
+    MPI_Comm_size(workingCommunicator, &numProc);
+  }
+
+  // Clean up internal objects and return image.
+  MPI_Comm_free(&workingCommunicator);
+
+  return workingImage;
+}

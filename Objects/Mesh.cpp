@@ -200,3 +200,67 @@ const glm::vec3 &Mesh::getBoundsMax() const {
   this->updateBounds();
   return this->boundsMax;
 }
+
+void Mesh::send(int destRank, MPI_Comm communicator) const {
+  MPI_Send(&this->numberOfVertices,
+           1,
+           MPI_INT,
+           destRank,
+           NUM_VERTEX_TAG,
+           communicator);
+  MPI_Send(&this->numberOfTriangles,
+           1,
+           MPI_INT,
+           destRank,
+           NUM_VERTEX_TAG,
+           communicator);
+  MPI_Send(this->getPointCoordinatesBuffer(),
+           3 * this->numberOfVertices,
+           MPI_FLOAT,
+           destRank,
+           POINT_COORDINATES_TAG,
+           communicator);
+  MPI_Send(this->getTriangleConnectionsBuffer(),
+           3 * this->numberOfTriangles,
+           MPI_INT,
+           destRank,
+           TRIANGLE_CONNECTIONS_TAG,
+           communicator);
+  MPI_Send(this->getTriangleColorsBuffer(),
+           4 * this->numberOfTriangles,
+           MPI_FLOAT,
+           destRank,
+           TRIANGLE_COLORS_TAG,
+           communicator);
+}
+
+void Mesh::receive(int srcRank, MPI_Comm communicator) {
+  MPI_Status status;
+  int count;
+  MPI_Recv(&count, 1, MPI_INT, srcRank, NUM_VERTEX_TAG, communicator, &status);
+  this->setNumberOfVertices(count);
+  MPI_Recv(&count, 1, MPI_INT, srcRank, NUM_VERTEX_TAG, communicator, &status);
+  this->setNumberOfTriangles(count);
+
+  MPI_Recv(this->getPointCoordinatesBuffer(),
+           3 * this->numberOfVertices,
+           MPI_FLOAT,
+           srcRank,
+           POINT_COORDINATES_TAG,
+           communicator,
+           &status);
+  MPI_Recv(this->getTriangleConnectionsBuffer(),
+           3 * this->numberOfTriangles,
+           MPI_INT,
+           srcRank,
+           TRIANGLE_CONNECTIONS_TAG,
+           communicator,
+           &status);
+  MPI_Recv(this->getTriangleColorsBuffer(),
+           4 * this->numberOfTriangles,
+           MPI_FLOAT,
+           srcRank,
+           TRIANGLE_COLORS_TAG,
+           communicator,
+           &status);
+}

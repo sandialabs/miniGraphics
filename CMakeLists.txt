@@ -24,6 +24,7 @@ find_package(MPI REQUIRED)
 
 set(srcs
   main.cpp
+  BinarySwap.cpp
   Objects/Image.cpp
   Objects/ImageRGBAUByteColorFloatDepth.cpp
   Objects/Mesh.cpp
@@ -35,7 +36,7 @@ set(srcs
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Objects/Color.hpp
-  Objects/Composition.hpp
+  Objects/Compositor.hpp
   Objects/Renderer.hpp
   Objects/Triangle.hpp
   )
@@ -89,6 +90,7 @@ if(MINIGRAPHICS_ENABLE_OPENGL)
     )
 endif()
 
+set(MINIGRAPHICS_WIN32 ${WIN32})
 configure_file(miniGraphicsConfig.h.in
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   )

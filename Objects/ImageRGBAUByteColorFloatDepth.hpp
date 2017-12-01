@@ -27,6 +27,10 @@ class ImageRGBAUByteColorFloatDepth : public Image {
 
  public:
   ImageRGBAUByteColorFloatDepth(int _width, int _height);
+  ImageRGBAUByteColorFloatDepth(int _width,
+                                int _height,
+                                int _regionBegin,
+                                int _regionEnd);
   ~ImageRGBAUByteColorFloatDepth() = default;
 
   Color getColor(int pixelIndex) const final;
@@ -52,7 +56,26 @@ class ImageRGBAUByteColorFloatDepth : public Image {
 
   void clear(const Color &color = Color(0, 0, 0, 0), float depth = 1.0f) final;
 
-  void blend(const Image *_otherImage, BlendOrder) final;
+  std::unique_ptr<Image> blend(const Image *_otherImage) const final;
+
+  std::unique_ptr<Image> createNew(int _width,
+                                   int _height,
+                                   int _regionBegin,
+                                   int _regionEnd) const final;
+
+  std::unique_ptr<Image> copySubrange(int subregionBegin,
+                                      int subregionEnd) const final;
+
+  std::unique_ptr<const Image> shallowCopy() const final;
+
+  std::unique_ptr<Image> Gather(int recvRank,
+                                MPI_Comm communicator) const final;
+
+  std::vector<MPI_Request> ISend(int destRank,
+                                 MPI_Comm communicator) const final;
+
+  std::vector<MPI_Request> IReceive(int sourceRank,
+                                    MPI_Comm communicator) final;
 };
 
 #endif  // IMAGERGBAUBYTECOLORFLOATDEPTH_HPP

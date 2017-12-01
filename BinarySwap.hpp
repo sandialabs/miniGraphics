@@ -6,15 +6,15 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef COMPOSITION_H
-#define COMPOSITION_H
+#ifndef BINARYSWAP_HPP
+#define BINARYSWAP_HPP
 
-using namespace std;
+#include "Objects/Compositor.hpp"
 
-class Composition {
+class BinarySwap : public Compositor {
  public:
-  virtual void composition(
-      int, int, int**, int**, int**, float**, int*, int*, int*, float*) = 0;
+  std::unique_ptr<Image> compose(Image *localImage,
+                                 MPI_Comm communicator) final;
 };
 
-#endif
+#endif  // BINARYSWAP_HPP
