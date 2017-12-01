@@ -20,10 +20,19 @@ class Color {
  public:
   float Components[4];
 
-  Color() : Components{0, 0, 0, 1} {}
+  Color() {
+    this->Components[0] = 0.f;
+    this->Components[1] = 0.f;
+    this->Components[2] = 0.f;
+    this->Components[3] = 1.f;
+  }
 
-  Color(float r_, float g_, float b_, float a_ = 1.f)
-      : Components{r_, g_, b_, a_} {}
+  Color(float r_, float g_, float b_, float a_ = 1.f) {
+    this->Components[0] = r_;
+    this->Components[1] = g_;
+    this->Components[2] = b_;
+    this->Components[3] = a_;
+  }
 
   Color(const float components[4]) {
     this->Components[0] = components[0];
