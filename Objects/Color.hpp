@@ -109,7 +109,7 @@ class Color {
   }
 
   float RawBrightness() const {
-    return (Components[0] + Components[1] + Components[2]) / 3.;
+    return (Components[0] + Components[1] + Components[2]) / 3.f;
   }
 
   friend std::ostream& operator<<(std::ostream& out, const Color& c) {

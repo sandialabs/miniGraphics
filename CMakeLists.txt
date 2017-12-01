@@ -48,6 +48,11 @@ set(include_dirs
 set(libs
   )
 
+if(WIN32)
+  # Don't deal with MSVC's unportable safety warnings
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS)
+endif()
+
 if(MINIGRAPHICS_ENABLE_OPENGL)
   message(WARNING
     "OpenGL rendering currently is not working. "

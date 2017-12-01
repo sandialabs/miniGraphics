@@ -28,7 +28,7 @@ void floatSplit(char line[], float result[], int size) {
   char *token = strtok(line, ",");
   int index = 0;
   while (token != NULL && index < size) {
-    float temp = atof(token);
+    float temp = (float)atof(token);
     result[index] = temp;
     index++;
     token = strtok(NULL, ",");
@@ -42,7 +42,6 @@ bool readData(const std::string &filename, Mesh &mesh) {
     return false;
   }
 
-  float max_point[3];
   char curr = 'z';
   while (getline(myfile, line)) {
     if (line[0] == '#') {
@@ -85,7 +84,9 @@ bool readData(const std::string &filename, Mesh &mesh) {
       int *temp_c = new int[4];
       intSplit(const_cast<char *>(line.c_str()), temp_c, 4);
 
-      mesh.setColor(temp_c[0], Color(temp_c[1], temp_c[2], temp_c[3]));
+      mesh.setColor(
+          temp_c[0],
+          Color(temp_c[1] / 255.f, temp_c[2] / 255.f, temp_c[3] / 255.f));
     } else if (curr == 'o') {
       float *temp_o = new float[2];
       floatSplit(const_cast<char *>(line.c_str()), temp_o, 2);
