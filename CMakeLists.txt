@@ -20,21 +20,23 @@ option(MINIGRAPHICS_ENABLE_OPENGL
   OFF
   )
 
+find_package(MPI REQUIRED)
+
 set(srcs
   main.cpp
+  BinarySwap.cpp
   Objects/Image.cpp
   Objects/ImageRGBAUByteColorFloatDepth.cpp
   Objects/Mesh.cpp
   IO/ReadData.cpp
   IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp
-  Composition/Composition_Example.cpp
   )
 
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Objects/Color.hpp
-  Objects/Composition.hpp
+  Objects/Compositor.hpp
   Objects/Renderer.hpp
   Objects/Triangle.hpp
   )
@@ -43,9 +45,16 @@ set(include_dirs
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glm/include
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/optionparser/include
+  ${MPI_CXX_INCLUDE_PATH}
   )
 
 set(libs
+  ${MPI_CXX_LINK_FLAGS}
+  ${MPI_CXX_LIBRARIES}
+  )
+
+set(cxx_flags
+  ${MPI_CXX_COMPILE_FLAGS}
   )
 
 if(WIN32)
@@ -81,6 +90,7 @@ if(MINIGRAPHICS_ENABLE_OPENGL)
     )
 endif()
 
+set(MINIGRAPHICS_WIN32 ${WIN32})
 configure_file(miniGraphicsConfig.h.in
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   )
@@ -92,6 +102,8 @@ set_source_files_properties(${headers} HEADER_ONLY TRUE)
 target_include_directories(run PRIVATE ${include_dirs})
 
 target_link_libraries(run PRIVATE ${libs})
+
+target_compile_options(run PRIVATE ${cxx_flags})
 
 target_compile_features(run PRIVATE
   cxx_raw_string_literals

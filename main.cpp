@@ -6,18 +6,27 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
+#include "miniGraphicsConfig.h"
+
 // Include standard headers
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <time.h>
 
+#ifndef MINIGRAPHICS_WIN32
+#include <sys/types.h>
+#include <unistd.h>
+#else
+#include <process.h>
+#define getpid _getpid
+#endif
+
 #include <memory>
 #include <sstream>
 #include <vector>
 
-#include "miniGraphicsConfig.h"
-
+#include "BinarySwap.hpp"
 #include "IO/ReadData.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
@@ -32,8 +41,11 @@
 #include <glm/vector_relational.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <optionparser.h>
+
+#include <mpi.h>
 
 static option::ArgStatus PositiveIntArg(const option::Option& option,
                                         bool messageOnError) {
@@ -75,22 +87,64 @@ static void print(const glm::mat4x4& matrix) {
             << "\t" << matrix[3][3] << std::endl;
 }
 
+void scatterMesh(Mesh& mesh, MPI_Comm communicator) {
+  int rank;
+  MPI_Comm_rank(communicator, &rank);
+
+  int numProc;
+  MPI_Comm_size(communicator, &numProc);
+
+  if (rank == 0) {
+    int numTriangles = mesh.getNumberOfTriangles();
+    int numTriPerProcess = numTriangles / numProc;
+    int startTriRank1 = numTriPerProcess + numTriangles % numProc;
+
+    for (int dest = 1; dest < numProc; ++dest) {
+      Mesh submesh =
+          mesh.copySubset(startTriRank1 + numTriPerProcess * (dest - 1),
+                          startTriRank1 + numTriPerProcess * dest);
+      submesh.send(dest, communicator);
+    }
+
+    mesh = mesh.copySubset(0, startTriRank1);
+  } else {
+    mesh.receive(0, communicator);
+  }
+}
+
 void run(Renderer* renderer,
+         Compositor* compositor,
          const Mesh& mesh,
          int imageWidth,
          int imageHeight,
          bool writeImages) {
-  // INITIALIZE IMAGES SPACES
-  int numImages = 2;
-  std::vector<std::shared_ptr<Image>> images;
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  // SET UP PROJECTION MATRICES
+  int numProc;
+  MPI_Comm_size(MPI_COMM_WORLD, &numProc);
+
+  // Gather rough geometry information
   glm::vec3 boundsMin = mesh.getBoundsMin();
   glm::vec3 boundsMax = mesh.getBoundsMax();
+  MPI_Allreduce(MPI_IN_PLACE,
+                glm::value_ptr(boundsMin),
+                3,
+                MPI_FLOAT,
+                MPI_MIN,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE,
+                glm::value_ptr(boundsMax),
+                3,
+                MPI_FLOAT,
+                MPI_MAX,
+                MPI_COMM_WORLD);
+
   glm::vec3 width = boundsMax - boundsMin;
   glm::vec3 center = 0.5f * (boundsMax + boundsMin);
   float dist = glm::sqrt(glm::dot(width, width));
 
+  // Set up projection matrices
   float thetaRotation = 25.0f;
   float phiRotation = 15.0f;
   float zoom = 1.0f;
@@ -118,47 +172,39 @@ void run(Renderer* renderer,
   // RENDER SECTION
   clock_t r_begin = clock();
 
-  // TODO: Do renderers in parallel
+  ImageRGBAUByteColorFloatDepth localImage(imageWidth, imageHeight);
+  renderer->render(mesh, &localImage, modelview, projection);
 
-  for (int imageIndex = 0; imageIndex < numImages; imageIndex++) {
-    // INITIALIZE RENDER SPACE
-    std::shared_ptr<Image> image;
-    image.reset(new ImageRGBAUByteColorFloatDepth(imageWidth, imageHeight));
-
-    Mesh tempMesh = mesh.copySubset(
-        imageIndex * (mesh.getNumberOfTriangles() / numImages),
-        (imageIndex + 1) * (mesh.getNumberOfTriangles() / numImages));
-
-    renderer->render(tempMesh, image.get(), modelview, projection);
-
-    images.push_back(image);
-  }
   clock_t r_end = clock();
   double r_time_spent = (double)(r_end - r_begin) / CLOCKS_PER_SEC;
   std::cout << "RENDER: " << r_time_spent << " seconds" << std::endl;
 
-  // SAVE FOR SANITY CHECK
-  if (writeImages) {
-    for (int d = 0; d < numImages; d++) {
-      std::stringstream filename;
-      filename << "rendered" << d << ".ppm";
-      SavePPM(*images[d], filename.str());
-    }
-  }
-
   // COMPOSITION SECTION
   clock_t c_begin = clock();
-  for (int imageIndex = 1; imageIndex < numImages; ++imageIndex) {
-    images[0]->blend(images[imageIndex].get());
-  }
+  std::unique_ptr<Image> compositeImage =
+      compositor->compose(&localImage, MPI_COMM_WORLD);
   clock_t c_end = clock();
 
   double c_time_spent = (double)(c_end - c_begin) / CLOCKS_PER_SEC;
   printf("COMPOSITION: %f seconds\n", c_time_spent);
 
+  // COLLECT SECTION
+  c_begin = clock();
+  std::unique_ptr<Image> fullCompositeImage =
+      compositeImage->Gather(0, MPI_COMM_WORLD);
+  c_end = clock();
+  c_time_spent = (double)(c_end - c_begin) / CLOCKS_PER_SEC;
+  printf("COLLECT: %f seconds\n", c_time_spent);
+
   // SAVE FOR SANITY CHECK
   if (writeImages) {
-    SavePPM(*images[0], "composite.ppm");
+    std::stringstream filename;
+    filename << "rendered" << rank << ".ppm";
+    SavePPM(localImage, filename.str());
+
+    if (rank == 0) {
+      SavePPM(*fullCompositeImage, "composite.ppm");
+    }
   }
 }
 
@@ -167,6 +213,11 @@ enum enableIndex { DISABLE, ENABLE };
 enum renderType { SIMPLE_RASTER, OPENGL };
 
 int main(int argc, char* argv[]) {
+  MPI_Init(&argc, &argv);
+
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
   std::stringstream usagestringstream("USAGE: ");
   usagestringstream << argv[0] << " [options] <data_file>\n\n";
   usagestringstream << "Options:";
@@ -208,6 +259,7 @@ int main(int argc, char* argv[]) {
   int imageHeight = 900;
   bool writeImages = true;
   std::auto_ptr<Renderer> renderer(new Renderer_Example);
+  std::auto_ptr<Compositor> compositor(new BinarySwap);
 
   option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
@@ -259,16 +311,30 @@ int main(int argc, char* argv[]) {
   }
 
   // LOAD TRIANGLES
-  std::string filename("TEST_TRIANGLE.dat");
-  //  std::string filename("triangles.dat");
-
   Mesh mesh;
-  if (!readData(filename, mesh)) {
-    std::cerr << "Could not read triangles" << std::endl;
-    return 1;
+  if (rank == 0) {
+    std::string filename("TEST_TRIANGLE.dat");
+    //  std::string filename("triangles.dat");
+
+    if (!readData(filename, mesh)) {
+      std::cerr << "Could not read triangles" << std::endl;
+      return 1;
+    }
+    std::cout << "Rank 0 on pid " << getpid() << std::endl;
+  } else {
+    // Other ranks read nothing. Rank 0 splits them up.
   }
 
-  run(renderer.get(), mesh, imageWidth, imageHeight, writeImages);
+  scatterMesh(mesh, MPI_COMM_WORLD);
+
+  run(renderer.get(),
+      compositor.get(),
+      mesh,
+      imageWidth,
+      imageHeight,
+      writeImages);
+
+  MPI_Finalize();
 
   return 0;
 }

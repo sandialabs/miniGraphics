@@ -9,6 +9,8 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+#include <miniGraphicsConfig.h>
+
 #include "Image.hpp"
 #include "Mesh.hpp"
 

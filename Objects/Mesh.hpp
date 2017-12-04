@@ -9,11 +9,15 @@
 #ifndef MESH_HPP
 #define MESH_HPP
 
+#include <miniGraphicsConfig.h>
+
 #include <vector>
 
 #include "Triangle.hpp"
 
 #include <glm/vec3.hpp>
+
+#include <mpi.h>
 
 class Mesh {
  private:
@@ -30,6 +34,12 @@ class Mesh {
 
   void updateBounds() const;
   void computeBounds();
+
+  static const int NUM_VERTEX_TAG = 39146;
+  static const int NUM_TRIANGLE_TAG = 13644;
+  static const int POINT_COORDINATES_TAG = 76418;
+  static const int TRIANGLE_CONNECTIONS_TAG = 68934;
+  static const int TRIANGLE_COLORS_TAG = 55176;
 
  public:
   Mesh();
@@ -68,7 +78,7 @@ class Mesh {
            (triangleIndex <= this->getNumberOfTriangles()));
     return &this->triangleColors.front() + (4 * triangleIndex);
   }
-  const float* getTriangleColorsBuffer(int triangleIndex) const {
+  const float* getTriangleColorsBuffer(int triangleIndex = 0) const {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
     return &this->triangleColors.front() + (4 * triangleIndex);
@@ -91,6 +101,10 @@ class Mesh {
 
   const glm::vec3& getBoundsMin() const;
   const glm::vec3& getBoundsMax() const;
+
+  void send(int destRank, MPI_Comm communicator) const;
+
+  void receive(int srcRank, MPI_Comm communicator);
 };
 
 #endif  // MESH_HPP
