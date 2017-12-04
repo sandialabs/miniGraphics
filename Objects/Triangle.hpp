@@ -9,6 +9,8 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 
+#include <miniGraphicsConfig.h>
+
 #include "Color.hpp"
 
 #include <glm/vec3.hpp>

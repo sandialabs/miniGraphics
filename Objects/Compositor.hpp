@@ -9,6 +9,8 @@
 #ifndef COMPOSITOR_H
 #define COMPOSITOR_H
 
+#include <miniGraphicsConfig.h>
+
 #include "Image.hpp"
 
 #include <mpi.h>

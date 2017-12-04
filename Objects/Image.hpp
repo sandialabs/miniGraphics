@@ -9,6 +9,8 @@
 #ifndef IMAGE_HPP
 #define IMAGE_HPP
 
+#include <miniGraphicsConfig.h>
+
 #include <assert.h>
 
 #include <memory>

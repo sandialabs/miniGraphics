@@ -13,4 +13,14 @@
 
 #cmakedefine MINIGRAPHICS_WIN32
 
+#ifdef MINIGRAPHICS_WIN32
+
+// Disable warning about converting from size_t to a smaller type. STL
+// containers use size_t for its sizes and indices, but MPI uses int, which is
+// pretty much always smaller. For the purposes of a mini-app, I don't want to
+// deal with explicitly converting back and forth, so just disable the warning.
+#pragma warning(disable:4267)
+
+#endif //MINIGRAPHICS_WIN32
+
 #endif // MINIGRAPHICSCONFIG_H

@@ -9,6 +9,8 @@
 #ifndef MESH_HPP
 #define MESH_HPP
 
+#include <miniGraphicsConfig.h>
+
 #include <vector>
 
 #include "Triangle.hpp"
