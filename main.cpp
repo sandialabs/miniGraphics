@@ -41,6 +41,7 @@
 #include <glm/vector_relational.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <optionparser.h>
 
@@ -120,13 +121,30 @@ void run(Renderer* renderer,
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  // SET UP PROJECTION MATRICES
+  int numProc;
+  MPI_Comm_size(MPI_COMM_WORLD, &numProc);
+
+  // Gather rough geometry information
   glm::vec3 boundsMin = mesh.getBoundsMin();
   glm::vec3 boundsMax = mesh.getBoundsMax();
+  MPI_Allreduce(MPI_IN_PLACE,
+                glm::value_ptr(boundsMin),
+                3,
+                MPI_FLOAT,
+                MPI_MIN,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE,
+                glm::value_ptr(boundsMax),
+                3,
+                MPI_FLOAT,
+                MPI_MAX,
+                MPI_COMM_WORLD);
+
   glm::vec3 width = boundsMax - boundsMin;
   glm::vec3 center = 0.5f * (boundsMax + boundsMin);
   float dist = glm::sqrt(glm::dot(width, width));
 
+  // Set up projection matrices
   float thetaRotation = 25.0f;
   float phiRotation = 15.0f;
   float zoom = 1.0f;
