@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "BinarySwap.hpp"
-#include "IO/ReadData.hpp"
+#include "IO/ReadSTL.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
 #include "Rendering/Renderer_Example.hpp"
@@ -313,10 +313,11 @@ int main(int argc, char* argv[]) {
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
-    std::string filename("TEST_TRIANGLE.dat");
+    //  std::string filename("TEST_TRIANGLE.dat");
     //  std::string filename("triangles.dat");
+    std::string filename("C:/Users/kmorel/Downloads/test_bin.stl");
 
-    if (!readData(filename, mesh)) {
+    if (!ReadSTL(filename, mesh)) {
       std::cerr << "Could not read triangles" << std::endl;
       return 1;
     }
