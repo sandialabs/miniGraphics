@@ -114,7 +114,7 @@ static bool ReadSTLBinary(std::ifstream& file, Mesh& mesh) {
 
     mesh.setTriangle(triangleIndex, connections, normal);
 
-    // Attribute not but needs to be skipped.
+    // Attribute not used but needs to be skipped.
     file.ignore(2);
   }
 
@@ -130,10 +130,13 @@ bool ReadSTL(const std::string& filename, Mesh& mesh) {
   // Identify whether the file is ASCII or binary
   char header[7];
   file.get(header, 7);
-  file.seekg(0);
   if (std::string(header) == "solid ") {
+    file.seekg(0);
     return ReadSTLAscii(file, mesh);
   } else {
+    // Reopen file as binary
+    file.close();
+    file.open(filename, std::ios_base::binary);
     return ReadSTLBinary(file, mesh);
   }
 }
