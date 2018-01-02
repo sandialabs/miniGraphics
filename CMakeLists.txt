@@ -28,7 +28,6 @@ set(srcs
   Objects/Image.cpp
   Objects/ImageRGBAUByteColorFloatDepth.cpp
   Objects/Mesh.cpp
-  IO/ReadData.cpp
   IO/ReadSTL.cpp
   IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp

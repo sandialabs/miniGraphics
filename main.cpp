@@ -313,8 +313,6 @@ int main(int argc, char* argv[]) {
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
-    //  std::string filename("TEST_TRIANGLE.dat");
-    //  std::string filename("triangles.dat");
     std::string filename("C:/Users/kmorel/Downloads/test_bin.stl");
 
     if (!ReadSTL(filename, mesh)) {
