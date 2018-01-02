@@ -22,8 +22,8 @@ class Renderer {
  public:
   virtual void render(const Mesh& mesh,
                       Image* image,
-                      const glm::mat4x4& modelview,
-                      const glm::mat4x4& projection) = 0;
+                      const glm::mat4& modelview,
+                      const glm::mat4& projection) = 0;
 
   virtual ~Renderer() = default;
 };
