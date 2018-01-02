@@ -47,6 +47,25 @@
 
 #include <mpi.h>
 
+// A set of colors automatically assigned to mesh regions on each process.
+// These colors come from color brewer (qualitative set 3 with 12 colors).
+// http://colorbrewer2.org/?type=qualitative&scheme=Set3&n=12
+static const float ProcessColors[][3] = {{0.5529f, 0.8274f, 0.7803f},
+                                         {1.0000f, 1.0000f, 0.7019f},
+                                         {0.7450f, 0.7294f, 0.8549f},
+                                         {0.9843f, 0.5019f, 0.4470f},
+                                         {0.5019f, 0.6941f, 0.8274f},
+                                         {0.9921f, 0.7058f, 0.3843f},
+                                         {0.7019f, 0.8705f, 0.4117f},
+                                         {0.9882f, 0.8039f, 0.8980f},
+                                         {0.8509f, 0.8509f, 0.8509f},
+                                         {0.7372f, 0.5019f, 0.7411f},
+                                         {0.8000f, 0.9215f, 0.7725f},
+                                         {1.0000f, 0.9294f, 0.4352f}
+
+};
+static const int NumProcessColors = sizeof(ProcessColors) / (3 * sizeof(float));
+
 static option::ArgStatus PositiveIntArg(const option::Option& option,
                                         bool messageOnError) {
   if (option.arg != nullptr) {
@@ -116,10 +135,13 @@ void scatterMesh(Mesh& mesh, MPI_Comm communicator) {
       Mesh submesh =
           mesh.copySubset(startTriRank1 + numTriPerProcess * (dest - 1),
                           startTriRank1 + numTriPerProcess * dest);
+      submesh.setHomogeneousColor(
+          Color(ProcessColors[dest % NumProcessColors]));
       submesh.send(dest, communicator);
     }
 
     mesh = mesh.copySubset(0, startTriRank1);
+    mesh.setHomogeneousColor(Color(ProcessColors[0]));
   } else {
     mesh.receive(0, communicator);
   }

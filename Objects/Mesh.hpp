@@ -120,6 +120,8 @@ class Mesh {
                    const glm::vec3& normal,
                    const Color& color = Color(1, 1, 1, 1));
 
+  void setHomogeneousColor(const Color& color);
+
   Mesh copySubset(int beginTriangleIndex, int endTriangleIndex) const;
 
   const glm::vec3& getBoundsMin() const;

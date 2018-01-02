@@ -206,6 +206,13 @@ void Mesh::addTriangle(const int vertexIndices[3],
   ++this->numberOfTriangles;
 }
 
+void Mesh::setHomogeneousColor(const Color &color) {
+  int numTri = this->getNumberOfTriangles();
+  for (int triangleIndex = 0; triangleIndex < numTri; ++triangleIndex) {
+    this->setColor(triangleIndex, color);
+  }
+}
+
 Mesh Mesh::copySubset(int beginTriangleIndex, int endTriangleIndex) const {
   assert(beginTriangleIndex <= endTriangleIndex);
   int numTrianglesToCopy = endTriangleIndex - beginTriangleIndex;
