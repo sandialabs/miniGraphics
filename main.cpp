@@ -70,6 +70,19 @@ static option::ArgStatus PositiveIntArg(const option::Option& option,
   }
 }
 
+static option::ArgStatus NonemptyString(const option::Option& option,
+                                        bool messageOnError) {
+  if ((option.arg != nullptr) && (option.arg[0] != '\0')) {
+    return option::ARG_OK;
+  } else {
+    if (messageOnError) {
+      std::cerr << "Option " << option.name << " requires an argument."
+                << std::endl;
+    }
+    return option::ARG_ILLEGAL;
+  }
+}
+
 static glm::mat4x4 identityTransform() { return glm::mat4x4(1.0f); }
 
 static void print(const glm::vec3& vec) {
@@ -208,9 +221,18 @@ void run(Renderer* renderer,
   }
 }
 
-enum optionIndex { DUMMY, HELP, WIDTH, HEIGHT, WRITE_IMAGE, RENDERER };
+enum optionIndex {
+  DUMMY,
+  HELP,
+  WIDTH,
+  HEIGHT,
+  WRITE_IMAGE,
+  RENDERER,
+  GEOMETRY
+};
 enum enableIndex { DISABLE, ENABLE };
 enum renderType { SIMPLE_RASTER, OPENGL };
+enum geometryType { STL_FILE };
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
@@ -230,28 +252,36 @@ int main(int argc, char* argv[]) {
     {DUMMY,       0,             "",  "",      option::Arg::None, usagestring.c_str()});
   usage.push_back(
     {HELP,        0,             "h", "help",   option::Arg::None,
-     "  --help, -h             Print this message and exit."});
+     "  --help, -h             Print this message and exit.\n"});
+
   usage.push_back(
     {WIDTH,       0,             "",  "width",  PositiveIntArg,
      "  --width=<num>          Set the width of the image (default 1100)."});
   usage.push_back(
     {HEIGHT,      0,             "",  "height", PositiveIntArg,
-     "  --height=<num>         Set the height of the image (default 900)."});
+     "  --height=<num>         Set the height of the image (default 900).\n"});
+
   usage.push_back(
     {WRITE_IMAGE, ENABLE,        "",  "enable-write-image", option::Arg::None,
      "  --enable-write-image   Turn on writing of composited image (default)."});
   usage.push_back(
     {WRITE_IMAGE, DISABLE,       "",  "disable-write-image", option::Arg::None,
-     "  --disable-write-image  Turn off writing of composited image."});
-  usage.push_back(
-    {RENDERER,    SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
-     "  --render-simple-raster Use simple triangle rasterization when\n"
-     "                         rendering (default)."});
+     "  --disable-write-image  Turn off writing of composited image.\n"});
+
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
   usage.push_back(
     {RENDERER,    OPENGL,        "",  "render-opengl", option::Arg::None,
      "  --render-opengl        Use OpenGL hardware when rendering."});
 #endif
+  usage.push_back(
+    {RENDERER,    SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
+     "  --render-simple-raster Use simple triangle rasterization when\n"
+     "                         rendering (default).\n"});
+
+  usage.push_back(
+    {GEOMETRY,    STL_FILE,      "",  "stl-file", NonemptyString,
+     "  --stl-file=<filename>  Render the geometry in the given STL file.\n"});
+
   usage.push_back({0, 0, 0, 0, 0, 0});
   // clang-format on
 
@@ -313,10 +343,21 @@ int main(int argc, char* argv[]) {
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
-    std::string filename("C:/Users/kmorel/Downloads/test_bin.stl");
-
-    if (!ReadSTL(filename, mesh)) {
-      std::cerr << "Could not read triangles" << std::endl;
+    if (options[GEOMETRY]) {
+      std::string filename(options[GEOMETRY].last()->arg);
+      switch (options[GEOMETRY].last()->type()) {
+        case STL_FILE:
+          if (!ReadSTL(filename, mesh)) {
+            std::cerr << "Error reading file " << filename << std::endl;
+            return 1;
+          }
+          break;
+        default:
+          std::cerr << "Invalid geometry type?" << std::endl;
+          return 1;
+      }
+    } else {
+      std::cerr << "Need to specify geometry file." << std::endl;
       return 1;
     }
     std::cout << "Rank 0 on pid " << getpid() << std::endl;
