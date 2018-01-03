@@ -8,6 +8,8 @@
 
 #include "Mesh.hpp"
 
+#include <glm/gtx/normal.hpp>
+
 #include <algorithm>
 #include <map>
 
@@ -58,6 +60,16 @@ void Mesh::computeBounds() {
   }
 }
 
+void Mesh::updateTriangleNormal(int triangleIndex) {
+  assert((triangleIndex >= 0) &&
+         (triangleIndex < this->getNumberOfTriangles()));
+  const int *connections = this->getTriangleConnectionsBuffer(triangleIndex);
+  glm::vec3 v0 = this->getPointCoordinates(connections[0]);
+  glm::vec3 v1 = this->getPointCoordinates(connections[1]);
+  glm::vec3 v2 = this->getPointCoordinates(connections[2]);
+  this->setNormal(triangleIndex, glm::triangleNormal(v0, v1, v2));
+}
+
 void Mesh::setNumberOfVertices(int numVertices) {
   this->numberOfVertices = numVertices;
   this->pointCoordinates.resize(3 * numVertices);
@@ -67,6 +79,7 @@ void Mesh::setNumberOfVertices(int numVertices) {
 void Mesh::setNumberOfTriangles(int numTriangles) {
   this->numberOfTriangles = numTriangles;
   this->triangleConnections.resize(3 * numTriangles);
+  this->triangleNormals.resize(3 * numTriangles);
   this->triangleColors.resize(4 * numTriangles);
   this->boundsValid = false;
 }
@@ -81,10 +94,12 @@ Triangle Mesh::getTriangle(int triangleIndex) const {
   assert((triangleIndex >= 0) &&
          (triangleIndex < this->getNumberOfTriangles()));
   const int *connections = this->getTriangleConnectionsBuffer(triangleIndex);
+  const float *normal = this->getTriangleNormalsBuffer(triangleIndex);
   const float *color = this->getTriangleColorsBuffer(triangleIndex);
   return Triangle(this->getPointCoordinates(connections[0]),
                   this->getPointCoordinates(connections[1]),
                   this->getPointCoordinates(connections[2]),
+                  glm::vec3(normal[0], normal[1], normal[2]),
                   Color(color));
 }
 
@@ -108,6 +123,33 @@ void Mesh::setTriangle(int triangleIndex,
   connections[2] = vertexIndices[2];
 
   this->setColor(triangleIndex, color);
+
+  this->updateTriangleNormal(triangleIndex);
+}
+
+void Mesh::setTriangle(int triangleIndex,
+                       const int vertexIndices[3],
+                       const glm::vec3 &normal,
+                       const Color &color) {
+  assert((triangleIndex >= 0) &&
+         (triangleIndex < this->getNumberOfTriangles()));
+  int *connections = this->getTriangleConnectionsBuffer(triangleIndex);
+  connections[0] = vertexIndices[0];
+  connections[1] = vertexIndices[1];
+  connections[2] = vertexIndices[2];
+
+  this->setNormal(triangleIndex, normal);
+  this->setColor(triangleIndex, color);
+}
+
+void Mesh::setNormal(int triangleIndex, const glm::vec3 &normal) {
+  assert((triangleIndex >= 0) &&
+         (triangleIndex < this->getNumberOfTriangles()));
+
+  float *n = this->getTriangleNormalsBuffer(triangleIndex);
+  n[0] = normal[0];
+  n[1] = normal[1];
+  n[2] = normal[2];
 }
 
 void Mesh::setColor(int triangleIndex, const Color &color) {
@@ -140,6 +182,35 @@ void Mesh::addTriangle(const int vertexIndices[3], const Color &color) {
   this->triangleColors.push_back(color.Components[3]);
 
   ++this->numberOfTriangles;
+
+  this->triangleNormals.resize(3 * this->numberOfTriangles);
+  this->updateTriangleNormal(this->numberOfTriangles - 1);
+}
+
+void Mesh::addTriangle(const int vertexIndices[3],
+                       const glm::vec3 &normal,
+                       const Color &color) {
+  this->triangleConnections.push_back(vertexIndices[0]);
+  this->triangleConnections.push_back(vertexIndices[1]);
+  this->triangleConnections.push_back(vertexIndices[2]);
+
+  this->triangleNormals.push_back(normal[0]);
+  this->triangleNormals.push_back(normal[1]);
+  this->triangleNormals.push_back(normal[2]);
+
+  this->triangleColors.push_back(color.Components[0]);
+  this->triangleColors.push_back(color.Components[1]);
+  this->triangleColors.push_back(color.Components[2]);
+  this->triangleColors.push_back(color.Components[3]);
+
+  ++this->numberOfTriangles;
+}
+
+void Mesh::setHomogeneousColor(const Color &color) {
+  int numTri = this->getNumberOfTriangles();
+  for (int triangleIndex = 0; triangleIndex < numTri; ++triangleIndex) {
+    this->setColor(triangleIndex, color);
+  }
 }
 
 Mesh Mesh::copySubset(int beginTriangleIndex, int endTriangleIndex) const {
@@ -182,6 +253,11 @@ Mesh Mesh::copySubset(int beginTriangleIndex, int endTriangleIndex) const {
     *outVertexIter = vertexMapIn2Out[*inVertexIter];
     ++outVertexIter;
   }
+
+  // Copy over normals (no mapping needed).
+  std::copy(this->getTriangleNormalsBuffer(beginTriangleIndex),
+            this->getTriangleNormalsBuffer(endTriangleIndex),
+            outputMesh.getTriangleNormalsBuffer());
 
   // Copy over triangle colors (no mapping needed).
   std::copy(this->getTriangleColorsBuffer(beginTriangleIndex),
@@ -226,6 +302,12 @@ void Mesh::send(int destRank, MPI_Comm communicator) const {
            destRank,
            TRIANGLE_CONNECTIONS_TAG,
            communicator);
+  MPI_Send(this->getTriangleNormalsBuffer(),
+           3 * this->numberOfTriangles,
+           MPI_FLOAT,
+           destRank,
+           TRIANGLE_NORMALS_TAG,
+           communicator);
   MPI_Send(this->getTriangleColorsBuffer(),
            4 * this->numberOfTriangles,
            MPI_FLOAT,
@@ -254,6 +336,13 @@ void Mesh::receive(int srcRank, MPI_Comm communicator) {
            MPI_INT,
            srcRank,
            TRIANGLE_CONNECTIONS_TAG,
+           communicator,
+           &status);
+  MPI_Recv(this->getTriangleNormalsBuffer(),
+           3 * this->numberOfTriangles,
+           MPI_FLOAT,
+           srcRank,
+           TRIANGLE_NORMALS_TAG,
            communicator,
            &status);
   MPI_Recv(this->getTriangleColorsBuffer(),

@@ -23,6 +23,7 @@ class Mesh {
  private:
   std::vector<float> pointCoordinates;   // Three (x,y,z) coordinates per vertex
   std::vector<int> triangleConnections;  // Three indices per triangle
+  std::vector<float> triangleNormals;    // Three (x,y,z) normals per vertex
   std::vector<float> triangleColors;  // Four (r,g,b,a) components per triangle
 
   int numberOfVertices;
@@ -35,10 +36,13 @@ class Mesh {
   void updateBounds() const;
   void computeBounds();
 
+  void updateTriangleNormal(int triangleIndex);
+
   static const int NUM_VERTEX_TAG = 39146;
   static const int NUM_TRIANGLE_TAG = 13644;
   static const int POINT_COORDINATES_TAG = 76418;
   static const int TRIANGLE_CONNECTIONS_TAG = 68934;
+  static const int TRIANGLE_NORMALS_TAG = 81498;
   static const int TRIANGLE_COLORS_TAG = 55176;
 
  public:
@@ -73,6 +77,17 @@ class Mesh {
     return &this->triangleConnections.front() + (3 * triangleIndex);
   }
 
+  float* getTriangleNormalsBuffer(int triangleIndex = 0) {
+    assert((triangleIndex >= 0) &&
+           (triangleIndex <= this->getNumberOfTriangles()));
+    return &this->triangleNormals.front() + (3 * triangleIndex);
+  }
+  const float* getTriangleNormalsBuffer(int triangleIndex = 0) const {
+    assert((triangleIndex >= 0) &&
+           (triangleIndex <= this->getNumberOfTriangles()));
+    return &this->triangleNormals.front() + (3 * triangleIndex);
+  }
+
   float* getTriangleColorsBuffer(int triangleIndex = 0) {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
@@ -91,11 +106,21 @@ class Mesh {
   void setTriangle(int triangleIndex,
                    const int vertexIndices[3],
                    const Color& color = Color(1, 1, 1, 1));
+  void setTriangle(int triangleIndex,
+                   const int vertexIndices[3],
+                   const glm::vec3& normal,
+                   const Color& color = Color(1, 1, 1, 1));
+  void setNormal(int triangleIndex, const glm::vec3& normal);
   void setColor(int triangleIndex, const Color& color);
 
   void addVertex(const glm::vec3& pointCoordinate);
   void addTriangle(const int vertexIndices[3],
                    const Color& color = Color(1, 1, 1, 1));
+  void addTriangle(const int vertexIndices[3],
+                   const glm::vec3& normal,
+                   const Color& color = Color(1, 1, 1, 1));
+
+  void setHomogeneousColor(const Color& color);
 
   Mesh copySubset(int beginTriangleIndex, int endTriangleIndex) const;
 

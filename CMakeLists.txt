@@ -13,8 +13,6 @@ project(miniGraphics)
 set(miniGraphics_CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${miniGraphics_CMAKE_MODULE_PATH})
 
-add_executable(createData dataGen/createData.cpp)
-
 option(MINIGRAPHICS_ENABLE_OPENGL
   "Turn on/off the OpenGL rendering system."
   OFF
@@ -28,7 +26,8 @@ set(srcs
   Objects/Image.cpp
   Objects/ImageRGBAUByteColorFloatDepth.cpp
   Objects/Mesh.cpp
-  IO/ReadData.cpp
+  IO/MakeBox.cpp
+  IO/ReadSTL.cpp
   IO/SavePPM.cpp
   Rendering/Renderer_Example.cpp
   )

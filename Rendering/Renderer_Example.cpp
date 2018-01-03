@@ -8,6 +8,7 @@
 
 #include "Renderer_Example.hpp"
 
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <math.h>
@@ -17,7 +18,7 @@ static void print(const glm::vec3 &vec) {
   std::cout << vec[0] << "\t" << vec[1] << "\t" << vec[2] << std::endl;
 }
 
-static void print(const glm::mat4x4 &matrix) {
+static void print(const glm::mat4 &matrix) {
   std::cout << matrix[0][0] << "\t" << matrix[1][0] << "\t" << matrix[0][0]
             << "\t" << matrix[3][0] << std::endl;
   std::cout << matrix[0][1] << "\t" << matrix[1][1] << "\t" << matrix[2][1]
@@ -54,11 +55,17 @@ inline void Renderer_Example::fillLine(Image *image,
     std::swap(left, right);
   }
 
-  int xMin = std::max((int)left.x, 0);
-  int xMax = std::min((int)right.x, image->getWidth());
-
   float deltaDepth = (right.z - left.z) / (right.x - left.x);
-  float depth = left.z + deltaDepth * (xMin - left.x);
+  float depth = left.z;
+
+  int xMin = static_cast<int>(left.x);
+  if (xMin < 0) {
+    depth += -xMin * deltaDepth;
+    xMin = 0;
+  }
+
+  int xMax = std::min(static_cast<int>(right.x), image->getWidth());
+
   for (int x = xMin; x < xMax; ++x) {
     if (depth < image->getDepth(x, y)) {
       image->setColor(x, y, color);
@@ -70,9 +77,13 @@ inline void Renderer_Example::fillLine(Image *image,
 
 void Renderer_Example::fillTriangle(Image *image,
                                     const Triangle &triangle,
-                                    const glm::mat4x4 &modelview,
-                                    const glm::mat4x4 &projection) {
-  const Color &color = triangle.color;
+                                    const glm::mat4 &modelview,
+                                    const glm::mat4 &projection,
+                                    const glm::mat3 &normalTransform) {
+  glm::vec3 normal = glm::normalize(normalTransform * triangle.normal);
+  float colorScale = glm::abs(glm::dot(normal, glm::vec3(0, 0, 1)));
+
+  const Color &color = triangle.color.Scale(colorScale);
 
   glm::ivec4 viewport(0, 0, image->getWidth(), image->getHeight());
 
@@ -120,11 +131,16 @@ void Renderer_Example::fillTriangle(Image *image,
 
 void Renderer_Example::render(const Mesh &mesh,
                               Image *image,
-                              const glm::mat4x4 &modelview,
-                              const glm::mat4x4 &projection) {
+                              const glm::mat4 &modelview,
+                              const glm::mat4 &projection) {
   image->clear();
 
+  // It turns out, the normals should be transformed by the inverse transpose
+  // of the rotation/scale matrix.
+  glm::mat3 normalTransform = glm::inverseTranspose(glm::mat3(modelview));
+
   for (int i = 0; i < mesh.getNumberOfTriangles(); i++) {
-    this->fillTriangle(image, mesh.getTriangle(i), modelview, projection);
+    this->fillTriangle(
+        image, mesh.getTriangle(i), modelview, projection, normalTransform);
   }
 }

@@ -27,7 +27,8 @@
 #include <vector>
 
 #include "BinarySwap.hpp"
-#include "IO/ReadData.hpp"
+#include "IO/MakeBox.hpp"
+#include "IO/ReadSTL.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
 #include "Rendering/Renderer_Example.hpp"
@@ -47,6 +48,25 @@
 
 #include <mpi.h>
 
+// A set of colors automatically assigned to mesh regions on each process.
+// These colors come from color brewer (qualitative set 3 with 12 colors).
+// http://colorbrewer2.org/?type=qualitative&scheme=Set3&n=12
+static const float ProcessColors[][3] = {{0.5529f, 0.8274f, 0.7803f},
+                                         {1.0000f, 1.0000f, 0.7019f},
+                                         {0.7450f, 0.7294f, 0.8549f},
+                                         {0.9843f, 0.5019f, 0.4470f},
+                                         {0.5019f, 0.6941f, 0.8274f},
+                                         {0.9921f, 0.7058f, 0.3843f},
+                                         {0.7019f, 0.8705f, 0.4117f},
+                                         {0.9882f, 0.8039f, 0.8980f},
+                                         {0.8509f, 0.8509f, 0.8509f},
+                                         {0.7372f, 0.5019f, 0.7411f},
+                                         {0.8000f, 0.9215f, 0.7725f},
+                                         {1.0000f, 0.9294f, 0.4352f}
+
+};
+static const int NumProcessColors = sizeof(ProcessColors) / (3 * sizeof(float));
+
 static option::ArgStatus PositiveIntArg(const option::Option& option,
                                         bool messageOnError) {
   if (option.arg != nullptr) {
@@ -64,6 +84,19 @@ static option::ArgStatus PositiveIntArg(const option::Option& option,
   } else {
     if (messageOnError) {
       std::cerr << "Option " << option.name << " requires an integer argument."
+                << std::endl;
+    }
+    return option::ARG_ILLEGAL;
+  }
+}
+
+static option::ArgStatus NonemptyString(const option::Option& option,
+                                        bool messageOnError) {
+  if ((option.arg != nullptr) && (option.arg[0] != '\0')) {
+    return option::ARG_OK;
+  } else {
+    if (messageOnError) {
+      std::cerr << "Option " << option.name << " requires an argument."
                 << std::endl;
     }
     return option::ARG_ILLEGAL;
@@ -103,10 +136,13 @@ void scatterMesh(Mesh& mesh, MPI_Comm communicator) {
       Mesh submesh =
           mesh.copySubset(startTriRank1 + numTriPerProcess * (dest - 1),
                           startTriRank1 + numTriPerProcess * dest);
+      submesh.setHomogeneousColor(
+          Color(ProcessColors[dest % NumProcessColors]));
       submesh.send(dest, communicator);
     }
 
     mesh = mesh.copySubset(0, startTriRank1);
+    mesh.setHomogeneousColor(Color(ProcessColors[0]));
   } else {
     mesh.receive(0, communicator);
   }
@@ -208,9 +244,18 @@ void run(Renderer* renderer,
   }
 }
 
-enum optionIndex { DUMMY, HELP, WIDTH, HEIGHT, WRITE_IMAGE, RENDERER };
+enum optionIndex {
+  DUMMY,
+  HELP,
+  WIDTH,
+  HEIGHT,
+  WRITE_IMAGE,
+  RENDERER,
+  GEOMETRY
+};
 enum enableIndex { DISABLE, ENABLE };
 enum renderType { SIMPLE_RASTER, OPENGL };
+enum geometryType { BOX, STL_FILE };
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
@@ -230,28 +275,39 @@ int main(int argc, char* argv[]) {
     {DUMMY,       0,             "",  "",      option::Arg::None, usagestring.c_str()});
   usage.push_back(
     {HELP,        0,             "h", "help",   option::Arg::None,
-     "  --help, -h             Print this message and exit."});
+     "  --help, -h             Print this message and exit.\n"});
+
   usage.push_back(
     {WIDTH,       0,             "",  "width",  PositiveIntArg,
      "  --width=<num>          Set the width of the image (default 1100)."});
   usage.push_back(
     {HEIGHT,      0,             "",  "height", PositiveIntArg,
-     "  --height=<num>         Set the height of the image (default 900)."});
+     "  --height=<num>         Set the height of the image (default 900).\n"});
+
   usage.push_back(
     {WRITE_IMAGE, ENABLE,        "",  "enable-write-image", option::Arg::None,
      "  --enable-write-image   Turn on writing of composited image (default)."});
   usage.push_back(
     {WRITE_IMAGE, DISABLE,       "",  "disable-write-image", option::Arg::None,
-     "  --disable-write-image  Turn off writing of composited image."});
-  usage.push_back(
-    {RENDERER,    SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
-     "  --render-simple-raster Use simple triangle rasterization when\n"
-     "                         rendering (default)."});
+     "  --disable-write-image  Turn off writing of composited image.\n"});
+
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
   usage.push_back(
     {RENDERER,    OPENGL,        "",  "render-opengl", option::Arg::None,
      "  --render-opengl        Use OpenGL hardware when rendering."});
 #endif
+  usage.push_back(
+    {RENDERER,    SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
+     "  --render-simple-raster Use simple triangle rasterization when\n"
+     "                         rendering (default).\n"});
+
+  usage.push_back(
+    {GEOMETRY,    BOX,           "",  "box", option::Arg::None,
+     "  --box                  Render a box as the geometry (default)."});
+  usage.push_back(
+    {GEOMETRY,    STL_FILE,      "",  "stl-file", NonemptyString,
+     "  --stl-file=<filename>  Render the geometry in the given STL file.\n"});
+
   usage.push_back({0, 0, 0, 0, 0, 0});
   // clang-format on
 
@@ -313,12 +369,21 @@ int main(int argc, char* argv[]) {
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
-    std::string filename("TEST_TRIANGLE.dat");
-    //  std::string filename("triangles.dat");
-
-    if (!readData(filename, mesh)) {
-      std::cerr << "Could not read triangles" << std::endl;
-      return 1;
+    if (options[GEOMETRY] && (options[GEOMETRY].last()->type() != BOX)) {
+      std::string filename(options[GEOMETRY].last()->arg);
+      switch (options[GEOMETRY].last()->type()) {
+        case STL_FILE:
+          if (!ReadSTL(filename, mesh)) {
+            std::cerr << "Error reading file " << filename << std::endl;
+            return 1;
+          }
+          break;
+        default:
+          std::cerr << "Invalid geometry type?" << std::endl;
+          return 1;
+      }
+    } else {
+      MakeBox(mesh);
     }
     std::cout << "Rank 0 on pid " << getpid() << std::endl;
   } else {
