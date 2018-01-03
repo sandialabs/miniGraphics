@@ -9,6 +9,7 @@
 #include "miniGraphicsConfig.h"
 
 // Include standard headers
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -90,8 +91,33 @@ static option::ArgStatus PositiveIntArg(const option::Option& option,
   }
 }
 
-static option::ArgStatus NonemptyString(const option::Option& option,
-                                        bool messageOnError) {
+static option::ArgStatus FloatArg(const option::Option& option,
+                                  bool messageOnError) {
+  if (option.arg != nullptr) {
+    const char* arg = option.arg;
+    char* endarg;
+    strtof(arg, &endarg);
+    if (endarg == arg) {
+      if (messageOnError) {
+        std::cerr << "Option " << option.name
+                  << " requires a floating point number argument. Argument '"
+                  << option.arg << "' is not valid." << std::endl;
+      }
+      return option::ARG_ILLEGAL;
+    } else {
+      return option::ARG_OK;
+    }
+  } else {
+    if (messageOnError) {
+      std::cerr << "Option " << option.name << " requires a float argument."
+                << std::endl;
+    }
+    return option::ARG_ILLEGAL;
+  }
+}
+
+static option::ArgStatus NonemptyStringArg(const option::Option& option,
+                                           bool messageOnError) {
   if ((option.arg != nullptr) && (option.arg[0] != '\0')) {
     return option::ARG_OK;
   } else {
@@ -120,7 +146,40 @@ static void print(const glm::mat4x4& matrix) {
             << "\t" << matrix[3][3] << std::endl;
 }
 
-void scatterMesh(Mesh& mesh, MPI_Comm communicator) {
+void duplicateMesh(Mesh& mesh, float overlap, MPI_Comm communicator) {
+  int rank;
+  MPI_Comm_rank(communicator, &rank);
+
+  int numProc;
+  MPI_Comm_size(communicator, &numProc);
+
+  if (rank == 0) {
+    int gridDim = static_cast<int>(ceil(cbrt(numProc)));
+    glm::vec3 spacing =
+        (1.0f - overlap) * (mesh.getBoundsMax() - mesh.getBoundsMin());
+
+    for (int dest = 1; dest < numProc; ++dest) {
+      glm::vec3 gridLocation(dest % gridDim,
+                             (dest / gridDim) % gridDim,
+                             dest / (gridDim * gridDim));
+      glm::mat4 transform =
+          glm::translate(identityTransform(), spacing * gridLocation);
+
+      Mesh sendMesh = mesh.deepCopy();
+      sendMesh.transform(transform);
+      sendMesh.setHomogeneousColor(
+          Color(ProcessColors[dest % NumProcessColors]));
+
+      sendMesh.send(dest, communicator);
+    }
+
+    mesh.setHomogeneousColor(Color(ProcessColors[0]));
+  } else {
+    mesh.receive(0, communicator);
+  }
+}
+
+void divideMesh(Mesh& mesh, MPI_Comm communicator) {
   int rank;
   MPI_Comm_rank(communicator, &rank);
 
@@ -251,11 +310,14 @@ enum optionIndex {
   HEIGHT,
   WRITE_IMAGE,
   RENDERER,
-  GEOMETRY
+  GEOMETRY,
+  DISTRIBUTION,
+  OVERLAP
 };
 enum enableIndex { DISABLE, ENABLE };
 enum renderType { SIMPLE_RASTER, OPENGL };
 enum geometryType { BOX, STL_FILE };
+enum distributionType { DUPLICATE, DIVIDE };
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
@@ -263,8 +325,8 @@ int main(int argc, char* argv[]) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  std::stringstream usagestringstream("USAGE: ");
-  usagestringstream << argv[0] << " [options] <data_file>\n\n";
+  std::stringstream usagestringstream;
+  usagestringstream << "USAGE: " << argv[0] << " [options]\n\n";
   usagestringstream << "Options:";
 
   std::string usagestring = usagestringstream.str();
@@ -274,39 +336,57 @@ int main(int argc, char* argv[]) {
   usage.push_back(
     {DUMMY,       0,             "",  "",      option::Arg::None, usagestring.c_str()});
   usage.push_back(
-    {HELP,        0,             "h", "help",   option::Arg::None,
+    {HELP,         0,             "h", "help",   option::Arg::None,
      "  --help, -h             Print this message and exit.\n"});
 
   usage.push_back(
-    {WIDTH,       0,             "",  "width",  PositiveIntArg,
-     "  --width=<num>          Set the width of the image (default 1100)."});
+    {WIDTH,        0,             "",  "width",  PositiveIntArg,
+     "  --width=<num>          Set the width of the image. (Default 1100)"});
   usage.push_back(
-    {HEIGHT,      0,             "",  "height", PositiveIntArg,
-     "  --height=<num>         Set the height of the image (default 900).\n"});
+    {HEIGHT,       0,             "",  "height", PositiveIntArg,
+     "  --height=<num>         Set the height of the image. (Default 900)\n"});
 
   usage.push_back(
-    {WRITE_IMAGE, ENABLE,        "",  "enable-write-image", option::Arg::None,
-     "  --enable-write-image   Turn on writing of composited image (default)."});
+    {WRITE_IMAGE,  ENABLE,        "",  "enable-write-image", option::Arg::None,
+     "  --enable-write-image   Turn on writing of composited image. (Default)"});
   usage.push_back(
-    {WRITE_IMAGE, DISABLE,       "",  "disable-write-image", option::Arg::None,
+    {WRITE_IMAGE,  DISABLE,       "",  "disable-write-image", option::Arg::None,
      "  --disable-write-image  Turn off writing of composited image.\n"});
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
   usage.push_back(
-    {RENDERER,    OPENGL,        "",  "render-opengl", option::Arg::None,
+    {RENDERER,     OPENGL,        "",  "render-opengl", option::Arg::None,
      "  --render-opengl        Use OpenGL hardware when rendering."});
 #endif
   usage.push_back(
-    {RENDERER,    SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
+    {RENDERER,     SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
      "  --render-simple-raster Use simple triangle rasterization when\n"
-     "                         rendering (default).\n"});
+     "                         rendering. (Default)\n"});
 
   usage.push_back(
-    {GEOMETRY,    BOX,           "",  "box", option::Arg::None,
-     "  --box                  Render a box as the geometry (default)."});
+    {GEOMETRY,     BOX,           "",  "box", option::Arg::None,
+     "  --box                  Render a box as the geometry. (Default)"});
   usage.push_back(
-    {GEOMETRY,    STL_FILE,      "",  "stl-file", NonemptyString,
+    {GEOMETRY,     STL_FILE,      "",  "stl-file", NonemptyStringArg,
      "  --stl-file=<filename>  Render the geometry in the given STL file.\n"});
+
+  usage.push_back(
+    {DISTRIBUTION, DUPLICATE,     "",  "duplicate-geometry", option::Arg::None,
+     "  --duplicate-geometry   Duplicates the geometry read or created on each\n"
+     "                         process. The data are offset in a 3D grid\n"
+     "                         pattern. (Default)"});
+  usage.push_back(
+    {DISTRIBUTION, DIVIDE,       "",  "divide-geometry", option::Arg::None,
+     "  --divide-geometry      Divides the geometry read or created by\n"
+     "                         partitioning the triangles among the processes."});
+  usage.push_back(
+    {OVERLAP,      0     ,       "",  "overlap", FloatArg,
+     "  --overlap=<num>        When duplicating geometry, determine how much\n"
+     "                         the geometry overlaps neighboring processes.\n"
+     "                         A value of 0 makes the geometry flush. A value\n"
+     "                         of 1 completely overlaps all geometry. Negative\n"
+     "                         values space the geometry appart. Has no effect\n"
+     "                         with --divide-geometry option. (Default -0.05)\n"});
 
   usage.push_back({0, 0, 0, 0, 0, 0});
   // clang-format on
@@ -387,10 +467,20 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "Rank 0 on pid " << getpid() << std::endl;
   } else {
-    // Other ranks read nothing. Rank 0 splits them up.
+    // Other ranks read nothing. Rank 0 distributes geometry.
   }
 
-  scatterMesh(mesh, MPI_COMM_WORLD);
+  float overlap = -0.05;
+  if (options[OVERLAP]) {
+    overlap = atof(options[OVERLAP].arg);
+  }
+
+  if (options[DISTRIBUTION] &&
+      (options[DISTRIBUTION].last()->type() == DIVIDE)) {
+    divideMesh(mesh, MPI_COMM_WORLD);
+  } else {
+    duplicateMesh(mesh, overlap, MPI_COMM_WORLD);
+  }
 
   run(renderer.get(),
       compositor.get(),
