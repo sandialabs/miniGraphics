@@ -23,6 +23,7 @@
 #define getpid _getpid
 #endif
 
+#include <fstream>
 #include <memory>
 #include <sstream>
 #include <vector>
@@ -32,6 +33,7 @@
 #include "IO/ReadSTL.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
+#include "Objects/YamlWriter.hpp"
 #include "Rendering/Renderer_Example.hpp"
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
@@ -212,7 +214,8 @@ void run(Renderer* renderer,
          const Mesh& mesh,
          int imageWidth,
          int imageHeight,
-         bool writeImages) {
+         bool writeImages,
+         YamlWriter& yaml) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -238,6 +241,15 @@ void run(Renderer* renderer,
   glm::vec3 width = boundsMax - boundsMin;
   glm::vec3 center = 0.5f * (boundsMax + boundsMin);
   float dist = glm::sqrt(glm::dot(width, width));
+
+  int numTriangles = mesh.getNumberOfTriangles();
+  MPI_Allreduce(MPI_IN_PLACE,
+                &numTriangles,
+                1,
+                MPI_INT,
+                MPI_SUM,
+                MPI_COMM_WORLD);
+  yaml.AddDictionaryEntry("num-triangles", numTriangles);
 
   // Set up projection matrices
   float thetaRotation = 25.0f;
@@ -294,7 +306,7 @@ void run(Renderer* renderer,
   // SAVE FOR SANITY CHECK
   if (writeImages) {
     std::stringstream filename;
-    filename << "rendered" << rank << ".ppm";
+    filename << "local_drawing" << rank << ".ppm";
     SavePPM(localImage, filename.str());
 
     if (rank == 0) {
@@ -308,22 +320,33 @@ enum optionIndex {
   HELP,
   WIDTH,
   HEIGHT,
+  YAML_OUTPUT,
   WRITE_IMAGE,
-  RENDERER,
+  DRAWER,
   GEOMETRY,
   DISTRIBUTION,
   OVERLAP
 };
 enum enableIndex { DISABLE, ENABLE };
-enum renderType { SIMPLE_RASTER, OPENGL };
+enum drawType { SIMPLE_RASTER, OPENGL };
 enum geometryType { BOX, STL_FILE };
 enum distributionType { DUPLICATE, DIVIDE };
 
 int main(int argc, char* argv[]) {
+  std::stringstream yamlStream;
+  YamlWriter yaml(yamlStream);
+
+  // TODO: Make this tied to the actual compositing algorithm
+  yaml.AddDictionaryEntry("composite-algorithm", "binary swap");
+
   MPI_Init(&argc, &argv);
 
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  int numProc;
+  MPI_Comm_size(MPI_COMM_WORLD, &numProc);
+  yaml.AddDictionaryEntry("num-processes", numProc);
 
   std::stringstream usagestringstream;
   usagestringstream << "USAGE: " << argv[0] << " [options]\n\n";
@@ -347,6 +370,12 @@ int main(int argc, char* argv[]) {
      "  --height=<num>         Set the height of the image. (Default 900)\n"});
 
   usage.push_back(
+    {YAML_OUTPUT,  0,             "", "yaml-output", NonemptyStringArg,
+     "  --yaml-output=<file>   Specify the filename of the YAML output file\n"
+     "                         containing timing information.\n"
+     "                         (Default timing.yaml)\n"});
+
+  usage.push_back(
     {WRITE_IMAGE,  ENABLE,        "",  "enable-write-image", option::Arg::None,
      "  --enable-write-image   Turn on writing of composited image. (Default)"});
   usage.push_back(
@@ -355,20 +384,20 @@ int main(int argc, char* argv[]) {
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
   usage.push_back(
-    {RENDERER,     OPENGL,        "",  "render-opengl", option::Arg::None,
-     "  --render-opengl        Use OpenGL hardware when rendering."});
+    {DRAWER,       OPENGL,        "",  "draw-opengl", option::Arg::None,
+     "  --draw-opengl          Use OpenGL hardware when drawing."});
 #endif
   usage.push_back(
-    {RENDERER,     SIMPLE_RASTER, "",  "render-simple-raster", option::Arg::None,
-     "  --render-simple-raster Use simple triangle rasterization when\n"
-     "                         rendering. (Default)\n"});
+    {DRAWER,       SIMPLE_RASTER, "",  "draw-simple-raster", option::Arg::None,
+     "  --draw-simple-raster   Use simple triangle rasterization when drawing.\n"
+     "                         (Default)\n"});
 
   usage.push_back(
     {GEOMETRY,     BOX,           "",  "box", option::Arg::None,
      "  --box                  Render a box as the geometry. (Default)"});
   usage.push_back(
     {GEOMETRY,     STL_FILE,      "",  "stl-file", NonemptyStringArg,
-     "  --stl-file=<filename>  Render the geometry in the given STL file.\n"});
+     "  --stl-file=<file>      Render the geometry in the given STL file.\n"});
 
   usage.push_back(
     {DISTRIBUTION, DUPLICATE,     "",  "duplicate-geometry", option::Arg::None,
@@ -393,9 +422,11 @@ int main(int argc, char* argv[]) {
 
   int imageWidth = 1100;
   int imageHeight = 900;
+  std::string yamlFilename("timing.yaml");
   bool writeImages = true;
   std::auto_ptr<Renderer> renderer(new Renderer_Example);
   std::auto_ptr<Compositor> compositor(new BinarySwap);
+  float overlap = -0.05f;
 
   option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
@@ -418,32 +449,44 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  if (parse.nonOptionsCount() > 0) {
+    std::cerr << "Unknown option: " << parse.nonOption(0) << std::endl;
+    option::printUsage(std::cerr, &usage.front());
+    return 1;
+  }
+
   if (options[WIDTH]) {
     imageWidth = atoi(options[WIDTH].arg);
   }
+  yaml.AddDictionaryEntry("image-width", imageWidth);
 
   if (options[HEIGHT]) {
     imageHeight = atoi(options[HEIGHT].arg);
   }
+  yaml.AddDictionaryEntry("image-height", imageHeight);
 
   if (options[WRITE_IMAGE]) {
     writeImages = (options[WRITE_IMAGE].last()->type() == ENABLE);
   }
 
-  if (options[RENDERER]) {
-    switch (options[RENDERER].last()->type()) {
+  if (options[DRAWER]) {
+    switch (options[DRAWER].last()->type()) {
       case SIMPLE_RASTER:
-        // Renderer initialized to simple raster already.
+        // Drawer initialized to simple raster already.
+        yaml.AddDictionaryEntry("drawing", "simple");
         break;
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
       case OPENGL:
         renderer.reset(new OpenGL_Example);
+        yaml.AddDictionaryEntry("drawing", "OpenGL");
         break;
 #endif
       default:
-        std::cerr << "Internal error: bad render option." << std::endl;
+        std::cerr << "Internal error: bad draw option." << std::endl;
         return 1;
     }
+  } else {
+    yaml.AddDictionaryEntry("drawing", "simple");
   }
 
   // LOAD TRIANGLES
@@ -451,6 +494,7 @@ int main(int argc, char* argv[]) {
   if (rank == 0) {
     if (options[GEOMETRY] && (options[GEOMETRY].last()->type() != BOX)) {
       std::string filename(options[GEOMETRY].last()->arg);
+      yaml.AddDictionaryEntry("geometry", filename);
       switch (options[GEOMETRY].last()->type()) {
         case STL_FILE:
           if (!ReadSTL(filename, mesh)) {
@@ -463,6 +507,7 @@ int main(int argc, char* argv[]) {
           return 1;
       }
     } else {
+      yaml.AddDictionaryEntry("geometry", "box");
       MakeBox(mesh);
     }
     std::cout << "Rank 0 on pid " << getpid() << std::endl;
@@ -470,7 +515,6 @@ int main(int argc, char* argv[]) {
     // Other ranks read nothing. Rank 0 distributes geometry.
   }
 
-  float overlap = -0.05f;
   if (options[OVERLAP]) {
     overlap = strtof(options[OVERLAP].arg, NULL);
   }
@@ -478,8 +522,11 @@ int main(int argc, char* argv[]) {
   if (options[DISTRIBUTION] &&
       (options[DISTRIBUTION].last()->type() == DIVIDE)) {
     divideMesh(mesh, MPI_COMM_WORLD);
+    yaml.AddDictionaryEntry("geometry-distribution", "divide");
   } else {
     duplicateMesh(mesh, overlap, MPI_COMM_WORLD);
+    yaml.AddDictionaryEntry("geometry-distribution", "duplicate");
+    yaml.AddDictionaryEntry("geometry-overlap", overlap);
   }
 
   run(renderer.get(),
@@ -487,7 +534,16 @@ int main(int argc, char* argv[]) {
       mesh,
       imageWidth,
       imageHeight,
-      writeImages);
+      writeImages,
+      yaml);
+
+  if (options[YAML_OUTPUT]) {
+    yamlFilename = options[YAML_OUTPUT].arg;
+  }
+  if (rank == 0) {
+    std::ofstream yamlFile(yamlFilename);
+    yamlFile << yamlStream.str();
+  }
 
   MPI_Finalize();
 
