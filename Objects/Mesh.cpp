@@ -213,6 +213,10 @@ void Mesh::setHomogeneousColor(const Color &color) {
   }
 }
 
+Mesh Mesh::deepCopy() const {
+  return this->copySubset(0, this->getNumberOfTriangles());
+}
+
 Mesh Mesh::copySubset(int beginTriangleIndex, int endTriangleIndex) const {
   assert(beginTriangleIndex <= endTriangleIndex);
   int numTrianglesToCopy = endTriangleIndex - beginTriangleIndex;
@@ -265,6 +269,18 @@ Mesh Mesh::copySubset(int beginTriangleIndex, int endTriangleIndex) const {
             outputMesh.getTriangleColorsBuffer());
 
   return outputMesh;
+}
+
+void Mesh::transform(const glm::mat4 &transformMatrix) {
+  int numVert = this->getNumberOfVertices();
+
+  for (int vertIndex = 0; vertIndex < numVert; ++vertIndex) {
+    glm::vec4 originalCoord(this->getPointCoordinates(vertIndex), 1.0f);
+    glm::vec4 transformedCoord = transformMatrix * originalCoord;
+    // Note that this drops the w component, which means that perspective
+    // transforms are not supported.
+    this->setVertex(vertIndex, glm::vec3(transformedCoord));
+  }
 }
 
 const glm::vec3 &Mesh::getBoundsMin() const {

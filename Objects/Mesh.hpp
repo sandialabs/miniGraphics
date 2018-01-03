@@ -15,6 +15,7 @@
 
 #include "Triangle.hpp"
 
+#include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
 #include <mpi.h>
@@ -122,7 +123,10 @@ class Mesh {
 
   void setHomogeneousColor(const Color& color);
 
+  Mesh deepCopy() const;
   Mesh copySubset(int beginTriangleIndex, int endTriangleIndex) const;
+
+  void transform(const glm::mat4& transformMatrix);
 
   const glm::vec3& getBoundsMin() const;
   const glm::vec3& getBoundsMax() const;
