@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "BinarySwap.hpp"
+#include "IO/MakeBox.hpp"
 #include "IO/ReadSTL.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
@@ -254,7 +255,7 @@ enum optionIndex {
 };
 enum enableIndex { DISABLE, ENABLE };
 enum renderType { SIMPLE_RASTER, OPENGL };
-enum geometryType { STL_FILE };
+enum geometryType { BOX, STL_FILE };
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
@@ -300,6 +301,9 @@ int main(int argc, char* argv[]) {
      "  --render-simple-raster Use simple triangle rasterization when\n"
      "                         rendering (default).\n"});
 
+  usage.push_back(
+    {GEOMETRY,    BOX,           "",  "box", option::Arg::None,
+     "  --box                  Render a box as the geometry (default)."});
   usage.push_back(
     {GEOMETRY,    STL_FILE,      "",  "stl-file", NonemptyString,
      "  --stl-file=<filename>  Render the geometry in the given STL file.\n"});
@@ -365,7 +369,7 @@ int main(int argc, char* argv[]) {
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
-    if (options[GEOMETRY]) {
+    if (options[GEOMETRY] && (options[GEOMETRY].last()->type() != BOX)) {
       std::string filename(options[GEOMETRY].last()->arg);
       switch (options[GEOMETRY].last()->type()) {
         case STL_FILE:
@@ -379,8 +383,7 @@ int main(int argc, char* argv[]) {
           return 1;
       }
     } else {
-      std::cerr << "Need to specify geometry file." << std::endl;
-      return 1;
+      MakeBox(mesh);
     }
     std::cout << "Rank 0 on pid " << getpid() << std::endl;
   } else {
