@@ -55,11 +55,17 @@ inline void Renderer_Example::fillLine(Image *image,
     std::swap(left, right);
   }
 
-  int xMin = std::max((int)left.x, 0);
-  int xMax = std::min((int)right.x, image->getWidth());
-
   float deltaDepth = (right.z - left.z) / (right.x - left.x);
-  float depth = left.z + deltaDepth * (xMin - left.x);
+  float depth = left.z;
+
+  int xMin = static_cast<int>(left.x);
+  if (xMin < 0) {
+    depth += -xMin * deltaDepth;
+    xMin = 0;
+  }
+
+  int xMax = std::min(static_cast<int>(right.x), image->getWidth());
+
   for (int x = xMin; x < xMax; ++x) {
     if (depth < image->getDepth(x, y)) {
       image->setColor(x, y, color);
