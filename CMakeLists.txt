@@ -26,6 +26,8 @@ set(srcs
   Objects/Image.cpp
   Objects/ImageRGBAUByteColorFloatDepth.cpp
   Objects/Mesh.cpp
+  Objects/Timer.cpp
+  Objects/YamlWriter.cpp
   IO/MakeBox.cpp
   IO/ReadSTL.cpp
   IO/SavePPM.cpp
