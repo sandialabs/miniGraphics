@@ -10,13 +10,34 @@
 // Someone needs to fix this in order for readings to be valid.
 
 #include "PainterOpenGL.hpp"
+
+#include <iostream>
+#include <vector>
+
+// Include GLEW
+#include <GL/glew.h>
+
+// Include GLFW
+#include <GLFW/glfw3.h>
+
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "OpenGL_common/shader.hpp"
 
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
 
-void PainterOpenGL::readTriangles(const Mesh& mesh,
-                                  std::vector<GLfloat>& vBuffer,
-                                  std::vector<GLfloat>& cBuffer) {
+struct PainterOpenGL::Internals {
+  void readTriangles(const Mesh& mesh,
+                     std::vector<GLfloat>& vBuffer,
+                     std::vector<GLfloat>& cBuffer);
+
+  GLFWwindow* window;
+  GLuint programID;
+};
+
+void PainterOpenGL::Internals::readTriangles(const Mesh& mesh,
+                                             std::vector<GLfloat>& vBuffer,
+                                             std::vector<GLfloat>& cBuffer) {
   int numTriangles = mesh.getNumberOfTriangles();
 
   vBuffer.resize(numTriangles * 3 * 3);
@@ -51,7 +72,7 @@ void PainterOpenGL::readTriangles(const Mesh& mesh,
   }
 }
 
-PainterOpenGL::PainterOpenGL() {
+PainterOpenGL::PainterOpenGL() : internals(new Internals) {
   // Initialize GLFW
   if (!glfwInit()) {
     std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -67,13 +88,13 @@ PainterOpenGL::PainterOpenGL() {
   glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 
   // Open a window and create its OpenGL context
-  this->window = glfwCreateWindow(100, 100, "miniGraphics", NULL, NULL);
-  if (this->window == NULL) {
+  this->internals->window = glfwCreateWindow(100, 100, "miniGraphics", NULL, NULL);
+  if (this->internals->window == NULL) {
     std::cerr << "Failed to open GLFW window." << std::endl;
     glfwTerminate();
     exit(1);
   }
-  glfwMakeContextCurrent(this->window);
+  glfwMakeContextCurrent(this->internals->window);
 
   // Initialize GLEW
   glewExperimental = true;  // Needed for core profile
@@ -84,19 +105,21 @@ PainterOpenGL::PainterOpenGL() {
   }
 
   // Ensure we can capture the escape key being pressed below
-  glfwSetInputMode(this->window, GLFW_STICKY_KEYS, GL_TRUE);
+  glfwSetInputMode(this->internals->window, GLFW_STICKY_KEYS, GL_TRUE);
 
   // Create and compile our GLSL program from the shaders
-  this->programID = LoadShaders();
+  this->internals->programID = LoadShaders();
 }
 
 PainterOpenGL::~PainterOpenGL() {
-  glfwMakeContextCurrent(this->window);
-  glDeleteProgram(this->programID);
+  glfwMakeContextCurrent(this->internals->window);
+  glDeleteProgram(this->internals->programID);
 
   // Close OpenGL window and terminate GLFW
-  glfwDestroyWindow(this->window);
+  glfwDestroyWindow(this->internals->window);
   glfwTerminate();
+
+  delete this->internals;
 }
 
 void PainterOpenGL::paint(const Mesh& mesh,
@@ -106,8 +129,8 @@ void PainterOpenGL::paint(const Mesh& mesh,
   int windowWidth = image->getWidth();
   int windowHeight = image->getHeight();
 
-  glfwSetWindowSize(this->window, windowWidth, windowHeight);
-  glfwMakeContextCurrent(this->window);
+  glfwSetWindowSize(this->internals->window, windowWidth, windowHeight);
+  glfwMakeContextCurrent(this->internals->window);
 
   // Black background
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -122,7 +145,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glBindVertexArray(VertexArrayID);
 
   // Get a handle for our "MVP" uniform
-  GLuint MatrixID = glGetUniformLocation(programID, "MVP");
+  GLuint MatrixID = glGetUniformLocation(this->internals->programID, "MVP");
 
   glm::mat4 MVP = projection * modelview;
 
@@ -134,7 +157,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   // One color for each vertex.
   std::vector<GLfloat> colorBufferData;
 
-  readTriangles(mesh, vertexBufferData, colorBufferData);
+  this->internals->readTriangles(mesh, vertexBufferData, colorBufferData);
 
   GLuint vertexbuffer;
   glGenBuffers(1, &vertexbuffer);
@@ -246,7 +269,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Use our shader
-  glUseProgram(this->programID);
+  glUseProgram(this->internals->programID);
 
   // Send our transformation to the currently bound shader,
   // in the "MVP" uniform

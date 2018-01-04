@@ -11,32 +11,13 @@
 
 #include "Painter.hpp"
 
-// Include standard headers
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
-#include <vector>
-
-// Include GLEW
-#include <GL/glew.h>
-
-// Include GLFW
-#include <GLFW/glfw3.h>
-
-// Include GLM
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-using namespace glm;
 
 class PainterOpenGL : public Painter {
  private:
-  void readTriangles(const Mesh& mesh,
-                     std::vector<GLfloat>& vBuffer,
-                     std::vector<GLfloat>& cBuffer);
-
-  GLFWwindow* window;
-  GLuint programID;
+  struct Internals;
+  Internals *internals;
 
  public:
   PainterOpenGL();

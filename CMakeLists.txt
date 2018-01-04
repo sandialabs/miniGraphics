@@ -10,103 +10,11 @@ cmake_minimum_required(VERSION 3.3)
 
 project(miniGraphics)
 
-set(miniGraphics_CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${miniGraphics_CMAKE_MODULE_PATH})
-
-option(MINIGRAPHICS_ENABLE_OPENGL
-  "Turn on/off the OpenGL rendering system."
-  OFF
-  )
-
-find_package(MPI REQUIRED)
+include(CMake/miniGraphicsMacros.cmake)
 
 set(srcs
   main.cpp
   BinarySwap.cpp
-  Common/Image.cpp
-  Common/ImageRGBAUByteColorFloatDepth.cpp
-  Common/MakeBox.cpp
-  Common/Mesh.cpp
-  Common/ReadSTL.cpp
-  Common/SavePPM.cpp
-  Common/Timer.cpp
-  Common/YamlWriter.cpp
-  Paint/PainterSimple.cpp
   )
 
-set(headers
-  ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
-  Common/Color.hpp
-  Common/Compositor.hpp
-  Common/Triangle.hpp
-  Paint/Painter.hpp
-  )
-
-set(include_dirs
-  ${CMAKE_CURRENT_BINARY_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glm/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/optionparser/include
-  ${MPI_CXX_INCLUDE_PATH}
-  )
-
-set(libs
-  ${MPI_CXX_LINK_FLAGS}
-  ${MPI_CXX_LIBRARIES}
-  )
-
-set(cxx_flags
-  ${MPI_CXX_COMPILE_FLAGS}
-  )
-
-if(WIN32)
-  # Don't deal with MSVC's unportable safety warnings
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS)
-endif()
-
-if(MINIGRAPHICS_ENABLE_OPENGL)
-  message(WARNING
-    "OpenGL rendering currently is not working. "
-    "It will (potentially) compile, and it looks like it runs correctly, "
-    "but it does not create valid images.")
-
-  find_package(OpenGL REQUIRED)
-  find_package(GLEW REQUIRED)
-  find_package(GLFW REQUIRED)
-
-  set(srcs ${srcs}
-    Paint/PainterOpenGL.cpp
-    Paint/OpenGL_common/shader.cpp
-    )
-
-  set(include_dirs ${include_dirs}
-    ${OPENGL_INCLUDE_DIR}
-    ${GLEW_INCLUDE_DIRS}
-    ${GLFW_INCLUDE_DIRS}
-    )
-
-  set(libs ${libs}
-    ${OPENGL_LIBRARIES}
-    ${GLEW_LIBRARIES}
-    ${GLFW_LIBRARIES}
-    )
-endif()
-
-set(MINIGRAPHICS_WIN32 ${WIN32})
-configure_file(miniGraphicsConfig.h.in
-  ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
-  )
-
-add_executable(run ${srcs} ${headers})
-
-set_source_files_properties(${headers} HEADER_ONLY TRUE)
-
-target_include_directories(run PRIVATE ${include_dirs})
-
-target_link_libraries(run PRIVATE ${libs})
-
-target_compile_options(run PRIVATE ${cxx_flags})
-
-target_compile_features(run PRIVATE
-  cxx_raw_string_literals
-  )
+miniGraphics_executable(BinarySwap ${srcs})
