@@ -470,9 +470,9 @@ int main(int argc, char* argv[]) {
     // Other ranks read nothing. Rank 0 distributes geometry.
   }
 
-  float overlap = -0.05;
+  float overlap = -0.05f;
   if (options[OVERLAP]) {
-    overlap = atof(options[OVERLAP].arg);
+    overlap = strtof(options[OVERLAP].arg, NULL);
   }
 
   if (options[DISTRIBUTION] &&
