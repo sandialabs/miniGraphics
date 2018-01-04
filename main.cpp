@@ -33,10 +33,10 @@
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
 #include "Objects/Timer.hpp"
 #include "Objects/YamlWriter.hpp"
-#include "Rendering/Renderer_Example.hpp"
+#include "Paint/PainterSimple.hpp"
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
-#include "Rendering/OpenGL_Example.hpp"
+#include "Paint/PainterOpenGL.hpp"
 #endif
 
 #include <glm/mat4x4.hpp>
@@ -208,7 +208,7 @@ void divideMesh(Mesh& mesh, MPI_Comm communicator) {
   }
 }
 
-void run(Renderer* renderer,
+void run(Painter* painter,
          Compositor* compositor,
          const Mesh& mesh,
          int imageWidth,
@@ -278,38 +278,31 @@ void run(Renderer* renderer,
   {
     Timer timeTotal(yaml, "total-seconds");
 
-    // DRAW SECTION
+    // Paint SECTION
     {
-      Timer timeDraw(yaml, "draw-seconds");
+      Timer timePaint(yaml, "paint-seconds");
 
-      renderer->render(mesh, &localImage, modelview, projection);
+      painter->paint(mesh, &localImage, modelview, projection);
     }
 
     // TODO: This barrier should be optional, but is needed for any of the
     // timing below to be useful.
     MPI_Barrier(MPI_COMM_WORLD);
 
+    // COMPOSITION SECTION
     {
-      Timer timeCompositePlusCollect(yaml, "composite-plus-collect-seconds");
+      Timer timeCompositePlusCollect(yaml, "composite-seconds");
 
-      // COMPOSITION SECTION
-      {
-        Timer timeComposite(yaml, "composite-seconds");
-        compositeImage = compositor->compose(&localImage, MPI_COMM_WORLD);
-      }
+      compositeImage = compositor->compose(&localImage, MPI_COMM_WORLD);
 
-      // COLLECT SECTION
-      {
-        Timer timeCollect(yaml, "collect-seconds");
-        fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
-      }
+      fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
     }
   }
 
   // SAVE FOR SANITY CHECK
   if (writeImages) {
     std::stringstream filename;
-    filename << "local_drawing" << rank << ".ppm";
+    filename << "local_painting" << rank << ".ppm";
     SavePPM(localImage, filename.str());
 
     if (rank == 0) {
@@ -325,13 +318,13 @@ enum optionIndex {
   HEIGHT,
   YAML_OUTPUT,
   WRITE_IMAGE,
-  DRAWER,
+  PAINTER,
   GEOMETRY,
   DISTRIBUTION,
   OVERLAP
 };
 enum enableIndex { DISABLE, ENABLE };
-enum drawType { SIMPLE_RASTER, OPENGL };
+enum paintType { SIMPLE_RASTER, OPENGL };
 enum geometryType { BOX, STL_FILE };
 enum distributionType { DUPLICATE, DIVIDE };
 
@@ -387,12 +380,12 @@ int main(int argc, char* argv[]) {
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
   usage.push_back(
-    {DRAWER,       OPENGL,        "",  "draw-opengl", option::Arg::None,
-     "  --draw-opengl          Use OpenGL hardware when drawing."});
+    {PAINTER,      OPENGL,        "",  "paint-opengl", option::Arg::None,
+     "  --paint-opengl         Use OpenGL hardware when painting."});
 #endif
   usage.push_back(
-    {DRAWER,       SIMPLE_RASTER, "",  "draw-simple-raster", option::Arg::None,
-     "  --draw-simple-raster   Use simple triangle rasterization when drawing.\n"
+    {PAINTER,      SIMPLE_RASTER, "",  "paint-simple-raster", option::Arg::None,
+     "  --paint-simple-raster  Use simple triangle rasterization when painting.\n"
      "                         (Default)\n"});
 
   usage.push_back(
@@ -427,7 +420,7 @@ int main(int argc, char* argv[]) {
   int imageHeight = 900;
   std::string yamlFilename("timing.yaml");
   bool writeImages = true;
-  std::auto_ptr<Renderer> renderer(new Renderer_Example);
+  std::auto_ptr<Painter> painter(new PainterSimple);
   std::auto_ptr<Compositor> compositor(new BinarySwap);
   float overlap = -0.05f;
 
@@ -472,24 +465,24 @@ int main(int argc, char* argv[]) {
     writeImages = (options[WRITE_IMAGE].last()->type() == ENABLE);
   }
 
-  if (options[DRAWER]) {
-    switch (options[DRAWER].last()->type()) {
+  if (options[PAINTER]) {
+    switch (options[PAINTER].last()->type()) {
       case SIMPLE_RASTER:
-        // Drawer initialized to simple raster already.
-        yaml.AddDictionaryEntry("drawing", "simple");
+        // Painter initialized to simple raster already.
+        yaml.AddDictionaryEntry("painter", "simple");
         break;
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
       case OPENGL:
-        renderer.reset(new OpenGL_Example);
-        yaml.AddDictionaryEntry("drawing", "OpenGL");
+        painter.reset(new PainterOpenGL);
+        yaml.AddDictionaryEntry("painter", "OpenGL");
         break;
 #endif
       default:
-        std::cerr << "Internal error: bad draw option." << std::endl;
+        std::cerr << "Internal error: bad painter option." << std::endl;
         return 1;
     }
   } else {
-    yaml.AddDictionaryEntry("drawing", "simple");
+    yaml.AddDictionaryEntry("painter", "simple");
   }
 
   // LOAD TRIANGLES
@@ -532,7 +525,7 @@ int main(int argc, char* argv[]) {
     yaml.AddDictionaryEntry("geometry-overlap", overlap);
   }
 
-  run(renderer.get(),
+  run(painter.get(),
       compositor.get(),
       mesh,
       imageWidth,

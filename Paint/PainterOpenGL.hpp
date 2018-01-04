@@ -6,10 +6,10 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef OPENGL_EXAMPLE_H
-#define OPENGL_EXAMPLE_H
+#ifndef PAINTER_OPENGL_H
+#define PAINTER_OPENGL_H
 
-#include "../Objects/Renderer.hpp"
+#include "Painter.hpp"
 
 // Include standard headers
 #include <stdio.h>
@@ -29,7 +29,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 using namespace glm;
 
-class OpenGL_Example : public Renderer {
+class PainterOpenGL : public Painter {
  private:
   void readTriangles(const Mesh& mesh,
                      std::vector<GLfloat>& vBuffer,
@@ -39,13 +39,13 @@ class OpenGL_Example : public Renderer {
   GLuint programID;
 
  public:
-  OpenGL_Example();
-  ~OpenGL_Example();
+  PainterOpenGL();
+  ~PainterOpenGL();
 
-  void render(const Mesh& mesh,
-              Image* image,
-              const glm::mat4x4& modelview,
-              const glm::mat4x4& projection);
+  void paint(const Mesh& mesh,
+             Image* image,
+             const glm::mat4x4& modelview,
+             const glm::mat4x4& projection) final;
 };
 
-#endif
+#endif  // PAINTER_OPENGL_H

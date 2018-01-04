@@ -6,26 +6,26 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef RENDERER_H
-#define RENDERER_H
+#ifndef PAINTER_H
+#define PAINTER_H
 
 #include <miniGraphicsConfig.h>
 
-#include "Image.hpp"
-#include "Mesh.hpp"
+#include <Objects/Image.hpp>
+#include <Objects/Mesh.hpp>
 
 #include <glm/mat4x4.hpp>
 
 #include <vector>
 
-class Renderer {
+class Painter {
  public:
-  virtual void render(const Mesh& mesh,
-                      Image* image,
-                      const glm::mat4& modelview,
-                      const glm::mat4& projection) = 0;
+  virtual void paint(const Mesh& mesh,
+                     Image* image,
+                     const glm::mat4& modelview,
+                     const glm::mat4& projection) = 0;
 
-  virtual ~Renderer() = default;
+  virtual ~Painter() = default;
 };
 
-#endif
+#endif  // PAINTER_H

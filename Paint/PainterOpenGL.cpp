@@ -9,14 +9,14 @@
 // TODO: THIS CODE IS BROKEN RIGHT NOW. THE OPENGL RENDERING DOES NOT WORK.
 // Someone needs to fix this in order for readings to be valid.
 
-#include "OpenGL_Example.hpp"
+#include "PainterOpenGL.hpp"
 #include "OpenGL_common/shader.hpp"
 
-#include "../Objects/ImageRGBAUByteColorFloatDepth.hpp"
+#include <Objects/ImageRGBAUByteColorFloatDepth.hpp>
 
-void OpenGL_Example::readTriangles(const Mesh& mesh,
-                                   std::vector<GLfloat>& vBuffer,
-                                   std::vector<GLfloat>& cBuffer) {
+void PainterOpenGL::readTriangles(const Mesh& mesh,
+                                  std::vector<GLfloat>& vBuffer,
+                                  std::vector<GLfloat>& cBuffer) {
   int numTriangles = mesh.getNumberOfTriangles();
 
   vBuffer.resize(numTriangles * 3 * 3);
@@ -51,7 +51,7 @@ void OpenGL_Example::readTriangles(const Mesh& mesh,
   }
 }
 
-OpenGL_Example::OpenGL_Example() {
+PainterOpenGL::PainterOpenGL() {
   // Initialize GLFW
   if (!glfwInit()) {
     std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -90,7 +90,7 @@ OpenGL_Example::OpenGL_Example() {
   this->programID = LoadShaders();
 }
 
-OpenGL_Example::~OpenGL_Example() {
+PainterOpenGL::~PainterOpenGL() {
   glfwMakeContextCurrent(this->window);
   glDeleteProgram(this->programID);
 
@@ -99,10 +99,10 @@ OpenGL_Example::~OpenGL_Example() {
   glfwTerminate();
 }
 
-void OpenGL_Example::render(const Mesh& mesh,
-                            Image* image,
-                            const glm::mat4x4& modelview,
-                            const glm::mat4x4& projection) {
+void PainterOpenGL::paint(const Mesh& mesh,
+                          Image* image,
+                          const glm::mat4x4& modelview,
+                          const glm::mat4x4& projection) {
   int windowWidth = image->getWidth();
   int windowHeight = image->getHeight();
 

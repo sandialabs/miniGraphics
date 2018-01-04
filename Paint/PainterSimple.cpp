@@ -6,7 +6,7 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "Renderer_Example.hpp"
+#include "PainterSimple.hpp"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -34,13 +34,13 @@ static inline void clamp(T &variable, T min, T max) {
   variable = std::max(min, std::min(max, variable));
 }
 
-inline void Renderer_Example::fillLine(Image *image,
-                                       int y,
-                                       const glm::vec3 &edgeDir1,
-                                       const glm::vec3 &edgeBase1,
-                                       const glm::vec3 &edgeDir2,
-                                       const glm::vec3 &edgeBase2,
-                                       const Color &color) {
+inline void PainterSimple::fillLine(Image *image,
+                                    int y,
+                                    const glm::vec3 &edgeDir1,
+                                    const glm::vec3 &edgeBase1,
+                                    const glm::vec3 &edgeDir2,
+                                    const glm::vec3 &edgeBase2,
+                                    const Color &color) {
   float interp1 = ((float)y - edgeBase1.y) / edgeDir1.y;
   float interp2 = ((float)y - edgeBase2.y) / edgeDir2.y;
 
@@ -75,11 +75,11 @@ inline void Renderer_Example::fillLine(Image *image,
   }
 }
 
-void Renderer_Example::fillTriangle(Image *image,
-                                    const Triangle &triangle,
-                                    const glm::mat4 &modelview,
-                                    const glm::mat4 &projection,
-                                    const glm::mat3 &normalTransform) {
+void PainterSimple::fillTriangle(Image *image,
+                                 const Triangle &triangle,
+                                 const glm::mat4 &modelview,
+                                 const glm::mat4 &projection,
+                                 const glm::mat3 &normalTransform) {
   glm::vec3 normal = glm::normalize(normalTransform * triangle.normal);
   float colorScale = glm::abs(glm::dot(normal, glm::vec3(0, 0, 1)));
 
@@ -129,10 +129,10 @@ void Renderer_Example::fillTriangle(Image *image,
   }
 }
 
-void Renderer_Example::render(const Mesh &mesh,
-                              Image *image,
-                              const glm::mat4 &modelview,
-                              const glm::mat4 &projection) {
+void PainterSimple::paint(const Mesh &mesh,
+                          Image *image,
+                          const glm::mat4 &modelview,
+                          const glm::mat4 &projection) {
   image->clear();
 
   // It turns out, the normals should be transformed by the inverse transpose

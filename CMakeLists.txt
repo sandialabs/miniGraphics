@@ -31,19 +31,20 @@ set(srcs
   IO/MakeBox.cpp
   IO/ReadSTL.cpp
   IO/SavePPM.cpp
-  Rendering/Renderer_Example.cpp
+  Paint/PainterSimple.cpp
   )
 
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Objects/Color.hpp
   Objects/Compositor.hpp
-  Objects/Renderer.hpp
   Objects/Triangle.hpp
+  Paint/Painter.hpp
   )
 
 set(include_dirs
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/glm/include
   ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/optionparser/include
   ${MPI_CXX_INCLUDE_PATH}
@@ -74,8 +75,8 @@ if(MINIGRAPHICS_ENABLE_OPENGL)
   find_package(GLFW REQUIRED)
 
   set(srcs ${srcs}
-    Rendering/OpenGL_Example.cpp
-    Rendering/OpenGL_common/shader.cpp
+    Paint/PainterOpenGL.cpp
+    Paint/OpenGL_common/shader.cpp
     )
 
   set(include_dirs ${include_dirs}
