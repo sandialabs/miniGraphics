@@ -8,8 +8,6 @@
 
 #include "YamlWriter.hpp"
 
-#include <string>
-
 YamlWriter::YamlWriter(std::ostream& outputStream)
     : OutputStream(outputStream), AtBlockStart(true) {
   this->BlockStack.push(Block(0));
@@ -22,9 +20,7 @@ YamlWriter::~YamlWriter() {
   }
 }
 
-YamlWriter::Block& YamlWriter::CurrentBlock() {
-  return this->BlockStack.top();
-}
+YamlWriter::Block& YamlWriter::CurrentBlock() { return this->BlockStack.top(); }
 
 const YamlWriter::Block& YamlWriter::CurrentBlock() const {
   return this->BlockStack.top();

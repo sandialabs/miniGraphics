@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <stack>
+#include <string>
 
 class YamlWriter {
   struct Block {

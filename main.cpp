@@ -13,8 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <time.h>
-
 #ifndef MINIGRAPHICS_WIN32
 #include <sys/types.h>
 #include <unistd.h>
@@ -33,6 +31,7 @@
 #include "IO/ReadSTL.hpp"
 #include "IO/SavePPM.hpp"
 #include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
+#include "Objects/Timer.hpp"
 #include "Objects/YamlWriter.hpp"
 #include "Rendering/Renderer_Example.hpp"
 
@@ -243,12 +242,8 @@ void run(Renderer* renderer,
   float dist = glm::sqrt(glm::dot(width, width));
 
   int numTriangles = mesh.getNumberOfTriangles();
-  MPI_Allreduce(MPI_IN_PLACE,
-                &numTriangles,
-                1,
-                MPI_INT,
-                MPI_SUM,
-                MPI_COMM_WORLD);
+  MPI_Allreduce(
+      MPI_IN_PLACE, &numTriangles, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   yaml.AddDictionaryEntry("num-triangles", numTriangles);
 
   // Set up projection matrices
@@ -276,32 +271,40 @@ void run(Renderer* renderer,
                        dist / 3,
                        2 * dist);
 
-  // RENDER SECTION
-  clock_t r_begin = clock();
-
   ImageRGBAUByteColorFloatDepth localImage(imageWidth, imageHeight);
-  renderer->render(mesh, &localImage, modelview, projection);
+  std::unique_ptr<Image> compositeImage;
+  std::unique_ptr<Image> fullCompositeImage;
 
-  clock_t r_end = clock();
-  double r_time_spent = (double)(r_end - r_begin) / CLOCKS_PER_SEC;
-  std::cout << "RENDER: " << r_time_spent << " seconds" << std::endl;
+  {
+    Timer timeTotal(yaml, "total-seconds");
 
-  // COMPOSITION SECTION
-  clock_t c_begin = clock();
-  std::unique_ptr<Image> compositeImage =
-      compositor->compose(&localImage, MPI_COMM_WORLD);
-  clock_t c_end = clock();
+    // DRAW SECTION
+    {
+      Timer timeDraw(yaml, "draw-seconds");
 
-  double c_time_spent = (double)(c_end - c_begin) / CLOCKS_PER_SEC;
-  printf("COMPOSITION: %f seconds\n", c_time_spent);
+      renderer->render(mesh, &localImage, modelview, projection);
+    }
 
-  // COLLECT SECTION
-  c_begin = clock();
-  std::unique_ptr<Image> fullCompositeImage =
-      compositeImage->Gather(0, MPI_COMM_WORLD);
-  c_end = clock();
-  c_time_spent = (double)(c_end - c_begin) / CLOCKS_PER_SEC;
-  printf("COLLECT: %f seconds\n", c_time_spent);
+    // TODO: This barrier should be optional, but is needed for any of the
+    // timing below to be useful.
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    {
+      Timer timeCompositePlusCollect(yaml, "composite-plus-collect-seconds");
+
+      // COMPOSITION SECTION
+      {
+        Timer timeComposite(yaml, "composite-seconds");
+        compositeImage = compositor->compose(&localImage, MPI_COMM_WORLD);
+      }
+
+      // COLLECT SECTION
+      {
+        Timer timeCollect(yaml, "collect-seconds");
+        fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
+      }
+    }
+  }
 
   // SAVE FOR SANITY CHECK
   if (writeImages) {
