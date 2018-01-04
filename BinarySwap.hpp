@@ -9,7 +9,7 @@
 #ifndef BINARYSWAP_HPP
 #define BINARYSWAP_HPP
 
-#include "Objects/Compositor.hpp"
+#include <Common/Compositor.hpp>
 
 class BinarySwap : public Compositor {
  public:

@@ -23,22 +23,22 @@ find_package(MPI REQUIRED)
 set(srcs
   main.cpp
   BinarySwap.cpp
-  Objects/Image.cpp
-  Objects/ImageRGBAUByteColorFloatDepth.cpp
-  Objects/Mesh.cpp
-  Objects/Timer.cpp
-  Objects/YamlWriter.cpp
-  IO/MakeBox.cpp
-  IO/ReadSTL.cpp
-  IO/SavePPM.cpp
+  Common/Image.cpp
+  Common/ImageRGBAUByteColorFloatDepth.cpp
+  Common/MakeBox.cpp
+  Common/Mesh.cpp
+  Common/ReadSTL.cpp
+  Common/SavePPM.cpp
+  Common/Timer.cpp
+  Common/YamlWriter.cpp
   Paint/PainterSimple.cpp
   )
 
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
-  Objects/Color.hpp
-  Objects/Compositor.hpp
-  Objects/Triangle.hpp
+  Common/Color.hpp
+  Common/Compositor.hpp
+  Common/Triangle.hpp
   Paint/Painter.hpp
   )
 

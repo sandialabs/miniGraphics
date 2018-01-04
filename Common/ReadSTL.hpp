@@ -9,7 +9,7 @@
 #ifndef READSTL_HPP
 #define READSTL_HPP
 
-#include "../Objects/Mesh.hpp"
+#include <Common/Mesh.hpp>
 
 #include <string>
 

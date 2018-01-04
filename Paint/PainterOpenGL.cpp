@@ -12,7 +12,7 @@
 #include "PainterOpenGL.hpp"
 #include "OpenGL_common/shader.hpp"
 
-#include <Objects/ImageRGBAUByteColorFloatDepth.hpp>
+#include <Common/ImageRGBAUByteColorFloatDepth.hpp>
 
 void PainterOpenGL::readTriangles(const Mesh& mesh,
                                   std::vector<GLfloat>& vBuffer,

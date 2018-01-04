@@ -6,11 +6,16 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef MAKEBOX_HPP
-#define MAKEBOX_HPP
+#ifndef SAVEPPM_HPP
+#define SAVEPPM_HPP
 
-#include "../Objects/Mesh.hpp"
+#include <Common/Image.hpp>
 
-void MakeBox(Mesh& mesh);
+#include <string>
 
-#endif  // MAKEBOX_HPP
+/// \brief Saves the given Image data to a PPM file
+///
+/// Returns true if the save is successful, false otherwise.
+bool SavePPM(const Image& image, const std::string& filename);
+
+#endif  // SAVEPPM_HPP

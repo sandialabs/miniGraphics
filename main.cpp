@@ -26,17 +26,17 @@
 #include <sstream>
 #include <vector>
 
+#include <Common/ImageRGBAUByteColorFloatDepth.hpp>
+#include <Common/MakeBox.hpp>
+#include <Common/ReadSTL.hpp>
+#include <Common/SavePPM.hpp>
+#include <Common/Timer.hpp>
+#include <Common/YamlWriter.hpp>
+#include <Paint/PainterSimple.hpp>
 #include "BinarySwap.hpp"
-#include "IO/MakeBox.hpp"
-#include "IO/ReadSTL.hpp"
-#include "IO/SavePPM.hpp"
-#include "Objects/ImageRGBAUByteColorFloatDepth.hpp"
-#include "Objects/Timer.hpp"
-#include "Objects/YamlWriter.hpp"
-#include "Paint/PainterSimple.hpp"
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
-#include "Paint/PainterOpenGL.hpp"
+#include <Paint/PainterOpenGL.hpp>
 #endif
 
 #include <glm/mat4x4.hpp>

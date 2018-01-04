@@ -11,8 +11,8 @@
 
 #include <miniGraphicsConfig.h>
 
-#include <Objects/Image.hpp>
-#include <Objects/Mesh.hpp>
+#include <Common/Image.hpp>
+#include <Common/Mesh.hpp>
 
 #include <glm/mat4x4.hpp>
 
