@@ -164,7 +164,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glGenBuffers(1, &vertexbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
   glBufferData(GL_ARRAY_BUFFER,
-               vertexBufferData.size(),
+               vertexBufferData.size() * sizeof(float),
                &vertexBufferData.front(),
                GL_STATIC_DRAW);
 
@@ -172,7 +172,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glGenBuffers(1, &colorbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
   glBufferData(GL_ARRAY_BUFFER,
-               colorBufferData.size(),
+               colorBufferData.size() * sizeof(float),
                &colorBufferData.front(),
                GL_STATIC_DRAW);
 
@@ -305,6 +305,9 @@ void PainterOpenGL::paint(const Mesh& mesh,
 
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
+
+  glFlush();
+  glReadBuffer(GL_BACK);
 
   ImageRGBAUByteColorFloatDepth* rgbaDepthImage =
       dynamic_cast<ImageRGBAUByteColorFloatDepth*>(image);
