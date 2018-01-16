@@ -17,7 +17,7 @@
 class PainterOpenGL : public Painter {
  private:
   struct Internals;
-  Internals *internals;
+  Internals* internals;
 
  public:
   PainterOpenGL();

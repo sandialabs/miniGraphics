@@ -88,7 +88,8 @@ PainterOpenGL::PainterOpenGL() : internals(new Internals) {
   glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 
   // Open a window and create its OpenGL context
-  this->internals->window = glfwCreateWindow(100, 100, "miniGraphics", NULL, NULL);
+  this->internals->window =
+      glfwCreateWindow(100, 100, "miniGraphics", NULL, NULL);
   if (this->internals->window == NULL) {
     std::cerr << "Failed to open GLFW window." << std::endl;
     glfwTerminate();

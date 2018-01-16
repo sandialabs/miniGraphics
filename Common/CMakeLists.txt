@@ -16,7 +16,9 @@ set(srcs
   Image.cpp
   ImageRGBAUByteColorFloatDepth.cpp
   MakeBox.cpp
+  MainLoop.cpp
   Mesh.cpp
+  MeshHelper.cpp
   ReadSTL.cpp
   SavePPM.cpp
   Timer.cpp
