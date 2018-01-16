@@ -8,6 +8,13 @@
 
 cmake_minimum_required(VERSION 3.3)
 
-project(miniGraphics)
+project(miniGraphicsBinarySwapBase CXX)
 
-add_subdirectory(BinarySwap)
+include(../../CMake/miniGraphicsMacros.cmake)
+
+set(srcs
+  main.cpp
+  BinarySwapBase.cpp
+  )
+
+miniGraphics_executable(BinarySwapBase ${srcs})

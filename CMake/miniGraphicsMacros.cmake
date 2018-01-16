@@ -12,6 +12,14 @@ cmake_minimum_required(VERSION 3.3)
 set(miniGraphics_CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${miniGraphics_CMAKE_MODULE_PATH})
 
+# Set up the binary output paths
+set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib CACHE PATH
+  "Output directory for building all libraries."
+  )
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin CACHE PATH
+  "Output directory for building all executables."
+  )
+
 # Get the base miniGraphics source dir
 get_filename_component(miniGraphics_SOURCE_DIR
   ${CMAKE_CURRENT_LIST_DIR}
@@ -91,9 +99,9 @@ function(miniGraphics_executable miniapp_name)
 endfunction(miniGraphics_executable)
 
 if(NOT TARGET miniGraphicsCommon)
-  add_subdirectory(${miniGraphics_SOURCE_DIR}/Common)
+  add_subdirectory(${miniGraphics_SOURCE_DIR}/Common ${CMAKE_BINARY_DIR}/Common)
 endif()
 
 if(NOT TARGET miniGraphicsPaint)
-  add_subdirectory(${miniGraphics_SOURCE_DIR}/Paint)
+  add_subdirectory(${miniGraphics_SOURCE_DIR}/Paint ${CMAKE_BINARY_DIR}/Paint)
 endif()
