@@ -148,7 +148,7 @@ static void run(Painter* painter,
 }
 
 enum optionIndex {
-  DUMMY,
+  DUMMY = 100,
   HELP,
   WIDTH,
   HEIGHT,
@@ -308,6 +308,11 @@ int MainLoop(int argc,
 
   if (parse.nonOptionsCount() > 0) {
     std::cerr << "Unknown option: " << parse.nonOption(0) << std::endl;
+    option::printUsage(std::cerr, &usage.front());
+    return 1;
+  }
+
+  if (!compositor->setOptions(options, yaml)) {
     option::printUsage(std::cerr, &usage.front());
     return 1;
   }

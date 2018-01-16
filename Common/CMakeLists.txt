@@ -13,6 +13,7 @@ cmake_minimum_required(VERSION 3.3)
 project(miniGraphicsCommon CXX)
 
 set(srcs
+  Compositor.cpp
   Image.cpp
   ImageRGBAUByteColorFloatDepth.cpp
   MakeBox.cpp
@@ -28,7 +29,6 @@ set(srcs
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Color.hpp
-  Compositor.hpp
   Triangle.hpp
   )
 
