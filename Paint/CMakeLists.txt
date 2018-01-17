@@ -30,11 +30,6 @@ set(include_dirs)
 set(libs)
 
 if(MINIGRAPHICS_ENABLE_OPENGL)
-  message(WARNING
-    "OpenGL rendering currently is not working. "
-    "It will (potentially) compile, and it looks like it runs correctly, "
-    "but it does not create valid images.")
-
   find_package(OpenGL REQUIRED)
   find_package(GLEW REQUIRED)
   find_package(GLFW REQUIRED)

@@ -20,6 +20,7 @@
 // Include GLFW
 #include <GLFW/glfw3.h>
 
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "OpenGL_common/shader.hpp"
@@ -29,6 +30,7 @@
 struct PainterOpenGL::Internals {
   void readTriangles(const Mesh& mesh,
                      std::vector<GLfloat>& vBuffer,
+                     std::vector<GLfloat>& nBuffer,
                      std::vector<GLfloat>& cBuffer);
 
   GLFWwindow* window;
@@ -37,10 +39,12 @@ struct PainterOpenGL::Internals {
 
 void PainterOpenGL::Internals::readTriangles(const Mesh& mesh,
                                              std::vector<GLfloat>& vBuffer,
+                                             std::vector<GLfloat>& nBuffer,
                                              std::vector<GLfloat>& cBuffer) {
   int numTriangles = mesh.getNumberOfTriangles();
 
   vBuffer.resize(numTriangles * 3 * 3);
+  nBuffer.resize(numTriangles * 3 * 3);
   cBuffer.resize(numTriangles * 3 * 3);
 
   for (int triangleIndex = 0; triangleIndex < numTriangles; ++triangleIndex) {
@@ -57,6 +61,18 @@ void PainterOpenGL::Internals::readTriangles(const Mesh& mesh,
     vBuffer[triangleIndex * 9 + 6] = triangle.vertex[2].x;
     vBuffer[triangleIndex * 9 + 7] = triangle.vertex[2].y;
     vBuffer[triangleIndex * 9 + 8] = triangle.vertex[2].z;
+
+    nBuffer[triangleIndex * 9 + 0] = triangle.normal.x;
+    nBuffer[triangleIndex * 9 + 1] = triangle.normal.y;
+    nBuffer[triangleIndex * 9 + 2] = triangle.normal.z;
+
+    nBuffer[triangleIndex * 9 + 3] = triangle.normal.x;
+    nBuffer[triangleIndex * 9 + 4] = triangle.normal.y;
+    nBuffer[triangleIndex * 9 + 5] = triangle.normal.z;
+
+    nBuffer[triangleIndex * 9 + 6] = triangle.normal.x;
+    nBuffer[triangleIndex * 9 + 7] = triangle.normal.y;
+    nBuffer[triangleIndex * 9 + 8] = triangle.normal.z;
 
     cBuffer[triangleIndex * 9 + 0] = triangle.color.Components[0];
     cBuffer[triangleIndex * 9 + 1] = triangle.color.Components[1];
@@ -146,33 +162,51 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glBindVertexArray(VertexArrayID);
 
   // Get a handle for our "MVP" uniform
-  GLuint MatrixID = glGetUniformLocation(this->internals->programID, "MVP");
+  GLuint MVDMatrixId = glGetUniformLocation(this->internals->programID, "MVP");
 
   glm::mat4 MVP = projection * modelview;
+
+  // Get a handle for our "normalTransform" uniform
+  GLuint normalTransformID =
+      glGetUniformLocation(this->internals->programID, "normalTransform");
+
+  glm::mat3 normalTransform = glm::inverseTranspose(glm::mat3(modelview));
 
   // Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive
   // vertices give a triangle. We could probably speed things up by using the
   // indices in the mesh directly, but that is for future work.
   std::vector<GLfloat> vertexBufferData;
 
+  // One normal for each vertex.
+  std::vector<GLfloat> normalBufferData;
+
   // One color for each vertex.
   std::vector<GLfloat> colorBufferData;
 
-  this->internals->readTriangles(mesh, vertexBufferData, colorBufferData);
+  this->internals->readTriangles(
+      mesh, vertexBufferData, normalBufferData, colorBufferData);
 
   GLuint vertexbuffer;
   glGenBuffers(1, &vertexbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
   glBufferData(GL_ARRAY_BUFFER,
-               vertexBufferData.size(),
+               vertexBufferData.size() * sizeof(float),
                &vertexBufferData.front(),
+               GL_STATIC_DRAW);
+
+  GLuint normalbuffer;
+  glGenBuffers(1, &normalbuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+  glBufferData(GL_ARRAY_BUFFER,
+               normalBufferData.size() * sizeof(float),
+               &normalBufferData.front(),
                GL_STATIC_DRAW);
 
   GLuint colorbuffer;
   glGenBuffers(1, &colorbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
   glBufferData(GL_ARRAY_BUFFER,
-               colorBufferData.size(),
+               colorBufferData.size() * sizeof(float),
                &colorBufferData.front(),
                GL_STATIC_DRAW);
 
@@ -273,10 +307,11 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glUseProgram(this->internals->programID);
 
   // Send our transformation to the currently bound shader,
-  // in the "MVP" uniform
-  glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+  // in the "MVP" and "normalTransform" uniforms
+  glUniformMatrix4fv(MVDMatrixId, 1, GL_FALSE, &MVP[0][0]);
+  glUniformMatrix3fv(normalTransformID, 1, GL_FALSE, &normalTransform[0][0]);
 
-  // 1rst attribute buffer : vertices
+  // 1st attribute buffer : vertices
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
   glVertexAttribPointer(0,  // attribute. No particular reason for 0, but must
@@ -288,10 +323,22 @@ void PainterOpenGL::paint(const Mesh& mesh,
                         (void*)0   // array buffer offset
                         );
 
-  // 2nd attribute buffer : colors
+  // 2nd attribute buffer : normals
   glEnableVertexAttribArray(1);
-  glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
   glVertexAttribPointer(1,  // attribute. No particular reason for 1, but must
+                            // match the layout in the shader.
+                        3,  // size
+                        GL_FLOAT,  // type
+                        GL_FALSE,  // normalized?
+                        0,         // stride
+                        (void*)0   // array buffer offset
+                        );
+
+  // 3rd attribute buffer : colors
+  glEnableVertexAttribArray(2);
+  glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+  glVertexAttribPointer(2,  // attribute. No particular reason for 2, but must
                             // match the layout in the shader.
                         3,  // size
                         GL_FLOAT,  // type
@@ -305,6 +352,10 @@ void PainterOpenGL::paint(const Mesh& mesh,
 
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
+  glDisableVertexAttribArray(2);
+
+  glFlush();
+  glReadBuffer(GL_BACK);
 
   ImageRGBAUByteColorFloatDepth* rgbaDepthImage =
       dynamic_cast<ImageRGBAUByteColorFloatDepth*>(image);
@@ -334,6 +385,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
 
   // Cleanup VBO and shader
   glDeleteBuffers(1, &vertexbuffer);
+  glDeleteBuffers(1, &normalbuffer);
   glDeleteBuffers(1, &colorbuffer);
   glDeleteVertexArrays(1, &VertexArrayID);
 
