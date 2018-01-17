@@ -6,11 +6,13 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef MAKEBOX_HPP
-#define MAKEBOX_HPP
+#ifndef READSTL_HPP
+#define READSTL_HPP
 
-#include "../Objects/Mesh.hpp"
+#include <Common/Mesh.hpp>
 
-void MakeBox(Mesh& mesh);
+#include <string>
 
-#endif  // MAKEBOX_HPP
+bool ReadSTL(const std::string& filename, Mesh& mesh);
+
+#endif  // READSTL_HPP

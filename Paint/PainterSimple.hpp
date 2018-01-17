@@ -6,16 +6,16 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef RENDERER_EXAMPLE_H
-#define RENDERER_EXAMPLE_H
+#ifndef PAINTER_SIMPLE_H
+#define PAINTER_SIMPLE_H
 
 #include <iostream>
 
-#include "../Objects/Renderer.hpp"
+#include "Painter.hpp"
 
 #include <glm/vec3.hpp>
 
-class Renderer_Example : public Renderer {
+class PainterSimple : public Painter {
  private:
   void fillLine(Image* image,
                 int y,
@@ -31,10 +31,10 @@ class Renderer_Example : public Renderer {
                     const glm::mat3& normalTransform);
 
  public:
-  void render(const Mesh& mesh,
-              Image* image,
-              const glm::mat4& modelview,
-              const glm::mat4& projection) final;
+  void paint(const Mesh& mesh,
+             Image* image,
+             const glm::mat4& modelview,
+             const glm::mat4& projection) final;
 };
 
-#endif
+#endif  // PAINTER_SIMPLE_H

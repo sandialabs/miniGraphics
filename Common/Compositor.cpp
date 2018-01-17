@@ -6,13 +6,9 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef READSTL_HPP
-#define READSTL_HPP
+#include "Compositor.hpp"
 
-#include "../Objects/Mesh.hpp"
-
-#include <string>
-
-bool ReadSTL(const std::string& filename, Mesh& mesh);
-
-#endif  // READSTL_HPP
+bool Compositor::setOptions(const std::vector<option::Option>& options,
+                            YamlWriter &yaml) {
+  return true;
+}

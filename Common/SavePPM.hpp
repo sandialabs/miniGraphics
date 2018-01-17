@@ -6,15 +6,16 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef BINARYSWAP_HPP
-#define BINARYSWAP_HPP
+#ifndef SAVEPPM_HPP
+#define SAVEPPM_HPP
 
-#include "Objects/Compositor.hpp"
+#include <Common/Image.hpp>
 
-class BinarySwap : public Compositor {
- public:
-  std::unique_ptr<Image> compose(Image *localImage,
-                                 MPI_Comm communicator) final;
-};
+#include <string>
 
-#endif  // BINARYSWAP_HPP
+/// \brief Saves the given Image data to a PPM file
+///
+/// Returns true if the save is successful, false otherwise.
+bool SavePPM(const Image& image, const std::string& filename);
+
+#endif  // SAVEPPM_HPP
