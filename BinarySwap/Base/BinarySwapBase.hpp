@@ -14,6 +14,7 @@
 class BinarySwap : public Compositor {
  public:
   std::unique_ptr<Image> compose(Image *localImage,
+                                 MPI_Group group,
                                  MPI_Comm communicator) final;
 };
 

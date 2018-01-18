@@ -20,19 +20,28 @@ static bool isPowerOfTwo(int x) {
   return true;
 }
 
+static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
+  MPI_Group commGroup;
+  MPI_Comm_group(communicator, &commGroup);
+
+  int realRank;
+  MPI_Group_translate_ranks(group, 1, &rank, commGroup, &realRank);
+  return realRank;
+}
+
 std::unique_ptr<Image> BinarySwap::compose(Image *localImage,
+                                           MPI_Group group,
                                            MPI_Comm communicator) {
   // Binary-swap is a recursive algorithm. We start with a process group with
   // all the processes, then divide and conquer the group until we only have
   // groups of size 1.
-  MPI_Comm workingCommunicator;
-  MPI_Comm_dup(communicator, &workingCommunicator);
+  MPI_Group workingGroup = group;
 
   int rank;
-  MPI_Comm_rank(workingCommunicator, &rank);
+  MPI_Group_rank(workingGroup, &rank);
 
   int numProc;
-  MPI_Comm_size(workingCommunicator, &numProc);
+  MPI_Group_size(workingGroup, &numProc);
 
   std::unique_ptr<Image> workingImage = localImage->shallowCopy();
 
@@ -82,10 +91,10 @@ std::unique_ptr<Image> BinarySwap::compose(Image *localImage,
 
     // Receive our half of the image and send out our partner's half.
     std::unique_ptr<Image> recvImage = toKeep->createNew();
-    std::vector<MPI_Request> recvRequests =
-        recvImage->IReceive(partnerRank, workingCommunicator);
-    std::vector<MPI_Request> sendRequests =
-        toSend->ISend(partnerRank, workingCommunicator);
+    std::vector<MPI_Request> recvRequests = recvImage->IReceive(
+        getRealRank(workingGroup, partnerRank, communicator), communicator);
+    std::vector<MPI_Request> sendRequests = toSend->ISend(
+        getRealRank(workingGroup, partnerRank, communicator), communicator);
 
     // Wait for my image to come in.
     std::vector<MPI_Status> statuses(recvRequests.size());
@@ -101,21 +110,29 @@ std::unique_ptr<Image> BinarySwap::compose(Image *localImage,
         break;
     }
 
+    // Wait for my images to finish sending.
+    statuses.resize(sendRequests.size());
+    MPI_Waitall(sendRequests.size(), &sendRequests.front(), &statuses.front());
+
     // Create a sub-communicator containing all the processes with same portion
     // of the image as me.
-    MPI_Comm subCommunicator;
-    MPI_Comm_split(
-        workingCommunicator, static_cast<int>(role), rank, &subCommunicator);
+    int rankRange[1][3];
+    rankRange[0][0] = (role == PAIR_ROLE_EVEN) ? 0 : 1;
+    rankRange[0][1] = numProc - 1;
+    rankRange[0][2] = 2;
+
+    MPI_Group subGroup;
+    MPI_Group_range_incl(workingGroup, 1, rankRange, &subGroup);
 
     // Decend into the sub-communicator and repeat.
-    MPI_Comm_free(&workingCommunicator);
-    workingCommunicator = subCommunicator;
-    MPI_Comm_rank(workingCommunicator, &rank);
-    MPI_Comm_size(workingCommunicator, &numProc);
+    MPI_Group_free(&workingGroup);
+    workingGroup = subGroup;
+    MPI_Group_rank(workingGroup, &rank);
+    MPI_Group_size(workingGroup, &numProc);
   }
 
   // Clean up internal objects and return image.
-  MPI_Comm_free(&workingCommunicator);
+  MPI_Group_free(&workingGroup);
 
   return workingImage;
 }
