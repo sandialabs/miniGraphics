@@ -20,16 +20,22 @@
 
 class Compositor {
  public:
-  /// Subclasses need to implement this function. It takes an image of the
-  /// local partition of the data and combines them into a single image. Use
-  /// the given MPI communicator. When blending the images together, the image
-  /// on node 0 is on top with subsequent ranks underneath the ones before.
+  /// Subclasses need to implement this function. It takes images of the local
+  /// partition of the data and combines them into a single image. The
+  /// composite algorithm should use the given MPI group, which is defined on
+  /// the given MPI communicator. The group may be a subset of the
+  /// communicator, in which case the \c compose method is only called on those
+  /// processes that are part of the group. The group may also have its ranks
+  /// reordered. When blending the images together, the image on the first
+  /// process of the group is on top with subsequent processes of the group
+  /// underneath the ones before.
   ///
   /// Typically a compositing algorithm will split up an image. Each process
-  /// should return an Image object containing  the fully composited pixels
-  /// of a distinct subregion.
+  /// should return an Image object containing the fully composited pixels of a
+  /// distinct subregion.
   ///
   virtual std::unique_ptr<Image> compose(Image *localImage,
+                                         MPI_Group group,
                                          MPI_Comm communicator) = 0;
 
   /// If a compositor can be controled by some custom command line arguments,
@@ -43,7 +49,7 @@ class Compositor {
   /// it should print a descriptive reason why the error occured to standard
   /// error before returning.
   ///
-  virtual bool setOptions(const std::vector<option::Option>& options,
+  virtual bool setOptions(const std::vector<option::Option> &options,
                           YamlWriter &yaml);
 
   virtual ~Compositor() = default;

@@ -129,7 +129,9 @@ static void run(Painter* painter,
     {
       Timer timeCompositePlusCollect(yaml, "composite-seconds");
 
-      compositeImage = compositor->compose(&localImage, MPI_COMM_WORLD);
+      MPI_Group group;
+      MPI_Comm_group(MPI_COMM_WORLD, &group);
+      compositeImage = compositor->compose(&localImage, group, MPI_COMM_WORLD);
 
       fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
     }

@@ -9,6 +9,6 @@
 #include "Compositor.hpp"
 
 bool Compositor::setOptions(const std::vector<option::Option>& options,
-                            YamlWriter &yaml) {
+                            YamlWriter& yaml) {
   return true;
 }
