@@ -11,6 +11,7 @@
 #include "miniGraphicsConfig.h"
 
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
+#include <Common/ImageRGBFloatColorDepth.hpp>
 #include <Common/MakeBox.hpp>
 #include <Common/MeshHelper.hpp>
 #include <Common/ReadSTL.hpp>
@@ -47,8 +48,7 @@
 static void run(Painter* painter,
                 Compositor* compositor,
                 const Mesh& mesh,
-                int imageWidth,
-                int imageHeight,
+                Image* imageBuffer,
                 bool writeImages,
                 YamlWriter& yaml) {
   int rank;
@@ -56,6 +56,9 @@ static void run(Painter* painter,
 
   int numProc;
   MPI_Comm_size(MPI_COMM_WORLD, &numProc);
+
+  int imageWidth = imageBuffer->getWidth();
+  int imageHeight = imageBuffer->getHeight();
 
   // Gather rough geometry information
   glm::vec3 boundsMin = mesh.getBoundsMin();
@@ -107,7 +110,8 @@ static void run(Painter* painter,
                        dist / 3,
                        2 * dist);
 
-  ImageRGBAUByteColorFloatDepth localImage(imageWidth, imageHeight);
+  std::unique_ptr<Image> localImage = imageBuffer->createNew(
+        imageWidth, imageHeight, 0, imageWidth*imageHeight);
   std::unique_ptr<Image> compositeImage;
   std::unique_ptr<Image> fullCompositeImage;
 
@@ -118,7 +122,7 @@ static void run(Painter* painter,
     {
       Timer timePaint(yaml, "paint-seconds");
 
-      painter->paint(mesh, &localImage, modelview, projection);
+      painter->paint(mesh, localImage.get(), modelview, projection);
     }
 
     // TODO: This barrier should be optional, but is needed for any of the
@@ -131,7 +135,7 @@ static void run(Painter* painter,
 
       MPI_Group group;
       MPI_Comm_group(MPI_COMM_WORLD, &group);
-      compositeImage = compositor->compose(&localImage, group, MPI_COMM_WORLD);
+      compositeImage = compositor->compose(localImage.get(), group, MPI_COMM_WORLD);
 
       fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
     }
@@ -141,7 +145,7 @@ static void run(Painter* painter,
   if (writeImages) {
     std::stringstream filename;
     filename << "local_painting" << rank << ".ppm";
-    SavePPM(localImage, filename.str());
+    SavePPM(*localImage, filename.str());
 
     if (rank == 0) {
       SavePPM(*fullCompositeImage, "composite.ppm");
@@ -159,12 +163,16 @@ enum optionIndex {
   PAINTER,
   GEOMETRY,
   DISTRIBUTION,
-  OVERLAP
+  OVERLAP,
+  COLOR_FORMAT,
+  DEPTH_FORMAT
 };
 enum enableIndex { DISABLE, ENABLE };
 enum paintType { SIMPLE_RASTER, OPENGL };
 enum geometryType { BOX, STL_FILE };
 enum distributionType { DUPLICATE, DIVIDE };
+enum colorType { COLOR_UBYTE, COLOR_FLOAT };
+enum depthType { DEPTH_FLOAT };
 
 int MainLoop(int argc,
              char* argv[],
@@ -270,6 +278,16 @@ int MainLoop(int argc,
      "                         of 1 completely overlaps all geometry. Negative\n"
      "                         values space the geometry appart. Has no effect\n"
      "                         with --divide-geometry option. (Default -0.05)\n"});
+
+  usage.push_back(
+    {COLOR_FORMAT, COLOR_UBYTE,   "",  "color-ubyte", option::Arg::None,
+     "  --color-ubyte          Store colors in 8-bit channels (Default)."});
+  usage.push_back(
+    {COLOR_FORMAT, COLOR_FLOAT,   "",  "color-float", option::Arg::None,
+     "  --color-float          Store colors in 32-bit float channels."});
+  usage.push_back(
+    {DEPTH_FORMAT, DEPTH_FLOAT,   "",  "depth-float", option::Arg::None,
+     "  --depth-float          Store depth as 32-bit float (Default).\n"});
   // clang-format on
 
   for (auto compositorOpt = compositorOptions.begin();
@@ -286,6 +304,8 @@ int MainLoop(int argc,
   bool writeImages = true;
   std::auto_ptr<Painter> painter(new PainterSimple);
   float overlap = -0.05f;
+  colorType colorFormat = COLOR_UBYTE;
+  depthType depthFormat = DEPTH_FLOAT;
 
   option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
@@ -353,6 +373,29 @@ int MainLoop(int argc,
     yaml.AddDictionaryEntry("painter", "simple");
   }
 
+  if (options[COLOR_FORMAT]) {
+    colorFormat = static_cast<colorType>(options[COLOR_FORMAT].last()->type());
+  }
+  if (options[DEPTH_FORMAT]) {
+    depthFormat = static_cast<depthType>(options[DEPTH_FORMAT].last()->type());
+  }
+  std::unique_ptr<Image> imageBuffer;
+  switch (depthFormat) {
+    case DEPTH_FLOAT:
+      yaml.AddDictionaryEntry("depth-buffer-format", "float");
+      switch (colorFormat) {
+        case COLOR_UBYTE:
+          yaml.AddDictionaryEntry("color-buffer-format", "byte");
+          imageBuffer = std::unique_ptr<Image>(new ImageRGBAUByteColorFloatDepth(imageWidth, imageHeight));
+          break;
+        case COLOR_FLOAT:
+          yaml.AddDictionaryEntry("color-buffer-format", "float");
+          imageBuffer = std::unique_ptr<Image>(new ImageRGBFloatColorDepth(imageWidth, imageHeight));
+          break;
+      }
+      break;
+  }
+
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
@@ -400,8 +443,7 @@ int MainLoop(int argc,
   run(painter.get(),
       compositor,
       mesh,
-      imageWidth,
-      imageHeight,
+      imageBuffer.get(),
       writeImages,
       yaml);
 

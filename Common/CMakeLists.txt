@@ -16,6 +16,7 @@ set(srcs
   Compositor.cpp
   Image.cpp
   ImageRGBAUByteColorFloatDepth.cpp
+  ImageRGBFloatColorDepth.cpp
   MakeBox.cpp
   MainLoop.cpp
   Mesh.cpp

@@ -26,6 +26,7 @@
 #include "OpenGL_common/shader.hpp"
 
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
+#include <Common/ImageRGBFloatColorDepth.hpp>
 
 struct PainterOpenGL::Internals {
   void readTriangles(const Mesh& mesh,
@@ -357,23 +358,40 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glFlush();
   glReadBuffer(GL_BACK);
 
-  ImageRGBAUByteColorFloatDepth* rgbaDepthImage =
+  ImageRGBAUByteColorFloatDepth* rgbaByteFloatImage =
       dynamic_cast<ImageRGBAUByteColorFloatDepth*>(image);
-  if (rgbaDepthImage != nullptr) {
+  ImageRGBFloatColorDepth* rgbFloatFloatImage =
+      dynamic_cast<ImageRGBFloatColorDepth*>(image);
+  if (rgbaByteFloatImage != nullptr) {
     glReadPixels(0,
                  0,
                  windowWidth,
                  windowHeight,
                  GL_RGBA,
                  GL_UNSIGNED_BYTE,
-                 rgbaDepthImage->getColorBuffer());
+                 rgbaByteFloatImage->getColorBuffer());
     glReadPixels(0,
                  0,
                  windowWidth,
                  windowHeight,
                  GL_DEPTH_COMPONENT,
                  GL_FLOAT,
-                 rgbaDepthImage->getDepthBuffer());
+                 rgbaByteFloatImage->getDepthBuffer());
+  } else if (rgbFloatFloatImage != nullptr) {
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_RGB,
+                 GL_FLOAT,
+                 rgbFloatFloatImage->getColorBuffer());
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_DEPTH_COMPONENT,
+                 GL_FLOAT,
+                 rgbFloatFloatImage->getDepthBuffer());
   } else {
     std::cerr << "Image type not supported for OpenGL." << std::endl;
     exit(1);
