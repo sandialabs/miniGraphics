@@ -35,4 +35,13 @@ void meshBroadcast(Mesh& mesh, float overlap, MPI_Comm communicator);
 ///
 void meshScatter(Mesh& mesh, MPI_Comm communicator);
 
+/// \brief Sorts a meshes triangles from front to back.
+///
+/// Given a mesh and a modelview matrix, returns a new Mesh object with the
+/// same geometry but all the triangles reordered from front-to-back such that
+/// the first triangle is the closest to the viewer and that every triangle is
+/// in front of every other triangle
+///
+Mesh meshVisibilitySort(const Mesh& mesh, const glm::mat4& modelview);
+
 #endif  // MESHHELPER_HPP

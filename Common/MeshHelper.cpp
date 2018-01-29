@@ -8,8 +8,11 @@
 
 #include "MeshHelper.hpp"
 
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
+
+#include <algorithm>
 
 // A set of colors automatically assigned to mesh regions on each process.
 // These colors come from color brewer (qualitative set 3 with 12 colors).
@@ -89,4 +92,127 @@ void meshScatter(Mesh& mesh, MPI_Comm communicator) {
   } else {
     mesh.receive(0, communicator);
   }
+}
+
+enum PlanePosition { OVER_PLANE, UNDER_PLANE, IN_PLANE };
+
+// Determines the position of a point relative to the plane of a triangle.
+static PlanePosition pointInPlane(const glm::vec3& p,
+                                  const Triangle& triangle) {
+  float elevation = glm::dot(triangle.normal, p - triangle.vertex[0]);
+  if (elevation > 0.001) {
+    return OVER_PLANE;
+  } else if (elevation < -0.001) {
+    return UNDER_PLANE;
+  } else {
+    return IN_PLANE;
+  }
+}
+
+// Determines if all the points in the first triangle are over or under the
+// second triangle's plane. If the plane intersects the triangle, IN_PLANE is
+// returned.
+static PlanePosition triInPlane(const Triangle& targetTriangle,
+                                const Triangle& planeTriangle) {
+  PlanePosition positions[3];
+  positions[0] = pointInPlane(targetTriangle.vertex[0], planeTriangle);
+  positions[1] = pointInPlane(targetTriangle.vertex[1], planeTriangle);
+  positions[2] = pointInPlane(targetTriangle.vertex[2], planeTriangle);
+
+  switch (positions[0]) {
+    case OVER_PLANE:
+      if ((positions[1] == UNDER_PLANE) || (positions[2] == UNDER_PLANE)) {
+        return IN_PLANE;
+      } else {
+        return OVER_PLANE;
+      }
+    case UNDER_PLANE:
+      if ((positions[1] == OVER_PLANE) || (positions[2] == OVER_PLANE)) {
+        return IN_PLANE;
+      } else {
+        return UNDER_PLANE;
+      }
+    case IN_PLANE:
+      switch (positions[1]) {
+        case OVER_PLANE:
+          if (positions[2] == UNDER_PLANE) {
+            return IN_PLANE;
+          } else {
+            return OVER_PLANE;
+          }
+        case UNDER_PLANE:
+          if (positions[2] == OVER_PLANE) {
+            return IN_PLANE;
+          } else {
+            return UNDER_PLANE;
+          }
+        case IN_PLANE:
+          return positions[2];
+      }
+  }
+
+  assert(0 && "Invalid code path");
+  return IN_PLANE;
+}
+
+Mesh meshVisibilitySort(const Mesh& mesh, const glm::mat4& modelview) {
+  glm::mat3 normalTransform = glm::inverseTranspose(glm::mat3(modelview));
+
+  // Set up array of transformed triangles.
+  using TriIndex = std::pair<Triangle, int>;
+  std::vector<TriIndex> triList;
+  triList.reserve(mesh.getNumberOfTriangles());
+
+  for (int triIndex = 0; triIndex < mesh.getNumberOfTriangles(); ++triIndex) {
+    Triangle originalTri = mesh.getTriangle(triIndex);
+    Triangle transformedTri;
+    for (int vertIndex = 0; vertIndex < 3; ++vertIndex) {
+      transformedTri.vertex[vertIndex] =
+          glm::vec3(modelview * glm::vec4(originalTri.vertex[vertIndex], 1.0f));
+    }
+    transformedTri.normal =
+        glm::normalize(normalTransform * originalTri.normal);
+
+    triList.push_back(TriIndex(transformedTri, triIndex));
+  }
+
+  // Sort the array with a compare function that returns true if the first
+  // object is on top of (i.e. in front of) the second object.
+  std::sort(triList.begin(),
+            triList.end(),
+            [](const TriIndex& a, const TriIndex& b) -> bool {
+              switch (triInPlane(a.first, b.first)) {
+                case OVER_PLANE:
+                  return true;
+                case UNDER_PLANE:
+                  return false;
+                case IN_PLANE:
+                  return (triInPlane(b.first, a.first) == UNDER_PLANE);
+                default:
+                  assert(0 && "Invalid code path");
+                  return false;
+              }
+            });
+
+  // Construct a new mesh with the sorted order.
+  Mesh sortedMesh(mesh.getNumberOfVertices(), mesh.getNumberOfTriangles());
+  std::copy(mesh.getPointCoordinatesBuffer(0),
+            mesh.getPointCoordinatesBuffer(mesh.getNumberOfVertices()),
+            sortedMesh.getPointCoordinatesBuffer(0));
+
+  for (int outputTriIndex = 0; outputTriIndex < mesh.getNumberOfTriangles();
+       ++outputTriIndex) {
+    int inputTriIndex = triList[outputTriIndex].second;
+    std::copy(mesh.getTriangleConnectionsBuffer(inputTriIndex),
+              mesh.getTriangleConnectionsBuffer(inputTriIndex + 1),
+              sortedMesh.getTriangleConnectionsBuffer(outputTriIndex));
+    std::copy(mesh.getTriangleNormalsBuffer(inputTriIndex),
+              mesh.getTriangleNormalsBuffer(inputTriIndex + 1),
+              sortedMesh.getTriangleNormalsBuffer(outputTriIndex));
+    std::copy(mesh.getTriangleColorsBuffer(inputTriIndex),
+              mesh.getTriangleColorsBuffer(inputTriIndex + 1),
+              sortedMesh.getTriangleColorsBuffer(outputTriIndex));
+  }
+
+  return sortedMesh;
 }

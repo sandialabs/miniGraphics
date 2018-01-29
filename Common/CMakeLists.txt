@@ -15,7 +15,9 @@ project(miniGraphicsCommon CXX)
 set(srcs
   Compositor.cpp
   Image.cpp
+  ImageRGBAFloatColorOnly.cpp
   ImageRGBAUByteColorFloatDepth.cpp
+  ImageRGBAUByteColorOnly.cpp
   ImageRGBFloatColorDepth.cpp
   MakeBox.cpp
   MainLoop.cpp
@@ -31,6 +33,7 @@ set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Color.hpp
   ImageColorDepth.hpp
+  ImageColorOnly.hpp
   Triangle.hpp
   )
 

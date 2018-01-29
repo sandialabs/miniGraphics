@@ -10,7 +10,9 @@
 
 #include "miniGraphicsConfig.h"
 
+#include <Common/ImageRGBAFloatColorOnly.hpp>
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
+#include <Common/ImageRGBAUByteColorOnly.hpp>
 #include <Common/ImageRGBFloatColorDepth.hpp>
 #include <Common/MakeBox.hpp>
 #include <Common/MeshHelper.hpp>
@@ -111,7 +113,7 @@ static void run(Painter* painter,
                        2 * dist);
 
   std::unique_ptr<Image> localImage = imageBuffer->createNew(
-        imageWidth, imageHeight, 0, imageWidth*imageHeight);
+      imageWidth, imageHeight, 0, imageWidth * imageHeight);
   std::unique_ptr<Image> compositeImage;
   std::unique_ptr<Image> fullCompositeImage;
 
@@ -135,7 +137,8 @@ static void run(Painter* painter,
 
       MPI_Group group;
       MPI_Comm_group(MPI_COMM_WORLD, &group);
-      compositeImage = compositor->compose(localImage.get(), group, MPI_COMM_WORLD);
+      compositeImage =
+          compositor->compose(localImage.get(), group, MPI_COMM_WORLD);
 
       fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
     }
@@ -172,7 +175,7 @@ enum paintType { SIMPLE_RASTER, OPENGL };
 enum geometryType { BOX, STL_FILE };
 enum distributionType { DUPLICATE, DIVIDE };
 enum colorType { COLOR_UBYTE, COLOR_FLOAT };
-enum depthType { DEPTH_FLOAT };
+enum depthType { DEPTH_FLOAT, DEPTH_NONE };
 
 int MainLoop(int argc,
              char* argv[],
@@ -287,7 +290,11 @@ int MainLoop(int argc,
      "  --color-float          Store colors in 32-bit float channels."});
   usage.push_back(
     {DEPTH_FORMAT, DEPTH_FLOAT,   "",  "depth-float", option::Arg::None,
-     "  --depth-float          Store depth as 32-bit float (Default).\n"});
+     "  --depth-float          Store depth as 32-bit float (Default)."});
+  usage.push_back(
+    {DEPTH_FORMAT, DEPTH_NONE,    "",  "depth-none", option::Arg::None,
+     "  --depth-none           Do not use a depth buffer. This option changes\n"
+     "                         the compositing to an alpha blending mode.\n"});
   // clang-format on
 
   for (auto compositorOpt = compositorOptions.begin();
@@ -386,11 +393,27 @@ int MainLoop(int argc,
       switch (colorFormat) {
         case COLOR_UBYTE:
           yaml.AddDictionaryEntry("color-buffer-format", "byte");
-          imageBuffer = std::unique_ptr<Image>(new ImageRGBAUByteColorFloatDepth(imageWidth, imageHeight));
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBAUByteColorFloatDepth(imageWidth, imageHeight));
           break;
         case COLOR_FLOAT:
           yaml.AddDictionaryEntry("color-buffer-format", "float");
-          imageBuffer = std::unique_ptr<Image>(new ImageRGBFloatColorDepth(imageWidth, imageHeight));
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBFloatColorDepth(imageWidth, imageHeight));
+          break;
+      }
+      break;
+    case DEPTH_NONE:
+      yaml.AddDictionaryEntry("depth-buffer-format", "none");
+      switch (colorFormat) {
+        case COLOR_UBYTE:
+          yaml.AddDictionaryEntry("color-buffer-format", "byte");
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBAUByteColorOnly(imageWidth, imageHeight));
+        case COLOR_FLOAT:
+          yaml.AddDictionaryEntry("color-buffer-format", "float");
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBAFloatColorOnly(imageWidth, imageHeight));
           break;
       }
       break;
@@ -440,12 +463,7 @@ int MainLoop(int argc,
     yaml.AddDictionaryEntry("geometry-overlap", overlap);
   }
 
-  run(painter.get(),
-      compositor,
-      mesh,
-      imageBuffer.get(),
-      writeImages,
-      yaml);
+  run(painter.get(), compositor, mesh, imageBuffer.get(), writeImages, yaml);
 
   if (options[YAML_OUTPUT]) {
     yamlFilename = options[YAML_OUTPUT].arg;

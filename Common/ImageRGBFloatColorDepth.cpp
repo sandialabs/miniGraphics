@@ -10,14 +10,13 @@
 
 #include <assert.h>
 
-ImageRGBFloatColorDepth::ImageRGBFloatColorDepth(int _width,
-                                                             int _height)
+ImageRGBFloatColorDepth::ImageRGBFloatColorDepth(int _width, int _height)
     : ImageColorDepth(_width, _height) {}
 
 ImageRGBFloatColorDepth::ImageRGBFloatColorDepth(int _width,
-                                                             int _height,
-                                                             int _regionBegin,
-                                                             int _regionEnd)
+                                                 int _height,
+                                                 int _regionBegin,
+                                                 int _regionEnd)
     : ImageColorDepth(_width, _height, _regionBegin, _regionEnd) {}
 
 Color ImageRGBFloatColorDepth::getColor(int pixelIndex) const {
@@ -28,13 +27,11 @@ Color ImageRGBFloatColorDepth::getColor(int pixelIndex) const {
   return Color(colorArray[0], colorArray[1], colorArray[2]);
 }
 
-void ImageRGBFloatColorDepth::setColor(int pixelIndex,
-                                             const Color &color) {
+void ImageRGBFloatColorDepth::setColor(int pixelIndex, const Color &color) {
   assert(pixelIndex >= 0);
   assert(pixelIndex < this->getNumberOfPixels());
 
-  float *colorArray =
-      this->getColorBuffer(pixelIndex);
+  float *colorArray = this->getColorBuffer(pixelIndex);
 
   colorArray[0] = color.Components[0];
   colorArray[1] = color.Components[1];
@@ -57,11 +54,10 @@ void ImageRGBFloatColorDepth::setDepth(int pixelIndex, float depth) {
 
 std::unique_ptr<Image> ImageRGBFloatColorDepth::createNew(
     int _width, int _height, int _regionBegin, int _regionEnd) const {
-  return std::unique_ptr<Image>(new ImageRGBFloatColorDepth(
-      _width, _height, _regionBegin, _regionEnd));
+  return std::unique_ptr<Image>(
+      new ImageRGBFloatColorDepth(_width, _height, _regionBegin, _regionEnd));
 }
 
-std::unique_ptr<const Image> ImageRGBFloatColorDepth::shallowCopy()
-    const {
+std::unique_ptr<const Image> ImageRGBFloatColorDepth::shallowCopy() const {
   return std::unique_ptr<const Image>(new ImageRGBFloatColorDepth(*this));
 }
