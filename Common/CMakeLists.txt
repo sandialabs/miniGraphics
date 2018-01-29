@@ -29,6 +29,7 @@ set(srcs
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Color.hpp
+  ImageColorDepth.hpp
   Triangle.hpp
   )
 

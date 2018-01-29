@@ -375,6 +375,10 @@ int MainLoop(int argc,
       MakeBox(mesh);
     }
     std::cout << "Rank 0 on pid " << getpid() << std::endl;
+#if 0
+    int ready = 0;
+    while (!ready);
+#endif
   } else {
     // Other ranks read nothing. Rank 0 distributes geometry.
   }
