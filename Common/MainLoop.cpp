@@ -124,7 +124,14 @@ static void run(Painter* painter,
     {
       Timer timePaint(yaml, "paint-seconds");
 
-      painter->paint(mesh, localImage.get(), modelview, projection);
+      if (localImage->blendIsOrderDependent()) {
+        painter->paint(meshVisibilitySort(mesh, modelview, projection),
+                       localImage.get(),
+                       modelview,
+                       projection);
+      } else {
+        painter->paint(mesh, localImage.get(), modelview, projection);
+      }
     }
 
     // TODO: This barrier should be optional, but is needed for any of the
@@ -419,6 +426,12 @@ int MainLoop(int argc,
       break;
   }
 
+  if (imageBuffer->blendIsOrderDependent()) {
+    yaml.AddDictionaryEntry("rendering-order-dependent", "yes");
+  } else {
+    yaml.AddDictionaryEntry("rendering-order-dependent", "no");
+  }
+
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
@@ -461,6 +474,16 @@ int MainLoop(int argc,
     meshBroadcast(mesh, overlap, MPI_COMM_WORLD);
     yaml.AddDictionaryEntry("geometry-distribution", "duplicate");
     yaml.AddDictionaryEntry("geometry-overlap", overlap);
+  }
+
+  if (imageBuffer->blendIsOrderDependent()) {
+    // If blending colors, make all colors transparent.
+    int numTri = mesh.getNumberOfTriangles();
+    for (float* colorComponentValue = mesh.getTriangleColorsBuffer(0);
+         colorComponentValue != mesh.getTriangleColorsBuffer(numTri);
+         ++colorComponentValue) {
+      *colorComponentValue *= 0.5f;
+    }
   }
 
   run(painter.get(), compositor, mesh, imageBuffer.get(), writeImages, yaml);

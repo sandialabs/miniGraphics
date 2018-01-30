@@ -133,6 +133,8 @@ class ImageColorDepth : public Image {
     return outImageHolder;
   }
 
+  bool blendIsOrderDependent() const final { return false; }
+
   std::unique_ptr<Image> copySubrange(int subregionBegin,
                                       int subregionEnd) const final {
     assert(subregionBegin <= subregionEnd);

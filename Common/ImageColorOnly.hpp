@@ -106,6 +106,8 @@ class ImageColorOnly : public Image {
   }
 
  public:
+  bool blendIsOrderDependent() const final { return true; }
+
   std::unique_ptr<Image> copySubrange(int subregionBegin,
                                       int subregionEnd) const final {
     assert(subregionBegin <= subregionEnd);

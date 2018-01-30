@@ -130,6 +130,16 @@ class Image {
   /// those cases it will be ignored.
   virtual std::unique_ptr<Image> blend(const Image* otherImage) const = 0;
 
+  /// \brief Returns whether blending in this buffer is order dependent.
+  ///
+  /// Some blending operations, such as z-buffer comparison, are order
+  /// independent. That is, it does not matter in what order you do the
+  /// compositing. However, other types of blending, like alpha blending,
+  /// are order-dependent, and you have to be careful on the order in which
+  /// you render geometry and composite images.
+  ///
+  virtual bool blendIsOrderDependent() const = 0;
+
   /// \brief Creates a new image object of the same type as this one.
   virtual std::unique_ptr<Image> createNew(int _width,
                                            int _height,
