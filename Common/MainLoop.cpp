@@ -486,6 +486,7 @@ int MainLoop(int argc,
           yaml.AddDictionaryEntry("color-buffer-format", "byte");
           imageBuffer = std::unique_ptr<Image>(
               new ImageRGBAUByteColorOnly(imageWidth, imageHeight));
+          break;
         case COLOR_FLOAT:
           yaml.AddDictionaryEntry("color-buffer-format", "float");
           imageBuffer = std::unique_ptr<Image>(
