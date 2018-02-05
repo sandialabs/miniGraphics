@@ -126,6 +126,8 @@ class Mesh {
   Mesh deepCopy() const;
   Mesh copySubset(int beginTriangleIndex, int endTriangleIndex) const;
 
+  void append(const Mesh& addedMesh);
+
   void transform(const glm::mat4& transformMatrix);
 
   const glm::vec3& getBoundsMin() const;

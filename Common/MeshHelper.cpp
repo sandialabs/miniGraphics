@@ -94,6 +94,28 @@ void meshScatter(Mesh& mesh, MPI_Comm communicator) {
   }
 }
 
+Mesh meshGather(const Mesh& mesh, MPI_Comm communicator) {
+  int rank;
+  MPI_Comm_rank(communicator, &rank);
+
+  int numProc;
+  MPI_Comm_size(communicator, &numProc);
+
+  Mesh outMesh;
+  if (rank == 0) {
+    outMesh = mesh.deepCopy();
+    for (int src = 1; src < numProc; ++src) {
+      Mesh recvMesh;
+      recvMesh.receive(src, communicator);
+      outMesh.append(recvMesh);
+    }
+  } else {
+    mesh.send(0, communicator);
+  }
+
+  return outMesh;
+}
+
 Mesh meshVisibilitySort(const Mesh& mesh,
                         const glm::mat4& modelview,
                         const glm::mat4& projection) {

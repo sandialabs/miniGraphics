@@ -104,6 +104,7 @@ static void run(Painter* painter,
                 Compositor* compositor,
                 const Mesh& mesh,
                 Image* imageBuffer,
+                bool checkImages,
                 bool writeImages,
                 YamlWriter& yaml) {
   int rank;
@@ -111,6 +112,11 @@ static void run(Painter* painter,
 
   int numProc;
   MPI_Comm_size(MPI_COMM_WORLD, &numProc);
+
+  Mesh fullMesh;
+  if (checkImages) {
+    fullMesh = meshGather(mesh, MPI_COMM_WORLD);
+  }
 
   int imageWidth = imageBuffer->getWidth();
   int imageHeight = imageBuffer->getHeight();
@@ -220,11 +226,48 @@ static void run(Painter* painter,
     MPI_Group_free(&composeGroup);
   }
 
-  // SAVE FOR SANITY CHECK
-  if (writeImages) {
-    std::stringstream filename;
-    filename << "local_painting" << rank << ".ppm";
-    SavePPM(*localImage, filename.str());
+  if (checkImages && (rank == 0)) {
+    const float COLOR_THRESHOLD = 0.01;
+    const float BAD_PIXEL_THRESHOLD = 0.02;
+
+    std::cout << "Checking image validity..." << std::flush;
+    if (localImage->blendIsOrderDependent()) {
+      painter->paint(meshVisibilitySort(fullMesh, modelview, projection),
+                     localImage.get(),
+                     modelview,
+                     projection);
+    } else {
+      painter->paint(fullMesh, localImage.get(), modelview, projection);
+    }
+
+    int numPixels = localImage->getNumberOfPixels();
+    int numBadPixels = 0;
+    for (int pixel = 0; pixel < numPixels; ++pixel) {
+      Color compositeColor = fullCompositeImage->getColor(pixel);
+      Color localColor = localImage->getColor(pixel);
+      if ((fabsf(compositeColor.Components[0] - localColor.Components[0]) >
+           COLOR_THRESHOLD) ||
+          (fabsf(compositeColor.Components[1] - localColor.Components[1]) >
+           COLOR_THRESHOLD) ||
+          (fabsf(compositeColor.Components[2] - localColor.Components[2]) >
+           COLOR_THRESHOLD)) {
+        ++numBadPixels;
+      }
+    }
+    std::cout << (100 * numBadPixels) / numPixels << "% bad pixels."
+              << std::endl;
+    if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
+      std::cout << "Composite image appears bad!" << std::endl;
+      SavePPM(*localImage, "reference.ppm");
+      SavePPM(*fullCompositeImage, "bad_composite.ppm");
+      exit(1);
+    }
+  }
+
+  if (writeImages && (rank == 0)) {
+    //    std::stringstream filename;
+    //    filename << "local_painting" << rank << ".ppm";
+    //    SavePPM(*localImage, filename.str());
 
     if (rank == 0) {
       SavePPM(*fullCompositeImage, "composite.ppm");
@@ -238,6 +281,7 @@ enum optionIndex {
   WIDTH,
   HEIGHT,
   YAML_OUTPUT,
+  CHECK_IMAGE,
   WRITE_IMAGE,
   PAINTER,
   GEOMETRY,
@@ -317,11 +361,22 @@ int MainLoop(int argc,
      "                         (Default timing.yaml)\n"});
 
   usage.push_back(
+    {CHECK_IMAGE,  ENABLE,        "",  "enable-check-image", option::Arg::None,
+     "  --enable-check-image   Turn on checking of composited image. When on,\n"
+     "                         rank 0 collects all geometry and also paints\n"
+     "                         everything locally. It then compares the local\n"
+     "                         and parallel versions, and exits if they are\n"
+     "                         different. (Default)"});
+  usage.push_back(
+    {CHECK_IMAGE,  DISABLE,       "",  "disable-check-image", option::Arg::None,
+     "  --disable-check-image  Turn off checking of composited image.\n"});
+
+  usage.push_back(
     {WRITE_IMAGE,  ENABLE,        "",  "enable-write-image", option::Arg::None,
-     "  --enable-write-image   Turn on writing of composited image. (Default)"});
+     "  --enable-write-image   Turn on writing of composited image."});
   usage.push_back(
     {WRITE_IMAGE,  DISABLE,       "",  "disable-write-image", option::Arg::None,
-     "  --disable-write-image  Turn off writing of composited image.\n"});
+     "  --disable-write-image  Turn off writing of composited image. (Default)\n"});
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
   usage.push_back(
@@ -384,7 +439,8 @@ int MainLoop(int argc,
   int imageWidth = 1100;
   int imageHeight = 900;
   std::string yamlFilename("timing.yaml");
-  bool writeImages = true;
+  bool checkImages = true;
+  bool writeImages = false;
   std::auto_ptr<Painter> painter(new PainterSimple);
   float overlap = -0.05f;
   colorType colorFormat = COLOR_UBYTE;
@@ -431,6 +487,10 @@ int MainLoop(int argc,
     imageHeight = atoi(options[HEIGHT].arg);
   }
   yaml.AddDictionaryEntry("image-height", imageHeight);
+
+  if (options[CHECK_IMAGE]) {
+    checkImages = (options[CHECK_IMAGE].last()->type() == ENABLE);
+  }
 
   if (options[WRITE_IMAGE]) {
     writeImages = (options[WRITE_IMAGE].last()->type() == ENABLE);
@@ -556,7 +616,13 @@ int MainLoop(int argc,
     }
   }
 
-  run(painter.get(), compositor, mesh, imageBuffer.get(), writeImages, yaml);
+  run(painter.get(),
+      compositor,
+      mesh,
+      imageBuffer.get(),
+      checkImages,
+      writeImages,
+      yaml);
 
   if (options[YAML_OUTPUT]) {
     yamlFilename = options[YAML_OUTPUT].arg;

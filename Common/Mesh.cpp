@@ -271,6 +271,39 @@ Mesh Mesh::copySubset(int beginTriangleIndex, int endTriangleIndex) const {
   return outputMesh;
 }
 
+void Mesh::append(const Mesh &addedMesh) {
+  int oldNumVerts = this->getNumberOfVertices();
+  int addNumVerts = addedMesh.getNumberOfVertices();
+  int newNumVerts = oldNumVerts + addNumVerts;
+  int oldNumTris = this->getNumberOfTriangles();
+  int addNumTris = addedMesh.getNumberOfTriangles();
+  int newNumTris = oldNumTris + addNumTris;
+
+  // Copy vertex information
+  this->setNumberOfVertices(newNumVerts);
+  std::copy(addedMesh.getPointCoordinatesBuffer(0),
+            addedMesh.getPointCoordinatesBuffer(addNumVerts),
+            this->getPointCoordinatesBuffer(oldNumVerts));
+
+  // Copy non-index triangle information
+  this->setNumberOfTriangles(newNumTris);
+  std::copy(addedMesh.getTriangleNormalsBuffer(0),
+            addedMesh.getTriangleNormalsBuffer(addNumTris),
+            this->getTriangleNormalsBuffer(oldNumTris));
+  std::copy(addedMesh.getTriangleColorsBuffer(0),
+            addedMesh.getTriangleColorsBuffer(addNumTris),
+            this->getTriangleColorsBuffer(oldNumTris));
+
+  // Translate indices from appended mesh.
+  int *outConnection = this->getTriangleConnectionsBuffer(oldNumTris);
+  for (const int *inConnection = addedMesh.getTriangleConnectionsBuffer(0);
+       inConnection != addedMesh.getTriangleConnectionsBuffer(addNumTris);
+       ++inConnection) {
+    *outConnection = *inConnection + oldNumVerts;
+    ++outConnection;
+  }
+}
+
 void Mesh::transform(const glm::mat4 &transformMatrix) {
   int numVert = this->getNumberOfVertices();
 
