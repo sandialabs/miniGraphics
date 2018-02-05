@@ -366,17 +366,17 @@ int MainLoop(int argc,
      "                         rank 0 collects all geometry and also paints\n"
      "                         everything locally. It then compares the local\n"
      "                         and parallel versions, and exits if they are\n"
-     "                         different."});
+     "                         different. (Default)"});
   usage.push_back(
     {CHECK_IMAGE,  DISABLE,       "",  "disable-check-image", option::Arg::None,
      "  --disable-check-image  Turn off checking of composited image.\n"});
 
   usage.push_back(
     {WRITE_IMAGE,  ENABLE,        "",  "enable-write-image", option::Arg::None,
-     "  --enable-write-image   Turn on writing of composited image. (Default)"});
+     "  --enable-write-image   Turn on writing of composited image."});
   usage.push_back(
     {WRITE_IMAGE,  DISABLE,       "",  "disable-write-image", option::Arg::None,
-     "  --disable-write-image  Turn off writing of composited image.\n"});
+     "  --disable-write-image  Turn off writing of composited image. (Default)\n"});
 
 #ifdef MINIGRAPHICS_ENABLE_OPENGL
   usage.push_back(
@@ -440,7 +440,7 @@ int MainLoop(int argc,
   int imageHeight = 900;
   std::string yamlFilename("timing.yaml");
   bool checkImages = true;
-  bool writeImages = true;
+  bool writeImages = false;
   std::auto_ptr<Painter> painter(new PainterSimple);
   float overlap = -0.05f;
   colorType colorFormat = COLOR_UBYTE;
