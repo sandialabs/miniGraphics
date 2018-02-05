@@ -35,6 +35,14 @@ void meshBroadcast(Mesh& mesh, float overlap, MPI_Comm communicator);
 ///
 void meshScatter(Mesh& mesh, MPI_Comm communicator);
 
+/// \brief Gathers the mesh from all MPI ranks to rank 0.
+///
+/// All processes of the MPI communicator must call this method before any can
+/// continue. The meshes from all processes are combined together into a single
+/// mesh on rank 0 and returned. All other ranks return an empth mesh.
+///
+Mesh meshGather(const Mesh& mesh, MPI_Comm communicator);
+
 /// \brief Sorts a meshes triangles from back to front.
 ///
 /// Given a mesh and a modelview matrix, returns a new Mesh object with the
