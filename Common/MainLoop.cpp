@@ -10,7 +10,10 @@
 
 #include "miniGraphicsConfig.h"
 
+#include <Common/ImageRGBAFloatColorOnly.hpp>
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
+#include <Common/ImageRGBAUByteColorOnly.hpp>
+#include <Common/ImageRGBFloatColorDepth.hpp>
 #include <Common/MakeBox.hpp>
 #include <Common/MeshHelper.hpp>
 #include <Common/ReadSTL.hpp>
@@ -38,17 +41,69 @@
 #define getpid _getpid
 #endif
 
+#include <algorithm>
 #include <fstream>
 #include <memory>
 #include <sstream>
 
 #include "mpi.h"
 
+struct GeometryInfo {
+  glm::vec3 boundsMin;
+  glm::vec3 boundsMax;
+
+  glm::vec3 width;
+  glm::vec3 center;
+  float distance;
+
+  int numTriangles;
+
+  std::vector<glm::vec3> centroids;
+
+  void collect(const Mesh& mesh, MPI_Comm communicator) {
+    this->boundsMin = mesh.getBoundsMin();
+    this->boundsMax = mesh.getBoundsMax();
+    MPI_Allreduce(MPI_IN_PLACE,
+                  glm::value_ptr(this->boundsMin),
+                  3,
+                  MPI_FLOAT,
+                  MPI_MIN,
+                  communicator);
+    MPI_Allreduce(MPI_IN_PLACE,
+                  glm::value_ptr(this->boundsMax),
+                  3,
+                  MPI_FLOAT,
+                  MPI_MAX,
+                  communicator);
+
+    this->width = this->boundsMax - this->boundsMin;
+    this->center = 0.5f * (this->boundsMax + this->boundsMin);
+    this->distance = glm::sqrt(glm::dot(this->width, this->width));
+
+    this->numTriangles = mesh.getNumberOfTriangles();
+    MPI_Allreduce(
+        MPI_IN_PLACE, &this->numTriangles, 1, MPI_INT, MPI_SUM, communicator);
+
+    int numProc;
+    MPI_Comm_size(communicator, &numProc);
+
+    glm::vec3 localCentroid =
+        0.5f * (mesh.getBoundsMax() + mesh.getBoundsMin());
+    this->centroids.resize(numProc);
+    MPI_Allgather(glm::value_ptr(localCentroid),
+                  3,
+                  MPI_FLOAT,
+                  glm::value_ptr(this->centroids.front()),
+                  3,
+                  MPI_FLOAT,
+                  communicator);
+  }
+};
+
 static void run(Painter* painter,
                 Compositor* compositor,
                 const Mesh& mesh,
-                int imageWidth,
-                int imageHeight,
+                Image* imageBuffer,
                 bool writeImages,
                 YamlWriter& yaml) {
   int rank;
@@ -57,30 +112,14 @@ static void run(Painter* painter,
   int numProc;
   MPI_Comm_size(MPI_COMM_WORLD, &numProc);
 
+  int imageWidth = imageBuffer->getWidth();
+  int imageHeight = imageBuffer->getHeight();
+
   // Gather rough geometry information
-  glm::vec3 boundsMin = mesh.getBoundsMin();
-  glm::vec3 boundsMax = mesh.getBoundsMax();
-  MPI_Allreduce(MPI_IN_PLACE,
-                glm::value_ptr(boundsMin),
-                3,
-                MPI_FLOAT,
-                MPI_MIN,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE,
-                glm::value_ptr(boundsMax),
-                3,
-                MPI_FLOAT,
-                MPI_MAX,
-                MPI_COMM_WORLD);
+  GeometryInfo geometryInfo;
+  geometryInfo.collect(mesh, MPI_COMM_WORLD);
 
-  glm::vec3 width = boundsMax - boundsMin;
-  glm::vec3 center = 0.5f * (boundsMax + boundsMin);
-  float dist = glm::sqrt(glm::dot(width, width));
-
-  int numTriangles = mesh.getNumberOfTriangles();
-  MPI_Allreduce(
-      MPI_IN_PLACE, &numTriangles, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  yaml.AddDictionaryEntry("num-triangles", numTriangles);
+  yaml.AddDictionaryEntry("num-triangles", geometryInfo.numTriangles);
 
   // Set up projection matrices
   float thetaRotation = 25.0f;
@@ -90,7 +129,8 @@ static void run(Painter* painter,
   glm::mat4 modelview = glm::mat4(1.0f);
 
   // Move to in front of camera.
-  modelview = glm::translate(modelview, -glm::vec3(0, 0, 1.5f * dist));
+  modelview =
+      glm::translate(modelview, -glm::vec3(0, 0, 1.5f * geometryInfo.distance));
 
   // Rotate geometry for interesting perspectives.
   modelview =
@@ -99,26 +139,68 @@ static void run(Painter* painter,
       glm::rotate(modelview, glm::radians(thetaRotation), glm::vec3(0, 1, 0));
 
   // Center geometry at origin.
-  modelview = glm::translate(modelview, -center);
+  modelview = glm::translate(modelview, -geometryInfo.center);
 
   glm::mat4 projection =
       glm::perspective(glm::radians(45.0f / zoom),
                        (float)imageWidth / (float)imageHeight,
-                       dist / 3,
-                       2 * dist);
+                       geometryInfo.distance / 2.1f,
+                       2 * geometryInfo.distance);
 
-  ImageRGBAUByteColorFloatDepth localImage(imageWidth, imageHeight);
+  std::unique_ptr<Image> localImage = imageBuffer->createNew(
+      imageWidth, imageHeight, 0, imageWidth * imageHeight);
   std::unique_ptr<Image> compositeImage;
   std::unique_ptr<Image> fullCompositeImage;
 
   {
     Timer timeTotal(yaml, "total-seconds");
 
+    MPI_Group composeGroup;
+    if (localImage->blendIsOrderDependent()) {
+      // Determine (approximate) visibility order of process by sorting the
+      // depth of the transformed centroids.
+      std::vector<std::pair<float, int>> depthList(numProc);
+      for (int proc = 0; proc < numProc; proc++) {
+        glm::vec4 centroid(geometryInfo.centroids[proc], 1.0f);
+        centroid = modelview * centroid;
+        centroid = projection * centroid;
+        float depth = centroid.z / centroid.w;
+        depthList[proc] = std::pair<float, int>(depth, proc);
+      }
+
+      std::sort(depthList.begin(),
+                depthList.end(),
+                [](const std::pair<float, int>& a,
+                   const std::pair<float, int>& b) -> bool {
+                  return (a.first < b.first);
+                });
+
+      std::vector<int> rankOrder;
+      rankOrder.reserve(depthList.size());
+      for (auto&& depthEntry : depthList) {
+        rankOrder.push_back(depthEntry.second);
+      }
+
+      MPI_Group globalGroup;
+      MPI_Comm_group(MPI_COMM_WORLD, &globalGroup);
+      MPI_Group_incl(globalGroup, numProc, &rankOrder.front(), &composeGroup);
+      MPI_Group_free(&globalGroup);
+    } else {
+      MPI_Comm_group(MPI_COMM_WORLD, &composeGroup);
+    }
+
     // Paint SECTION
     {
       Timer timePaint(yaml, "paint-seconds");
 
-      painter->paint(mesh, &localImage, modelview, projection);
+      if (localImage->blendIsOrderDependent()) {
+        painter->paint(meshVisibilitySort(mesh, modelview, projection),
+                       localImage.get(),
+                       modelview,
+                       projection);
+      } else {
+        painter->paint(mesh, localImage.get(), modelview, projection);
+      }
     }
 
     // TODO: This barrier should be optional, but is needed for any of the
@@ -129,19 +211,20 @@ static void run(Painter* painter,
     {
       Timer timeCompositePlusCollect(yaml, "composite-seconds");
 
-      MPI_Group group;
-      MPI_Comm_group(MPI_COMM_WORLD, &group);
-      compositeImage = compositor->compose(&localImage, group, MPI_COMM_WORLD);
+      compositeImage =
+          compositor->compose(localImage.get(), composeGroup, MPI_COMM_WORLD);
 
       fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
     }
+
+    MPI_Group_free(&composeGroup);
   }
 
   // SAVE FOR SANITY CHECK
   if (writeImages) {
     std::stringstream filename;
     filename << "local_painting" << rank << ".ppm";
-    SavePPM(localImage, filename.str());
+    SavePPM(*localImage, filename.str());
 
     if (rank == 0) {
       SavePPM(*fullCompositeImage, "composite.ppm");
@@ -159,12 +242,16 @@ enum optionIndex {
   PAINTER,
   GEOMETRY,
   DISTRIBUTION,
-  OVERLAP
+  OVERLAP,
+  COLOR_FORMAT,
+  DEPTH_FORMAT
 };
 enum enableIndex { DISABLE, ENABLE };
 enum paintType { SIMPLE_RASTER, OPENGL };
 enum geometryType { BOX, STL_FILE };
 enum distributionType { DUPLICATE, DIVIDE };
+enum colorType { COLOR_UBYTE, COLOR_FLOAT };
+enum depthType { DEPTH_FLOAT, DEPTH_NONE };
 
 int MainLoop(int argc,
              char* argv[],
@@ -270,6 +357,20 @@ int MainLoop(int argc,
      "                         of 1 completely overlaps all geometry. Negative\n"
      "                         values space the geometry appart. Has no effect\n"
      "                         with --divide-geometry option. (Default -0.05)\n"});
+
+  usage.push_back(
+    {COLOR_FORMAT, COLOR_UBYTE,   "",  "color-ubyte", option::Arg::None,
+     "  --color-ubyte          Store colors in 8-bit channels (Default)."});
+  usage.push_back(
+    {COLOR_FORMAT, COLOR_FLOAT,   "",  "color-float", option::Arg::None,
+     "  --color-float          Store colors in 32-bit float channels."});
+  usage.push_back(
+    {DEPTH_FORMAT, DEPTH_FLOAT,   "",  "depth-float", option::Arg::None,
+     "  --depth-float          Store depth as 32-bit float (Default)."});
+  usage.push_back(
+    {DEPTH_FORMAT, DEPTH_NONE,    "",  "depth-none", option::Arg::None,
+     "  --depth-none           Do not use a depth buffer. This option changes\n"
+     "                         the compositing to an alpha blending mode.\n"});
   // clang-format on
 
   for (auto compositorOpt = compositorOptions.begin();
@@ -286,6 +387,8 @@ int MainLoop(int argc,
   bool writeImages = true;
   std::auto_ptr<Painter> painter(new PainterSimple);
   float overlap = -0.05f;
+  colorType colorFormat = COLOR_UBYTE;
+  depthType depthFormat = DEPTH_FLOAT;
 
   option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
@@ -353,6 +456,52 @@ int MainLoop(int argc,
     yaml.AddDictionaryEntry("painter", "simple");
   }
 
+  if (options[COLOR_FORMAT]) {
+    colorFormat = static_cast<colorType>(options[COLOR_FORMAT].last()->type());
+  }
+  if (options[DEPTH_FORMAT]) {
+    depthFormat = static_cast<depthType>(options[DEPTH_FORMAT].last()->type());
+  }
+  std::unique_ptr<Image> imageBuffer;
+  switch (depthFormat) {
+    case DEPTH_FLOAT:
+      yaml.AddDictionaryEntry("depth-buffer-format", "float");
+      switch (colorFormat) {
+        case COLOR_UBYTE:
+          yaml.AddDictionaryEntry("color-buffer-format", "byte");
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBAUByteColorFloatDepth(imageWidth, imageHeight));
+          break;
+        case COLOR_FLOAT:
+          yaml.AddDictionaryEntry("color-buffer-format", "float");
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBFloatColorDepth(imageWidth, imageHeight));
+          break;
+      }
+      break;
+    case DEPTH_NONE:
+      yaml.AddDictionaryEntry("depth-buffer-format", "none");
+      switch (colorFormat) {
+        case COLOR_UBYTE:
+          yaml.AddDictionaryEntry("color-buffer-format", "byte");
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBAUByteColorOnly(imageWidth, imageHeight));
+          break;
+        case COLOR_FLOAT:
+          yaml.AddDictionaryEntry("color-buffer-format", "float");
+          imageBuffer = std::unique_ptr<Image>(
+              new ImageRGBAFloatColorOnly(imageWidth, imageHeight));
+          break;
+      }
+      break;
+  }
+
+  if (imageBuffer->blendIsOrderDependent()) {
+    yaml.AddDictionaryEntry("rendering-order-dependent", "yes");
+  } else {
+    yaml.AddDictionaryEntry("rendering-order-dependent", "no");
+  }
+
   // LOAD TRIANGLES
   Mesh mesh;
   if (rank == 0) {
@@ -375,6 +524,10 @@ int MainLoop(int argc,
       MakeBox(mesh);
     }
     std::cout << "Rank 0 on pid " << getpid() << std::endl;
+#if 0
+    int ready = 0;
+    while (!ready);
+#endif
   } else {
     // Other ranks read nothing. Rank 0 distributes geometry.
   }
@@ -393,13 +546,17 @@ int MainLoop(int argc,
     yaml.AddDictionaryEntry("geometry-overlap", overlap);
   }
 
-  run(painter.get(),
-      compositor,
-      mesh,
-      imageWidth,
-      imageHeight,
-      writeImages,
-      yaml);
+  if (imageBuffer->blendIsOrderDependent()) {
+    // If blending colors, make all colors transparent.
+    int numTri = mesh.getNumberOfTriangles();
+    for (float* colorComponentValue = mesh.getTriangleColorsBuffer(0);
+         colorComponentValue != mesh.getTriangleColorsBuffer(numTri);
+         ++colorComponentValue) {
+      *colorComponentValue *= 0.5f;
+    }
+  }
+
+  run(painter.get(), compositor, mesh, imageBuffer.get(), writeImages, yaml);
 
   if (options[YAML_OUTPUT]) {
     yamlFilename = options[YAML_OUTPUT].arg;

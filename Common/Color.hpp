@@ -121,7 +121,20 @@ class Color {
     return Color(scale * this->Components[0],
                  scale * this->Components[1],
                  scale * this->Components[2],
-                 scale * this->Components[3]);
+                 this->Components[3]);
+  }
+
+  /// \brief Blends this color with the given color.
+  ///
+  /// Uses the Porter and Duff over operator for the blending. Note that both
+  /// colors need to be "prescaled" by their respective alphas.
+  ///
+  Color BlendOver(const Color& under) const {
+    const float scale = 1.0f - this->Components[3];
+    return Color(this->Components[0] + scale * under.Components[0],
+                 this->Components[1] + scale * under.Components[1],
+                 this->Components[2] + scale * under.Components[2],
+                 this->Components[3] + scale * under.Components[3]);
   }
 
   friend std::ostream& operator<<(std::ostream& out, const Color& c) {

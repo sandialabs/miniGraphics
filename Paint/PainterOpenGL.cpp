@@ -25,7 +25,10 @@
 
 #include "OpenGL_common/shader.hpp"
 
+#include <Common/ImageRGBAFloatColorOnly.hpp>
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
+#include <Common/ImageRGBAUByteColorOnly.hpp>
+#include <Common/ImageRGBFloatColorDepth.hpp>
 
 struct PainterOpenGL::Internals {
   void readTriangles(const Mesh& mesh,
@@ -95,13 +98,17 @@ PainterOpenGL::PainterOpenGL() : internals(new Internals) {
     exit(1);
   }
 
-  glfwWindowHint(GLFW_SAMPLES, 4);
+  glfwWindowHint(GLFW_SAMPLES, 0);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT,
                  GL_TRUE);  // To make MacOS happy; should not be needed
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
+  glfwWindowHint(GLFW_RED_BITS, 8);
+  glfwWindowHint(GLFW_GREEN_BITS, 8);
+  glfwWindowHint(GLFW_BLUE_BITS, 8);
+  glfwWindowHint(GLFW_ALPHA_BITS, 8);
 
   // Open a window and create its OpenGL context
   this->internals->window =
@@ -347,8 +354,17 @@ void PainterOpenGL::paint(const Mesh& mesh,
                         (void*)0   // array buffer offset
                         );
 
+  // Enable alpha blending
+  glEnable(GL_BLEND);
+  // Set the blending function for back-to-front. Note that our colors are
+  // premultiplied by alpha. This is important to make sure we have the right
+  // alpha in the imagebuffer.
+  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
   // Draw the triangles !
   glDrawArrays(GL_TRIANGLES, 0, mesh.getNumberOfTriangles() * 3);
+
+  glDisable(GL_BLEND);
 
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
@@ -357,23 +373,60 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glFlush();
   glReadBuffer(GL_BACK);
 
-  ImageRGBAUByteColorFloatDepth* rgbaDepthImage =
+  ImageRGBAUByteColorFloatDepth* rgbaByteFloatImage =
       dynamic_cast<ImageRGBAUByteColorFloatDepth*>(image);
-  if (rgbaDepthImage != nullptr) {
+  ImageRGBFloatColorDepth* rgbFloatFloatImage =
+      dynamic_cast<ImageRGBFloatColorDepth*>(image);
+  ImageRGBAUByteColorOnly* rgbaByteImage =
+      dynamic_cast<ImageRGBAUByteColorOnly*>(image);
+  ImageRGBAFloatColorOnly* rgbaFloatImage =
+      dynamic_cast<ImageRGBAFloatColorOnly*>(image);
+  if (rgbaByteFloatImage != nullptr) {
     glReadPixels(0,
                  0,
                  windowWidth,
                  windowHeight,
                  GL_RGBA,
                  GL_UNSIGNED_BYTE,
-                 rgbaDepthImage->getColorBuffer());
+                 rgbaByteFloatImage->getColorBuffer());
     glReadPixels(0,
                  0,
                  windowWidth,
                  windowHeight,
                  GL_DEPTH_COMPONENT,
                  GL_FLOAT,
-                 rgbaDepthImage->getDepthBuffer());
+                 rgbaByteFloatImage->getDepthBuffer());
+  } else if (rgbFloatFloatImage != nullptr) {
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_RGB,
+                 GL_FLOAT,
+                 rgbFloatFloatImage->getColorBuffer());
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_DEPTH_COMPONENT,
+                 GL_FLOAT,
+                 rgbFloatFloatImage->getDepthBuffer());
+  } else if (rgbaByteImage != nullptr) {
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 rgbaByteImage->getColorBuffer());
+  } else if (rgbaFloatImage != nullptr) {
+    glReadPixels(0,
+                 0,
+                 windowWidth,
+                 windowHeight,
+                 GL_RGBA,
+                 GL_FLOAT,
+                 rgbaFloatImage->getColorBuffer());
   } else {
     std::cerr << "Image type not supported for OpenGL." << std::endl;
     exit(1);

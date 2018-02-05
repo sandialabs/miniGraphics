@@ -6,28 +6,29 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef IMAGERGBAUBYTECOLORFLOATDEPTH_HPP
-#define IMAGERGBAUBYTECOLORFLOATDEPTH_HPP
+#ifndef IMAGERGBAFLOATCOLORONLY_HPP
+#define IMAGERGBAFLOATCOLORONLY_HPP
 
-#include "ImageColorDepth.hpp"
+#include "ImageColorOnly.hpp"
 
-class ImageRGBAUByteColorFloatDepth
-    : public ImageColorDepth<unsigned int, 1, float> {
+class ImageRGBAFloatColorOnly : public ImageColorOnly<float, 4> {
  public:
-  ImageRGBAUByteColorFloatDepth(int _width, int _height);
-  ImageRGBAUByteColorFloatDepth(int _width,
-                                int _height,
-                                int _regionBegin,
-                                int _regionEnd);
-  ~ImageRGBAUByteColorFloatDepth() = default;
+  ImageRGBAFloatColorOnly(int _width, int _height);
+  ImageRGBAFloatColorOnly(int _width,
+                          int _height,
+                          int _regionBegin,
+                          int _regionEnd);
+  ~ImageRGBAFloatColorOnly() = default;
 
   Color getColor(int pixelIndex) const final;
 
-  void setColor(int pixelIndex, const Color &color) final;
+  void setColor(int pixelIndex, const Color& color) final;
 
   float getDepth(int pixelIndex) const final;
 
   void setDepth(int pixelIndex, float depth) final;
+
+  std::unique_ptr<Image> blend(const Image* _otherImage) const final;
 
   std::unique_ptr<Image> createNew(int _width,
                                    int _height,
@@ -37,4 +38,4 @@ class ImageRGBAUByteColorFloatDepth
   std::unique_ptr<const Image> shallowCopy() const final;
 };
 
-#endif  // IMAGERGBAUBYTECOLORFLOATDEPTH_HPP
+#endif  // IMAGERGBAFLOATCOLORONLY_HPP

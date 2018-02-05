@@ -67,8 +67,13 @@ inline void PainterSimple::fillLine(Image *image,
   int xMax = std::min(static_cast<int>(right.x), image->getWidth());
 
   for (int x = xMin; x < xMax; ++x) {
-    if (depth < image->getDepth(x, y)) {
-      image->setColor(x, y, color);
+    if ((depth >= 0.0) && (depth < image->getDepth(x, y))) {
+      if (color.Components[3] >= 0.99f) {
+        image->setColor(x, y, color);
+      } else {
+        Color previousColor = image->getColor(x, y);
+        image->setColor(x, y, color.BlendOver(previousColor));
+      }
       image->setDepth(x, y, depth);
       depth += deltaDepth;
     }

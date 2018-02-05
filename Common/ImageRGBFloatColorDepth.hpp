@@ -6,20 +6,19 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef IMAGERGBAUBYTECOLORFLOATDEPTH_HPP
-#define IMAGERGBAUBYTECOLORFLOATDEPTH_HPP
+#ifndef IMAGERGBFLOATCOLORDEPTH_HPP
+#define IMAGERGBFLOATCOLORDEPTH_HPP
 
 #include "ImageColorDepth.hpp"
 
-class ImageRGBAUByteColorFloatDepth
-    : public ImageColorDepth<unsigned int, 1, float> {
+class ImageRGBFloatColorDepth : public ImageColorDepth<float, 3, float> {
  public:
-  ImageRGBAUByteColorFloatDepth(int _width, int _height);
-  ImageRGBAUByteColorFloatDepth(int _width,
-                                int _height,
-                                int _regionBegin,
-                                int _regionEnd);
-  ~ImageRGBAUByteColorFloatDepth() = default;
+  ImageRGBFloatColorDepth(int _width, int _height);
+  ImageRGBFloatColorDepth(int _width,
+                          int _height,
+                          int _regionBegin,
+                          int _regionEnd);
+  ~ImageRGBFloatColorDepth() = default;
 
   Color getColor(int pixelIndex) const final;
 
@@ -37,4 +36,4 @@ class ImageRGBAUByteColorFloatDepth
   std::unique_ptr<const Image> shallowCopy() const final;
 };
 
-#endif  // IMAGERGBAUBYTECOLORFLOATDEPTH_HPP
+#endif  // IMAGERGBFLOATCOLORDEPTH_HPP

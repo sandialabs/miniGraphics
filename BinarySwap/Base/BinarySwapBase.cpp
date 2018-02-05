@@ -35,7 +35,8 @@ std::unique_ptr<Image> BinarySwap::compose(Image *localImage,
   // Binary-swap is a recursive algorithm. We start with a process group with
   // all the processes, then divide and conquer the group until we only have
   // groups of size 1.
-  MPI_Group workingGroup = group;
+  MPI_Group workingGroup;
+  MPI_Group_excl(group, 0, nullptr, &workingGroup); // Copies group
 
   int rank;
   MPI_Group_rank(workingGroup, &rank);
