@@ -42,7 +42,9 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
+#include <iomanip>
 #include <memory>
 #include <sstream>
 
@@ -323,6 +325,11 @@ int MainLoop(int argc,
 
   // TODO: Make this tied to the actual compositing algorithm
   yaml.AddDictionaryEntry("composite-algorithm", "binary swap");
+
+  auto startTime = std::chrono::system_clock::now();
+  auto startTime_t = std::chrono::system_clock::to_time_t(startTime);
+  yaml.AddDictionaryEntry("start-time",
+                          std::put_time(std::localtime(&startTime_t), "%c"));
 
   MPI_Init(&argc, &argv);
 
