@@ -324,6 +324,7 @@ int MainLoop(int argc,
              const char* appName) {
   std::stringstream yamlStream;
   YamlWriter yaml(yamlStream);
+  yaml.StartListItem();
 
   yaml.AddDictionaryEntry("composite-algorithm", appName);
 
@@ -636,7 +637,7 @@ int MainLoop(int argc,
     yamlFilename = options[YAML_OUTPUT].arg;
   }
   if (rank == 0) {
-    std::ofstream yamlFile(yamlFilename);
+    std::ofstream yamlFile(yamlFilename, std::ios_base::app);
     yamlFile << yamlStream.str();
   }
 
