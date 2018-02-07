@@ -37,7 +37,7 @@ set(headers
   Triangle.hpp
   )
 
-miniGraphics_create_config_header()
+miniGraphics_create_config_header("common library")
 
 add_library(miniGraphicsCommon ${srcs} ${headers})
 

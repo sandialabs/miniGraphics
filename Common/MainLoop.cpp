@@ -302,7 +302,8 @@ enum depthType { DEPTH_FLOAT, DEPTH_NONE };
 int MainLoop(int argc,
              char* argv[],
              Compositor* compositor,
-             const option::Descriptor* compositorOptions) {
+             const option::Descriptor* compositorOptions,
+             const char* appName) {
   std::vector<option::Descriptor> compositorOptionsVector;
 
   if (compositorOptions != nullptr) {
@@ -313,18 +314,18 @@ int MainLoop(int argc,
     }
   }
 
-  return MainLoop(argc, argv, compositor, compositorOptionsVector);
+  return MainLoop(argc, argv, compositor, compositorOptionsVector, appName);
 }
 
 int MainLoop(int argc,
              char* argv[],
              Compositor* compositor,
-             const std::vector<option::Descriptor>& compositorOptions) {
+             const std::vector<option::Descriptor>& compositorOptions,
+             const char* appName) {
   std::stringstream yamlStream;
   YamlWriter yaml(yamlStream);
 
-  // TODO: Make this tied to the actual compositing algorithm
-  yaml.AddDictionaryEntry("composite-algorithm", "binary swap");
+  yaml.AddDictionaryEntry("composite-algorithm", appName);
 
   auto startTime = std::chrono::system_clock::now();
   auto startTime_t = std::chrono::system_clock::to_time_t(startTime);
