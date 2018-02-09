@@ -9,13 +9,13 @@
 #ifndef SAVEPPM_HPP
 #define SAVEPPM_HPP
 
-#include <Common/Image.hpp>
+#include <Common/ImageFull.hpp>
 
 #include <string>
 
 /// \brief Saves the given Image data to a PPM file
 ///
 /// Returns true if the save is successful, false otherwise.
-bool SavePPM(const Image& image, const std::string& filename);
+bool SavePPM(const ImageFull& image, const std::string& filename);
 
 #endif  // SAVEPPM_HPP

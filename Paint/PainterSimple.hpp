@@ -17,14 +17,14 @@
 
 class PainterSimple : public Painter {
  private:
-  void fillLine(Image& image,
+  void fillLine(ImageFull& image,
                 int y,
                 const glm::vec3& edgeDir1,
                 const glm::vec3& edgeBase1,
                 const glm::vec3& edgeDir2,
                 const glm::vec3& edgeBase2,
                 const Color& color);
-  void fillTriangle(Image& image,
+  void fillTriangle(ImageFull& image,
                     const Triangle& triangle,
                     const glm::mat4& modelview,
                     const glm::mat4& projection,
@@ -32,7 +32,7 @@ class PainterSimple : public Painter {
 
  public:
   void paint(const Mesh& mesh,
-             Image& image,
+             ImageFull& image,
              const glm::mat4& modelview,
              const glm::mat4& projection) final;
 };

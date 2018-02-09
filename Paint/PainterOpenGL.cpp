@@ -147,7 +147,7 @@ PainterOpenGL::~PainterOpenGL() {
 }
 
 void PainterOpenGL::paint(const Mesh& mesh,
-                          Image& image,
+                          ImageFull& image,
                           const glm::mat4x4& modelview,
                           const glm::mat4x4& projection) {
   int windowWidth = image.getWidth();

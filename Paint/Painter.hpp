@@ -11,7 +11,7 @@
 
 #include <miniGraphicsConfig.h>
 
-#include <Common/Image.hpp>
+#include <Common/ImageFull.hpp>
 #include <Common/Mesh.hpp>
 
 #include <glm/mat4x4.hpp>
@@ -21,7 +21,7 @@
 class Painter {
  public:
   virtual void paint(const Mesh& mesh,
-                     Image& image,
+                     ImageFull& image,
                      const glm::mat4& modelview,
                      const glm::mat4& projection) = 0;
 

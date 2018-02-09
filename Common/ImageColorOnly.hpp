@@ -9,7 +9,7 @@
 #ifndef IMAGECOLORONLY_HPP
 #define IMAGECOLORONLY_HPP
 
-#include "Image.hpp"
+#include "ImageFull.hpp"
 
 #include <memory>
 #include <vector>
@@ -30,9 +30,8 @@
 ///   - A static function named decodeColor that takes an array of ColorType
 ///     values and returns a Color object.
 ///
-
 template <typename Features>
-class ImageColorOnly : public Image {
+class ImageColorOnly : public ImageFull {
  public:
   using ColorType = typename Features::ColorType;
   static constexpr int ColorVecSize = Features::ColorVecSize;
@@ -46,12 +45,12 @@ class ImageColorOnly : public Image {
 
  public:
   ImageColorOnly(int _width, int _height)
-      : Image(_width, _height),
+      : ImageFull(_width, _height),
         colorBuffer(
             new std::vector<ColorType>(_width * _height * ColorVecSize)) {}
 
   ImageColorOnly(int _width, int _height, int _regionBegin, int _regionEnd)
-      : Image(_width, _height, _regionBegin, _regionEnd),
+      : ImageFull(_width, _height, _regionBegin, _regionEnd),
         colorBuffer(new std::vector<ColorType>((_regionEnd - _regionBegin) *
                                                ColorVecSize)) {}
 
@@ -160,8 +159,8 @@ class ImageColorOnly : public Image {
     return outImageHolder;
   }
 
-  std::unique_ptr<Image> Gather(int recvRank,
-                                MPI_Comm communicator) const final {
+  std::unique_ptr<ImageFull> Gather(int recvRank,
+                                    MPI_Comm communicator) const final {
     int rank;
     MPI_Comm_rank(communicator, &rank);
 
@@ -195,7 +194,7 @@ class ImageColorOnly : public Image {
                         this->getHeight(),
                         0,
                         this->getWidth() * this->getHeight());
-    ThisType* recvImage = dynamic_cast<ThisType*>(outImageHolder.get());
+    ThisType* recvImage = dynamic_cast<ThisType*>(outImageHolder.release());
     assert((recvImage != NULL) && "Internal error: createNew bad type.");
 
     MPI_Gatherv(this->getColorBuffer(),
@@ -208,7 +207,7 @@ class ImageColorOnly : public Image {
                 recvRank,
                 communicator);
 
-    return outImageHolder;
+    return std::unique_ptr<ImageFull>(recvImage);
   }
 
   std::vector<MPI_Request> ISend(int destRank,

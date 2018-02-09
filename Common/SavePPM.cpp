@@ -10,7 +10,7 @@
 
 #include <fstream>
 
-bool SavePPM(const Image& image, const std::string& filename) {
+bool SavePPM(const ImageFull& image, const std::string& filename) {
   std::ofstream file(filename.c_str(),
                      std::ios_base::binary | std::ios_base::out);
 

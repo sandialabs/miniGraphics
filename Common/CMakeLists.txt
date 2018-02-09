@@ -36,6 +36,7 @@ set(headers
   Image.hpp
   ImageColorDepth.hpp
   ImageColorOnly.hpp
+  ImageFull.hpp
   ImageRGBAFloatColorOnly.hpp
   ImageRGBAUByteColorFloatDepth.hpp
   ImageRGBAUByteColorOnly.hpp
