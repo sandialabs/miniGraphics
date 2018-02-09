@@ -46,9 +46,85 @@
 #include <fstream>
 #include <iomanip>
 #include <memory>
+#include <random>
 #include <sstream>
 
 #include "mpi.h"
+
+enum optionIndex {
+  DUMMY = 100,
+  HELP,
+  WIDTH,
+  HEIGHT,
+  NUM_TRIALS,
+  YAML_OUTPUT,
+  CHECK_IMAGE,
+  WRITE_IMAGE,
+  PAINTER,
+  GEOMETRY,
+  DISTRIBUTION,
+  OVERLAP,
+  COLOR_FORMAT,
+  DEPTH_FORMAT,
+  CAMERA_THETA,
+  CAMERA_PHI,
+  CAMERA_ZOOM,
+  CAMERA_ANIMATE_ROTATE,
+  CAMERA_RANDOM_ROTATE,
+  CAMERA_ANIMATE_ALL,
+  CAMERA_RANDOM_ALL,
+  RANDOM_SEED
+};
+enum enableIndex { DISABLE, ENABLE };
+enum paintType { SIMPLE_RASTER, OPENGL };
+enum geometryType { BOX, STL_FILE };
+enum distributionType { DUPLICATE, DIVIDE };
+enum colorType { COLOR_UBYTE, COLOR_FLOAT };
+enum depthType { DEPTH_FLOAT, DEPTH_NONE };
+enum cameraMoveType { CAMERA_STILL, CAMERA_ANIMATE, CAMERA_RANDOM };
+
+struct RunOptions {
+  int imageWidth;
+  int imageHeight;
+  int numTrials;
+  std::string yamlFilename;
+  bool checkImage;
+  bool writeImage;
+  paintType painter;
+  geometryType geometry;
+  std::string geometryFile;
+  distributionType distribution;
+  float overlap;
+  colorType colorFormat;
+  depthType depthFormat;
+  float thetaRotation;
+  float phiRotation;
+  float zoom;
+  cameraMoveType thetaMove;
+  cameraMoveType phiMove;
+  cameraMoveType zoomMove;
+  std::mt19937 randomEngine;
+
+  RunOptions()
+      : imageWidth(1100),
+        imageHeight(900),
+        numTrials(10),
+        yamlFilename("timing.yaml"),
+        checkImage(true),
+        writeImage(false),
+        painter(SIMPLE_RASTER),
+        geometry(BOX),
+        distribution(DUPLICATE),
+        overlap(-0.05f),
+        colorFormat(COLOR_UBYTE),
+        depthFormat(DEPTH_FLOAT),
+        thetaRotation(25.0f),
+        phiRotation(15.0f),
+        zoom(1.0f),
+        thetaMove(CAMERA_RANDOM),
+        phiMove(CAMERA_RANDOM),
+        zoomMove(CAMERA_STILL) {}
+};
 
 struct GeometryInfo {
   glm::vec3 boundsMin;
@@ -102,12 +178,185 @@ struct GeometryInfo {
   }
 };
 
-static void run(Painter* painter,
+static std::unique_ptr<Image> createImage(const RunOptions& runOptions,
+                                          YamlWriter& yaml) {
+  yaml.AddDictionaryEntry("image-width", runOptions.imageWidth);
+  yaml.AddDictionaryEntry("image-height", runOptions.imageHeight);
+
+  switch (runOptions.depthFormat) {
+    case DEPTH_FLOAT:
+      yaml.AddDictionaryEntry("depth-buffer-format", "float");
+      switch (runOptions.colorFormat) {
+        case COLOR_UBYTE:
+          yaml.AddDictionaryEntry("color-buffer-format", "byte");
+          return std::unique_ptr<Image>(new ImageRGBAUByteColorFloatDepth(
+              runOptions.imageWidth, runOptions.imageHeight));
+          break;
+        case COLOR_FLOAT:
+          yaml.AddDictionaryEntry("color-buffer-format", "float");
+          return std::unique_ptr<Image>(new ImageRGBFloatColorDepth(
+              runOptions.imageWidth, runOptions.imageHeight));
+          break;
+      }
+      break;
+    case DEPTH_NONE:
+      yaml.AddDictionaryEntry("depth-buffer-format", "none");
+      switch (runOptions.colorFormat) {
+        case COLOR_UBYTE:
+          yaml.AddDictionaryEntry("color-buffer-format", "byte");
+          return std::unique_ptr<Image>(new ImageRGBAUByteColorOnly(
+              runOptions.imageWidth, runOptions.imageHeight));
+          break;
+        case COLOR_FLOAT:
+          yaml.AddDictionaryEntry("color-buffer-format", "float");
+          return std::unique_ptr<Image>(new ImageRGBAFloatColorOnly(
+              runOptions.imageWidth, runOptions.imageHeight));
+          break;
+      }
+      break;
+  }
+}
+
+static std::unique_ptr<Painter> createPainter(const RunOptions& runOptions,
+                                              YamlWriter& yaml) {
+  switch (runOptions.painter) {
+    case SIMPLE_RASTER:
+      yaml.AddDictionaryEntry("painter", "simple");
+      return std::unique_ptr<Painter>(new PainterSimple);
+#ifdef MINIGRAPHICS_ENABLE_OPENGL
+    case OPENGL:
+      yaml.AddDictionaryEntry("painter", "OpenGL");
+      return std::unique_ptr<Painter>(new PainterOpenGL);
+#endif
+  }
+}
+
+static Mesh createMesh(const RunOptions& runOptions,
+                       MPI_Comm communicator,
+                       YamlWriter& yaml) {
+  int rank;
+  MPI_Comm_rank(communicator, &rank);
+
+  Mesh mesh;
+  if (rank == 0) {
+    switch (runOptions.geometry) {
+      case BOX:
+        yaml.AddDictionaryEntry("geometry", "box");
+        MakeBox(mesh);
+        break;
+      case STL_FILE:
+        yaml.AddDictionaryEntry("geometry", runOptions.geometryFile);
+        if (!ReadSTL(runOptions.geometryFile, mesh)) {
+          std::cerr << "Error reading STL file " << runOptions.geometryFile
+                    << std::endl;
+          exit(1);
+        }
+        break;
+    }
+  } else {
+    // Other ranks read nothing. Rank 0 distributes geometry.
+  }
+
+  switch (runOptions.distribution) {
+    case DUPLICATE:
+      yaml.AddDictionaryEntry("geometry-distribution", "duplicate");
+      yaml.AddDictionaryEntry("geometry-overlap", runOptions.overlap);
+      meshBroadcast(mesh, runOptions.overlap, communicator);
+      break;
+    case DIVIDE:
+      yaml.AddDictionaryEntry("geometry-distribution", "divide");
+      meshScatter(mesh, communicator);
+      break;
+  }
+
+  if (runOptions.depthFormat == DEPTH_NONE) {
+    // If blending colors, make all colors transparent.
+    int numTri = mesh.getNumberOfTriangles();
+    for (float* colorComponentValue = mesh.getTriangleColorsBuffer(0);
+         colorComponentValue != mesh.getTriangleColorsBuffer(numTri);
+         ++colorComponentValue) {
+      *colorComponentValue *= 0.5f;
+    }
+  }
+
+  return mesh;
+}
+
+static void createTransforms(RunOptions& runOptions,
+                             int trial,
+                             const GeometryInfo& geometryInfo,
+                             YamlWriter& yaml,
+                             glm::mat4& modelviewOut,
+                             glm::mat4& projectionOut) {
+  float animationDistance = static_cast<float>(trial) / runOptions.numTrials;
+
+  float thetaRotation = runOptions.thetaRotation;
+  switch (runOptions.thetaMove) {
+    case CAMERA_STILL:
+      break;
+    case CAMERA_ANIMATE:
+      thetaRotation += 360.0f * animationDistance - 180.0f;
+      break;
+    case CAMERA_RANDOM:
+      thetaRotation = std::uniform_real_distribution<float>(
+          -180, 180)(runOptions.randomEngine);
+      break;
+  }
+
+  float phiRotation = runOptions.phiRotation;
+  switch (runOptions.phiMove) {
+    case CAMERA_STILL:
+      break;
+    case CAMERA_ANIMATE:
+      phiRotation += 180.0f * animationDistance - 90.0f;
+      break;
+    case CAMERA_RANDOM:
+      phiRotation = std::uniform_real_distribution<float>(
+          -180, 180)(runOptions.randomEngine);
+      break;
+  }
+
+  float zoom = runOptions.zoom;
+  switch (runOptions.zoomMove) {
+    case CAMERA_STILL:
+      break;
+    case CAMERA_ANIMATE:
+      zoom += 9.0f * animationDistance;
+      break;
+    case CAMERA_RANDOM:
+      zoom =
+          std::uniform_real_distribution<float>(1, 10)(runOptions.randomEngine);
+      break;
+  }
+
+  yaml.AddDictionaryEntry("theta-rotation", thetaRotation);
+  yaml.AddDictionaryEntry("phi-rotation", phiRotation);
+  yaml.AddDictionaryEntry("zoom", zoom);
+
+  modelviewOut = glm::mat4(1.0f);
+
+  // Move to in front of camera.
+  modelviewOut = glm::translate(modelviewOut,
+                                -glm::vec3(0, 0, 1.5f * geometryInfo.distance));
+
+  // Rotate geometry for interesting perspectives.
+  modelviewOut =
+      glm::rotate(modelviewOut, glm::radians(phiRotation), glm::vec3(1, 0, 0));
+  modelviewOut = glm::rotate(
+      modelviewOut, glm::radians(thetaRotation), glm::vec3(0, 1, 0));
+
+  // Center geometry at origin.
+  modelviewOut = glm::translate(modelviewOut, -geometryInfo.center);
+
+  projectionOut = glm::perspective(
+      glm::radians(45.0f / zoom),
+      (float)runOptions.imageWidth / (float)runOptions.imageHeight,
+      geometryInfo.distance / 2.1f,
+      2 * geometryInfo.distance);
+}
+
+static void run(RunOptions& runOptions,
                 Compositor* compositor,
-                const Mesh& mesh,
-                Image* imageBuffer,
-                bool checkImages,
-                bool writeImages,
                 YamlWriter& yaml) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -115,13 +364,21 @@ static void run(Painter* painter,
   int numProc;
   MPI_Comm_size(MPI_COMM_WORLD, &numProc);
 
-  Mesh fullMesh;
-  if (checkImages) {
-    fullMesh = meshGather(mesh, MPI_COMM_WORLD);
+  std::unique_ptr<Image> localImage = createImage(runOptions, yaml);
+  if (localImage->blendIsOrderDependent()) {
+    yaml.AddDictionaryEntry("rendering-order-dependent", "yes");
+  } else {
+    yaml.AddDictionaryEntry("rendering-order-dependent", "no");
   }
 
-  int imageWidth = imageBuffer->getWidth();
-  int imageHeight = imageBuffer->getHeight();
+  std::unique_ptr<Painter> painter = createPainter(runOptions, yaml);
+
+  Mesh mesh = createMesh(runOptions, MPI_COMM_WORLD, yaml);
+
+  Mesh fullMesh;
+  if (runOptions.checkImage) {
+    fullMesh = meshGather(mesh, MPI_COMM_WORLD);
+  }
 
   // Gather rough geometry information
   GeometryInfo geometryInfo;
@@ -129,175 +386,136 @@ static void run(Painter* painter,
 
   yaml.AddDictionaryEntry("num-triangles", geometryInfo.numTriangles);
 
-  // Set up projection matrices
-  float thetaRotation = 25.0f;
-  float phiRotation = 15.0f;
-  float zoom = 1.0f;
+  yaml.StartBlock("trials");
 
-  glm::mat4 modelview = glm::mat4(1.0f);
+  for (int trial = 0; trial < runOptions.numTrials; ++trial) {
+    yaml.StartListItem();
+    yaml.AddDictionaryEntry("trial-num", trial);
 
-  // Move to in front of camera.
-  modelview =
-      glm::translate(modelview, -glm::vec3(0, 0, 1.5f * geometryInfo.distance));
+    glm::mat4 modelview;
+    glm::mat4 projection;
+    createTransforms(
+        runOptions, trial, geometryInfo, yaml, modelview, projection);
 
-  // Rotate geometry for interesting perspectives.
-  modelview =
-      glm::rotate(modelview, glm::radians(phiRotation), glm::vec3(1, 0, 0));
-  modelview =
-      glm::rotate(modelview, glm::radians(thetaRotation), glm::vec3(0, 1, 0));
+    std::unique_ptr<Image> compositeImage;
+    std::unique_ptr<Image> fullCompositeImage;
 
-  // Center geometry at origin.
-  modelview = glm::translate(modelview, -geometryInfo.center);
+    {
+      Timer timeTotal(yaml, "total-seconds");
 
-  glm::mat4 projection =
-      glm::perspective(glm::radians(45.0f / zoom),
-                       (float)imageWidth / (float)imageHeight,
-                       geometryInfo.distance / 2.1f,
-                       2 * geometryInfo.distance);
+      MPI_Group composeGroup;
+      if (localImage->blendIsOrderDependent()) {
+        // Determine (approximate) visibility order of process by sorting the
+        // depth of the transformed centroids.
+        std::vector<std::pair<float, int>> depthList(numProc);
+        for (int proc = 0; proc < numProc; proc++) {
+          glm::vec4 centroid(geometryInfo.centroids[proc], 1.0f);
+          centroid = modelview * centroid;
+          centroid = projection * centroid;
+          float depth = centroid.z / centroid.w;
+          depthList[proc] = std::pair<float, int>(depth, proc);
+        }
 
-  std::unique_ptr<Image> localImage = imageBuffer->createNew(
-      imageWidth, imageHeight, 0, imageWidth * imageHeight);
-  std::unique_ptr<Image> compositeImage;
-  std::unique_ptr<Image> fullCompositeImage;
+        std::sort(depthList.begin(),
+                  depthList.end(),
+                  [](const std::pair<float, int>& a,
+                     const std::pair<float, int>& b) -> bool {
+                    return (a.first < b.first);
+                  });
 
-  {
-    Timer timeTotal(yaml, "total-seconds");
+        std::vector<int> rankOrder;
+        rankOrder.reserve(depthList.size());
+        for (auto&& depthEntry : depthList) {
+          rankOrder.push_back(depthEntry.second);
+        }
 
-    MPI_Group composeGroup;
-    if (localImage->blendIsOrderDependent()) {
-      // Determine (approximate) visibility order of process by sorting the
-      // depth of the transformed centroids.
-      std::vector<std::pair<float, int>> depthList(numProc);
-      for (int proc = 0; proc < numProc; proc++) {
-        glm::vec4 centroid(geometryInfo.centroids[proc], 1.0f);
-        centroid = modelview * centroid;
-        centroid = projection * centroid;
-        float depth = centroid.z / centroid.w;
-        depthList[proc] = std::pair<float, int>(depth, proc);
+        MPI_Group globalGroup;
+        MPI_Comm_group(MPI_COMM_WORLD, &globalGroup);
+        MPI_Group_incl(globalGroup, numProc, &rankOrder.front(), &composeGroup);
+        MPI_Group_free(&globalGroup);
+      } else {
+        MPI_Comm_group(MPI_COMM_WORLD, &composeGroup);
       }
 
-      std::sort(depthList.begin(),
-                depthList.end(),
-                [](const std::pair<float, int>& a,
-                   const std::pair<float, int>& b) -> bool {
-                  return (a.first < b.first);
-                });
+      // Paint SECTION
+      {
+        Timer timePaint(yaml, "paint-seconds");
 
-      std::vector<int> rankOrder;
-      rankOrder.reserve(depthList.size());
-      for (auto&& depthEntry : depthList) {
-        rankOrder.push_back(depthEntry.second);
+        if (localImage->blendIsOrderDependent()) {
+          painter->paint(meshVisibilitySort(mesh, modelview, projection),
+                         localImage.get(),
+                         modelview,
+                         projection);
+        } else {
+          painter->paint(mesh, localImage.get(), modelview, projection);
+        }
       }
 
-      MPI_Group globalGroup;
-      MPI_Comm_group(MPI_COMM_WORLD, &globalGroup);
-      MPI_Group_incl(globalGroup, numProc, &rankOrder.front(), &composeGroup);
-      MPI_Group_free(&globalGroup);
-    } else {
-      MPI_Comm_group(MPI_COMM_WORLD, &composeGroup);
+      // TODO: This barrier should be optional, but is needed for any of the
+      // timing below to be useful.
+      MPI_Barrier(MPI_COMM_WORLD);
+
+      // COMPOSITION SECTION
+      {
+        Timer timeCompositePlusCollect(yaml, "composite-seconds");
+
+        compositeImage =
+            compositor->compose(localImage.get(), composeGroup, MPI_COMM_WORLD);
+
+        fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
+      }
+
+      MPI_Group_free(&composeGroup);
     }
 
-    // Paint SECTION
-    {
-      Timer timePaint(yaml, "paint-seconds");
+    if (runOptions.checkImage && (rank == 0)) {
+      const float COLOR_THRESHOLD = 0.01;
+      const float BAD_PIXEL_THRESHOLD = 0.02;
 
+      std::cout << "Checking image validity..." << std::flush;
       if (localImage->blendIsOrderDependent()) {
-        painter->paint(meshVisibilitySort(mesh, modelview, projection),
+        painter->paint(meshVisibilitySort(fullMesh, modelview, projection),
                        localImage.get(),
                        modelview,
                        projection);
       } else {
-        painter->paint(mesh, localImage.get(), modelview, projection);
+        painter->paint(fullMesh, localImage.get(), modelview, projection);
+      }
+
+      int numPixels = localImage->getNumberOfPixels();
+      int numBadPixels = 0;
+      for (int pixel = 0; pixel < numPixels; ++pixel) {
+        Color compositeColor = fullCompositeImage->getColor(pixel);
+        Color localColor = localImage->getColor(pixel);
+        if ((fabsf(compositeColor.Components[0] - localColor.Components[0]) >
+             COLOR_THRESHOLD) ||
+            (fabsf(compositeColor.Components[1] - localColor.Components[1]) >
+             COLOR_THRESHOLD) ||
+            (fabsf(compositeColor.Components[2] - localColor.Components[2]) >
+             COLOR_THRESHOLD)) {
+          ++numBadPixels;
+        }
+      }
+      std::cout << (100 * numBadPixels) / numPixels << "% bad pixels."
+                << std::endl;
+      if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
+        std::cout << "Composite image appears bad!" << std::endl;
+        SavePPM(*localImage, "reference.ppm");
+        SavePPM(*fullCompositeImage, "bad_composite.ppm");
+        exit(1);
       }
     }
 
-    // TODO: This barrier should be optional, but is needed for any of the
-    // timing below to be useful.
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // COMPOSITION SECTION
-    {
-      Timer timeCompositePlusCollect(yaml, "composite-seconds");
-
-      compositeImage =
-          compositor->compose(localImage.get(), composeGroup, MPI_COMM_WORLD);
-
-      fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
-    }
-
-    MPI_Group_free(&composeGroup);
-  }
-
-  if (checkImages && (rank == 0)) {
-    const float COLOR_THRESHOLD = 0.01;
-    const float BAD_PIXEL_THRESHOLD = 0.02;
-
-    std::cout << "Checking image validity..." << std::flush;
-    if (localImage->blendIsOrderDependent()) {
-      painter->paint(meshVisibilitySort(fullMesh, modelview, projection),
-                     localImage.get(),
-                     modelview,
-                     projection);
-    } else {
-      painter->paint(fullMesh, localImage.get(), modelview, projection);
-    }
-
-    int numPixels = localImage->getNumberOfPixels();
-    int numBadPixels = 0;
-    for (int pixel = 0; pixel < numPixels; ++pixel) {
-      Color compositeColor = fullCompositeImage->getColor(pixel);
-      Color localColor = localImage->getColor(pixel);
-      if ((fabsf(compositeColor.Components[0] - localColor.Components[0]) >
-           COLOR_THRESHOLD) ||
-          (fabsf(compositeColor.Components[1] - localColor.Components[1]) >
-           COLOR_THRESHOLD) ||
-          (fabsf(compositeColor.Components[2] - localColor.Components[2]) >
-           COLOR_THRESHOLD)) {
-        ++numBadPixels;
-      }
-    }
-    std::cout << (100 * numBadPixels) / numPixels << "% bad pixels."
-              << std::endl;
-    if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
-      std::cout << "Composite image appears bad!" << std::endl;
-      SavePPM(*localImage, "reference.ppm");
-      SavePPM(*fullCompositeImage, "bad_composite.ppm");
-      exit(1);
+    if (runOptions.writeImage && (rank == 0)) {
+      std::stringstream filename;
+      filename << "composite" << std::setfill('0') << std::setw(3) << trial
+               << ".ppm";
+      SavePPM(*fullCompositeImage, filename.str());
     }
   }
 
-  if (writeImages && (rank == 0)) {
-    //    std::stringstream filename;
-    //    filename << "local_painting" << rank << ".ppm";
-    //    SavePPM(*localImage, filename.str());
-
-    if (rank == 0) {
-      SavePPM(*fullCompositeImage, "composite.ppm");
-    }
-  }
+  yaml.EndBlock();
 }
-
-enum optionIndex {
-  DUMMY = 100,
-  HELP,
-  WIDTH,
-  HEIGHT,
-  YAML_OUTPUT,
-  CHECK_IMAGE,
-  WRITE_IMAGE,
-  PAINTER,
-  GEOMETRY,
-  DISTRIBUTION,
-  OVERLAP,
-  COLOR_FORMAT,
-  DEPTH_FORMAT
-};
-enum enableIndex { DISABLE, ENABLE };
-enum paintType { SIMPLE_RASTER, OPENGL };
-enum geometryType { BOX, STL_FILE };
-enum distributionType { DUPLICATE, DIVIDE };
-enum colorType { COLOR_UBYTE, COLOR_FLOAT };
-enum depthType { DEPTH_FLOAT, DEPTH_NONE };
 
 int MainLoop(int argc,
              char* argv[],
@@ -364,6 +582,10 @@ int MainLoop(int argc,
      "  --height=<num>         Set the height of the image. (Default 900)\n"});
 
   usage.push_back(
+    {NUM_TRIALS,   0,             "",  "trials",  PositiveIntArg,
+     "  --trials=<num>         Set the number of trials (rendered frames).\n"
+     "                         (Default 10)"});
+  usage.push_back(
     {YAML_OUTPUT,  0,             "", "yaml-output", NonemptyStringArg,
      "  --yaml-output=<file>   Specify the filename of the YAML output file\n"
      "                         containing timing information.\n"
@@ -424,17 +646,81 @@ int MainLoop(int argc,
 
   usage.push_back(
     {COLOR_FORMAT, COLOR_UBYTE,   "",  "color-ubyte", option::Arg::None,
-     "  --color-ubyte          Store colors in 8-bit channels (Default)."});
+     "  --color-ubyte          Store colors in 8-bit channels. (Default)"});
   usage.push_back(
     {COLOR_FORMAT, COLOR_FLOAT,   "",  "color-float", option::Arg::None,
      "  --color-float          Store colors in 32-bit float channels."});
   usage.push_back(
     {DEPTH_FORMAT, DEPTH_FLOAT,   "",  "depth-float", option::Arg::None,
-     "  --depth-float          Store depth as 32-bit float (Default)."});
+     "  --depth-float          Store depth as 32-bit float. (Default)"});
   usage.push_back(
     {DEPTH_FORMAT, DEPTH_NONE,    "",  "depth-none", option::Arg::None,
      "  --depth-none           Do not use a depth buffer. This option changes\n"
      "                         the compositing to an alpha blending mode.\n"});
+
+  usage.push_back(
+    {CAMERA_THETA, CAMERA_STILL,  "",  "camera-theta", FloatArg,
+     "  --camera-theta=<angle> Set the camera theta value to a specific value\n"
+     "                         in degrees."});
+  usage.push_back(
+    {CAMERA_PHI,   CAMERA_STILL,  "",  "camera-phi", FloatArg,
+     "  --camera-phi=<angle>   Set the camera phi value to a specific value in\n"
+     "                         degrees."});
+  usage.push_back(
+    {CAMERA_ZOOM,  CAMERA_STILL,  "",  "camera-phi", FloatArg,
+     "  --camera-zoom=<factor> Set the camera zoom to a specific value.\n"
+     "                         (Default 1.0)"});
+  usage.push_back(
+    {CAMERA_THETA, CAMERA_ANIMATE,"",  "camera-animate-theta", option::Arg::None,
+     "  --camera-animate-theta Animate the camera in the theta (horizontal)\n"
+     "                         direction."});
+  usage.push_back(
+    {CAMERA_PHI,   CAMERA_ANIMATE,"",  "camera-animate-phi", option::Arg::None,
+     "  --camera-animate-phi   Animate the camera in the phi (vertical)\n"
+     "                         direction."});
+  usage.push_back(
+    {CAMERA_ZOOM,  CAMERA_ANIMATE,"",  "camera-animate-zoom", option::Arg::None,
+     "  --camera-animate-zoom  Animate the camera zoom direction."});
+  usage.push_back(
+    {CAMERA_ANIMATE_ROTATE, 0,    "",  "camera-animate-rotate", option::Arg::None,
+     "  --camera-animate-rotate Animates the camera in both the theta and phi\n"
+     "                         directions. Equivalent to setting both\n"
+     "                         --camera-animate-theta and --camera-animate-phi."});
+  usage.push_back(
+    {CAMERA_ANIMATE_ALL,0,        "",  "camera-animate", option::Arg::None,
+     "  --camera-animate       Animates the camera in the theta, phi, and zoom\n"
+     "                         directions. Equivalent to setting all of\n"
+     "                         --camera-animate-theta, --camera-animate-phi,\n"
+     "                         and --camera-animate-zoom."});
+  usage.push_back(
+    {CAMERA_THETA, CAMERA_RANDOM, "",  "camera-random-theta", option::Arg::None,
+     "  --camera-random-theta  Select a random theta value for each trial.\n"
+     "                         (Default)"});
+  usage.push_back(
+    {CAMERA_PHI,   CAMERA_RANDOM, "",  "camera-random-phi", option::Arg::None,
+     "  --camera-random-phi    Select a random phi value for each trial.\n"
+     "                         (Default)"});
+  usage.push_back(
+    {CAMERA_ZOOM,  CAMERA_RANDOM, "",  "camera-random-zoom", option::Arg::None,
+     "  --camera-random-zoom   Select a random zoom value for each trial."});
+  usage.push_back(
+    {CAMERA_RANDOM_ROTATE, 0,     "",  "camera-random-rotate", option::Arg::None,
+     "  --camera-random-rotate Randomizes the camera in both the theta and phi\n"
+     "                         directions. Equivalent to setting both\n"
+     "                         --camera-random-theta and --camera-random-phi."});
+  usage.push_back(
+    {CAMERA_RANDOM_ALL,0,         "",  "camera-random", option::Arg::None,
+     "  --camera-random        Randomizes the camera in the theta, phi, and zoom\n"
+     "                         directions. Equivalent to setting all of\n"
+     "                         --camera-random-theta, --camera-random-phi,\n"
+     "                         and --camera-random-zoom.\n"});
+
+  usage.push_back(
+    {RANDOM_SEED,  0,             "",  "random-seed",  PositiveIntArg,
+     "  --random-seed=<num>    Set the seed used for the pseudo-random numbers.\n"
+     "                         This can be set so that multiple runs will use\n"
+     "                         all the same \"random\" parameters.\n"});
+
   // clang-format on
 
   for (auto compositorOpt = compositorOptions.begin();
@@ -445,15 +731,7 @@ int MainLoop(int argc,
 
   usage.push_back({0, 0, 0, 0, 0, 0});
 
-  int imageWidth = 1100;
-  int imageHeight = 900;
-  std::string yamlFilename("timing.yaml");
-  bool checkImages = true;
-  bool writeImages = false;
-  std::auto_ptr<Painter> painter(new PainterSimple);
-  float overlap = -0.05f;
-  colorType colorFormat = COLOR_UBYTE;
-  depthType depthFormat = DEPTH_FLOAT;
+  RunOptions runOptions;
 
   option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
@@ -488,156 +766,122 @@ int MainLoop(int argc,
   }
 
   if (options[WIDTH]) {
-    imageWidth = atoi(options[WIDTH].arg);
+    runOptions.imageWidth = atoi(options[WIDTH].arg);
   }
-  yaml.AddDictionaryEntry("image-width", imageWidth);
 
   if (options[HEIGHT]) {
-    imageHeight = atoi(options[HEIGHT].arg);
+    runOptions.imageHeight = atoi(options[HEIGHT].arg);
   }
-  yaml.AddDictionaryEntry("image-height", imageHeight);
+
+  if (options[NUM_TRIALS]) {
+    runOptions.numTrials = atoi(options[NUM_TRIALS].arg);
+  }
+
+  if (options[YAML_OUTPUT]) {
+    runOptions.yamlFilename = options[YAML_OUTPUT].arg;
+  }
 
   if (options[CHECK_IMAGE]) {
-    checkImages = (options[CHECK_IMAGE].last()->type() == ENABLE);
+    runOptions.checkImage = (options[CHECK_IMAGE].type() == ENABLE);
   }
 
   if (options[WRITE_IMAGE]) {
-    writeImages = (options[WRITE_IMAGE].last()->type() == ENABLE);
+    runOptions.writeImage = (options[WRITE_IMAGE].type() == ENABLE);
   }
 
   if (options[PAINTER]) {
-    switch (options[PAINTER].last()->type()) {
-      case SIMPLE_RASTER:
-        // Painter initialized to simple raster already.
-        yaml.AddDictionaryEntry("painter", "simple");
-        break;
-#ifdef MINIGRAPHICS_ENABLE_OPENGL
-      case OPENGL:
-        painter.reset(new PainterOpenGL);
-        yaml.AddDictionaryEntry("painter", "OpenGL");
-        break;
-#endif
-      default:
-        std::cerr << "Internal error: bad painter option." << std::endl;
-        return 1;
-    }
-  } else {
-    yaml.AddDictionaryEntry("painter", "simple");
+    runOptions.painter = static_cast<paintType>(options[PAINTER].type());
+  }
+
+  if (options[GEOMETRY]) {
+    runOptions.geometry =
+        static_cast<geometryType>(options[GEOMETRY].last()->type());
+    runOptions.geometryFile = options[GEOMETRY].last()->arg;
+  }
+
+  if (options[DISTRIBUTION]) {
+    runOptions.distribution =
+        static_cast<distributionType>(options[DISTRIBUTION].last()->type());
   }
 
   if (options[COLOR_FORMAT]) {
-    colorFormat = static_cast<colorType>(options[COLOR_FORMAT].last()->type());
+    runOptions.colorFormat =
+        static_cast<colorType>(options[COLOR_FORMAT].type());
   }
   if (options[DEPTH_FORMAT]) {
-    depthFormat = static_cast<depthType>(options[DEPTH_FORMAT].last()->type());
-  }
-  std::unique_ptr<Image> imageBuffer;
-  switch (depthFormat) {
-    case DEPTH_FLOAT:
-      yaml.AddDictionaryEntry("depth-buffer-format", "float");
-      switch (colorFormat) {
-        case COLOR_UBYTE:
-          yaml.AddDictionaryEntry("color-buffer-format", "byte");
-          imageBuffer = std::unique_ptr<Image>(
-              new ImageRGBAUByteColorFloatDepth(imageWidth, imageHeight));
-          break;
-        case COLOR_FLOAT:
-          yaml.AddDictionaryEntry("color-buffer-format", "float");
-          imageBuffer = std::unique_ptr<Image>(
-              new ImageRGBFloatColorDepth(imageWidth, imageHeight));
-          break;
-      }
-      break;
-    case DEPTH_NONE:
-      yaml.AddDictionaryEntry("depth-buffer-format", "none");
-      switch (colorFormat) {
-        case COLOR_UBYTE:
-          yaml.AddDictionaryEntry("color-buffer-format", "byte");
-          imageBuffer = std::unique_ptr<Image>(
-              new ImageRGBAUByteColorOnly(imageWidth, imageHeight));
-          break;
-        case COLOR_FLOAT:
-          yaml.AddDictionaryEntry("color-buffer-format", "float");
-          imageBuffer = std::unique_ptr<Image>(
-              new ImageRGBAFloatColorOnly(imageWidth, imageHeight));
-          break;
-      }
-      break;
+    runOptions.depthFormat =
+        static_cast<depthType>(options[DEPTH_FORMAT].type());
   }
 
-  if (imageBuffer->blendIsOrderDependent()) {
-    yaml.AddDictionaryEntry("rendering-order-dependent", "yes");
-  } else {
-    yaml.AddDictionaryEntry("rendering-order-dependent", "no");
+  if (options[OVERLAP]) {
+    runOptions.overlap = strtof(options[OVERLAP].arg, NULL);
   }
 
-  // LOAD TRIANGLES
-  Mesh mesh;
-  if (rank == 0) {
-    if (options[GEOMETRY] && (options[GEOMETRY].last()->type() != BOX)) {
-      std::string filename(options[GEOMETRY].last()->arg);
-      yaml.AddDictionaryEntry("geometry", filename);
-      switch (options[GEOMETRY].last()->type()) {
-        case STL_FILE:
-          if (!ReadSTL(filename, mesh)) {
-            std::cerr << "Error reading file " << filename << std::endl;
-            return 1;
-          }
-          break;
-        default:
-          std::cerr << "Invalid geometry type?" << std::endl;
-          return 1;
-      }
-    } else {
-      yaml.AddDictionaryEntry("geometry", "box");
-      MakeBox(mesh);
+  for (option::Option* thetaOpt = options[CAMERA_THETA]; thetaOpt;
+       thetaOpt = thetaOpt->next()) {
+    runOptions.thetaMove = static_cast<cameraMoveType>(thetaOpt->type());
+    if (runOptions.thetaMove == CAMERA_STILL) {
+      runOptions.thetaRotation = strtof(thetaOpt->arg, NULL);
     }
-    std::cout << "Rank 0 on pid " << getpid() << std::endl;
+  }
+
+  for (option::Option* phiOpt = options[CAMERA_PHI]; phiOpt;
+       phiOpt = phiOpt->next()) {
+    runOptions.phiMove = static_cast<cameraMoveType>(phiOpt->type());
+    if (runOptions.phiMove == CAMERA_STILL) {
+      runOptions.phiRotation = strtof(phiOpt->arg, NULL);
+    }
+  }
+
+  for (option::Option* zoomOpt = options[CAMERA_ZOOM]; zoomOpt;
+       zoomOpt = zoomOpt->next()) {
+    runOptions.zoomMove = static_cast<cameraMoveType>(zoomOpt->type());
+    if (runOptions.zoomMove == CAMERA_STILL) {
+      runOptions.zoom = strtof(zoomOpt->arg, NULL);
+    }
+  }
+
+  if (options[CAMERA_ANIMATE_ROTATE]) {
+    runOptions.thetaMove = CAMERA_ANIMATE;
+    runOptions.phiMove = CAMERA_ANIMATE;
+  }
+  if (options[CAMERA_ANIMATE_ALL]) {
+    runOptions.thetaMove = CAMERA_ANIMATE;
+    runOptions.phiMove = CAMERA_ANIMATE;
+    runOptions.zoomMove = CAMERA_ANIMATE;
+  }
+
+  if (options[CAMERA_RANDOM_ROTATE]) {
+    runOptions.thetaMove = CAMERA_RANDOM;
+    runOptions.phiMove = CAMERA_RANDOM;
+  }
+  if (options[CAMERA_RANDOM_ALL]) {
+    runOptions.thetaMove = CAMERA_RANDOM;
+    runOptions.phiMove = CAMERA_RANDOM;
+    runOptions.zoomMove = CAMERA_RANDOM;
+  }
+
+  int seed =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  if (options[RANDOM_SEED]) {
+    seed = atoi(options[RANDOM_SEED].arg);
+  }
+  MPI_Bcast(&seed, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  yaml.AddDictionaryEntry("random-seed", seed);
+  runOptions.randomEngine.seed(seed);
+
+  if (rank == 0) {
+    std::cout << "Rank " << rank << " on pid " << getpid() << std::endl;
 #if 0
     int ready = 0;
     while (!ready);
 #endif
-  } else {
-    // Other ranks read nothing. Rank 0 distributes geometry.
   }
 
-  if (options[OVERLAP]) {
-    overlap = strtof(options[OVERLAP].arg, NULL);
-  }
+  run(runOptions, compositor, yaml);
 
-  if (options[DISTRIBUTION] &&
-      (options[DISTRIBUTION].last()->type() == DIVIDE)) {
-    meshScatter(mesh, MPI_COMM_WORLD);
-    yaml.AddDictionaryEntry("geometry-distribution", "divide");
-  } else {
-    meshBroadcast(mesh, overlap, MPI_COMM_WORLD);
-    yaml.AddDictionaryEntry("geometry-distribution", "duplicate");
-    yaml.AddDictionaryEntry("geometry-overlap", overlap);
-  }
-
-  if (imageBuffer->blendIsOrderDependent()) {
-    // If blending colors, make all colors transparent.
-    int numTri = mesh.getNumberOfTriangles();
-    for (float* colorComponentValue = mesh.getTriangleColorsBuffer(0);
-         colorComponentValue != mesh.getTriangleColorsBuffer(numTri);
-         ++colorComponentValue) {
-      *colorComponentValue *= 0.5f;
-    }
-  }
-
-  run(painter.get(),
-      compositor,
-      mesh,
-      imageBuffer.get(),
-      checkImages,
-      writeImages,
-      yaml);
-
-  if (options[YAML_OUTPUT]) {
-    yamlFilename = options[YAML_OUTPUT].arg;
-  }
   if (rank == 0) {
-    std::ofstream yamlFile(yamlFilename, std::ios_base::app);
+    std::ofstream yamlFile(runOptions.yamlFilename, std::ios_base::app);
     yamlFile << yamlStream.str();
   }
 
