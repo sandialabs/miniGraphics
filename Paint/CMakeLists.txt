@@ -52,7 +52,7 @@ if(MINIGRAPHICS_ENABLE_OPENGL)
     )
 endif()
 
-miniGraphics_create_config_header()
+miniGraphics_create_config_header("paint library")
 
 add_library(miniGraphicsPaint ${srcs} ${headers})
 

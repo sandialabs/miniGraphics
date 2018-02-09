@@ -9,6 +9,8 @@
 #ifndef MAINLOOP_HPP
 #define MAINLOOP_HPP
 
+#include "miniGraphicsConfig.h"
+
 #include <Common/Compositor.hpp>
 
 #include <optionparser.h>
@@ -30,11 +32,13 @@
 int MainLoop(int argc,
              char* argv[],
              Compositor* compositor,
-             const option::Descriptor* compositorOptions = nullptr);
+             const option::Descriptor* compositorOptions = nullptr,
+             const char* appName = MINIGRAPHICS_APP_NAME);
 int MainLoop(int argc,
              char* argv[],
              Compositor* compositor,
-             const std::vector<option::Descriptor>& compositorOptions);
+             const std::vector<option::Descriptor>& compositorOptions,
+             const char* appName = MINIGRAPHICS_APP_NAME);
 
 
 // Helper functions that can be used for the CheckArg of the options parser.

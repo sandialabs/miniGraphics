@@ -29,7 +29,8 @@ get_filename_component(miniGraphics_SOURCE_DIR
 find_package(MPI REQUIRED)
 
 # Create the config header file
-function(miniGraphics_create_config_header)
+function(miniGraphics_create_config_header miniapp_name)
+  set(MINIGRAPHICS_APP_NAME ${miniapp_name})
   set(MINIGRAPHICS_WIN32 ${WIN32})
   configure_file(${miniGraphics_CMAKE_MODULE_PATH}/miniGraphicsConfig.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
@@ -86,7 +87,7 @@ function(miniGraphics_executable miniapp_name)
     ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
     )
 
-  miniGraphics_create_config_header()
+  miniGraphics_create_config_header(${miniapp_name})
 
   add_executable(${miniapp_name} ${srcs} ${headers})
 

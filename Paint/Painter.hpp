@@ -21,7 +21,7 @@
 class Painter {
  public:
   virtual void paint(const Mesh& mesh,
-                     Image* image,
+                     Image& image,
                      const glm::mat4& modelview,
                      const glm::mat4& projection) = 0;
 
