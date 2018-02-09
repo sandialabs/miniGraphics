@@ -147,11 +147,11 @@ PainterOpenGL::~PainterOpenGL() {
 }
 
 void PainterOpenGL::paint(const Mesh& mesh,
-                          Image* image,
+                          Image& image,
                           const glm::mat4x4& modelview,
                           const glm::mat4x4& projection) {
-  int windowWidth = image->getWidth();
-  int windowHeight = image->getHeight();
+  int windowWidth = image.getWidth();
+  int windowHeight = image.getHeight();
 
   glfwSetWindowSize(this->internals->window, windowWidth, windowHeight);
   glfwMakeContextCurrent(this->internals->window);
@@ -374,13 +374,13 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glReadBuffer(GL_BACK);
 
   ImageRGBAUByteColorFloatDepth* rgbaByteFloatImage =
-      dynamic_cast<ImageRGBAUByteColorFloatDepth*>(image);
+      dynamic_cast<ImageRGBAUByteColorFloatDepth*>(&image);
   ImageRGBFloatColorDepth* rgbFloatFloatImage =
-      dynamic_cast<ImageRGBFloatColorDepth*>(image);
+      dynamic_cast<ImageRGBFloatColorDepth*>(&image);
   ImageRGBAUByteColorOnly* rgbaByteImage =
-      dynamic_cast<ImageRGBAUByteColorOnly*>(image);
+      dynamic_cast<ImageRGBAUByteColorOnly*>(&image);
   ImageRGBAFloatColorOnly* rgbaFloatImage =
-      dynamic_cast<ImageRGBAFloatColorOnly*>(image);
+      dynamic_cast<ImageRGBAFloatColorOnly*>(&image);
   if (rgbaByteFloatImage != nullptr) {
     glReadPixels(0,
                  0,

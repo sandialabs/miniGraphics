@@ -34,7 +34,7 @@ static inline void clamp(T &variable, T min, T max) {
   variable = std::max(min, std::min(max, variable));
 }
 
-inline void PainterSimple::fillLine(Image *image,
+inline void PainterSimple::fillLine(Image &image,
                                     int y,
                                     const glm::vec3 &edgeDir1,
                                     const glm::vec3 &edgeBase1,
@@ -64,23 +64,23 @@ inline void PainterSimple::fillLine(Image *image,
     xMin = 0;
   }
 
-  int xMax = std::min(static_cast<int>(right.x), image->getWidth());
+  int xMax = std::min(static_cast<int>(right.x), image.getWidth());
 
   for (int x = xMin; x < xMax; ++x) {
-    if ((depth >= 0.0) && (depth < image->getDepth(x, y))) {
+    if ((depth >= 0.0) && (depth < image.getDepth(x, y))) {
       if (color.Components[3] >= 0.99f) {
-        image->setColor(x, y, color);
+        image.setColor(x, y, color);
       } else {
-        Color previousColor = image->getColor(x, y);
-        image->setColor(x, y, color.BlendOver(previousColor));
+        Color previousColor = image.getColor(x, y);
+        image.setColor(x, y, color.BlendOver(previousColor));
       }
-      image->setDepth(x, y, depth);
+      image.setDepth(x, y, depth);
       depth += deltaDepth;
     }
   }
 }
 
-void PainterSimple::fillTriangle(Image *image,
+void PainterSimple::fillTriangle(Image &image,
                                  const Triangle &triangle,
                                  const glm::mat4 &modelview,
                                  const glm::mat4 &projection,
@@ -90,7 +90,7 @@ void PainterSimple::fillTriangle(Image *image,
 
   const Color &color = triangle.color.Scale(colorScale);
 
-  glm::ivec4 viewport(0, 0, image->getWidth(), image->getHeight());
+  glm::ivec4 viewport(0, 0, image.getWidth(), image.getHeight());
 
   // Sort vertices by location along Y axis.
   glm::vec3 vMin =
@@ -119,9 +119,9 @@ void PainterSimple::fillTriangle(Image *image,
   int yMid = (int)vMid.y;
   int yMax = (int)vMax.y;
 
-  clamp(yMin, 0, image->getHeight());
-  clamp(yMid, 0, image->getHeight());
-  clamp(yMax, 0, image->getHeight());
+  clamp(yMin, 0, image.getHeight());
+  clamp(yMid, 0, image.getHeight());
+  clamp(yMax, 0, image.getHeight());
 
   // Rasterize bottom half
   for (int y = yMin; y < yMid; ++y) {
@@ -135,10 +135,10 @@ void PainterSimple::fillTriangle(Image *image,
 }
 
 void PainterSimple::paint(const Mesh &mesh,
-                          Image *image,
+                          Image &image,
                           const glm::mat4 &modelview,
                           const glm::mat4 &projection) {
-  image->clear();
+  image.clear();
 
   // It turns out, the normals should be transformed by the inverse transpose
   // of the rotation/scale matrix.

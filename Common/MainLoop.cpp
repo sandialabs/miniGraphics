@@ -355,6 +355,126 @@ static void createTransforms(RunOptions& runOptions,
       2 * geometryInfo.distance);
 }
 
+static MPI_Group createComposeGroup(bool blendIsOrderDependent,
+                                    const GeometryInfo& geometryInfo,
+                                    const glm::mat4& modelview,
+                                    const glm::mat4& projection,
+                                    MPI_Comm communicator) {
+  int numProc;
+  MPI_Comm_size(communicator, &numProc);
+
+  MPI_Group globalGroup;
+  MPI_Comm_group(communicator, &globalGroup);
+
+  if (blendIsOrderDependent) {
+    // Determine (approximate) visibility order of process by sorting the
+    // depth of the transformed centroids.
+    std::vector<std::pair<float, int>> depthList(numProc);
+    for (int proc = 0; proc < numProc; proc++) {
+      glm::vec4 centroid(geometryInfo.centroids[proc], 1.0f);
+      centroid = modelview * centroid;
+      centroid = projection * centroid;
+      float depth = centroid.z / centroid.w;
+      depthList[proc] = std::pair<float, int>(depth, proc);
+    }
+
+    std::sort(depthList.begin(),
+              depthList.end(),
+              [](const std::pair<float, int>& a, const std::pair<float, int>& b)
+                  -> bool { return (a.first < b.first); });
+
+    std::vector<int> rankOrder;
+    rankOrder.reserve(depthList.size());
+    for (auto&& depthEntry : depthList) {
+      rankOrder.push_back(depthEntry.second);
+    }
+
+    MPI_Group composeGroup;
+    MPI_Group_incl(globalGroup, numProc, &rankOrder.front(), &composeGroup);
+    MPI_Group_free(&globalGroup);
+    return composeGroup;
+  } else {
+    // If ordering is not necessary, just return a group for the communicator.
+    return globalGroup;
+  }
+}
+
+static void doLocalPaint(Image& localImage,
+                         Painter& painter,
+                         const Mesh& mesh,
+                         const glm::mat4& modelview,
+                         const glm::mat4& projection,
+                         YamlWriter& yaml) {
+  Timer timePaint(yaml, "paint-seconds");
+
+  if (localImage.blendIsOrderDependent()) {
+    painter.paint(meshVisibilitySort(mesh, modelview, projection),
+                  localImage,
+                  modelview,
+                  projection);
+  } else {
+    painter.paint(mesh, localImage, modelview, projection);
+  }
+}
+
+static std::unique_ptr<Image> doComposeImage(Image& localImage,
+                                             Compositor& compositor,
+                                             MPI_Group composeGroup,
+                                             MPI_Comm communicator,
+                                             YamlWriter& yaml) {
+  Timer timeCompositePlusCollect(yaml, "composite-seconds");
+
+  std::unique_ptr<Image> compositeImage =
+      compositor.compose(&localImage, composeGroup, MPI_COMM_WORLD);
+
+  return compositeImage->Gather(0, MPI_COMM_WORLD);
+}
+
+static void checkImage(const Image& fullCompositeImage,
+                       Image& localImage,
+                       Painter& painter,
+                       const Mesh& fullMesh,
+                       const glm::mat4& modelview,
+                       const glm::mat4& projection) {
+  const float COLOR_THRESHOLD = 0.01;
+  const float BAD_PIXEL_THRESHOLD = 0.02;
+
+  std::stringstream dummyStream;
+  YamlWriter dummyYaml(dummyStream);
+
+  std::cout << "Checking image validity..." << std::flush;
+  doLocalPaint(localImage, painter, fullMesh, modelview, projection, dummyYaml);
+
+  int numPixels = localImage.getNumberOfPixels();
+  int numBadPixels = 0;
+  for (int pixel = 0; pixel < numPixels; ++pixel) {
+    Color compositeColor = fullCompositeImage.getColor(pixel);
+    Color localColor = localImage.getColor(pixel);
+    if ((fabsf(compositeColor.Components[0] - localColor.Components[0]) >
+         COLOR_THRESHOLD) ||
+        (fabsf(compositeColor.Components[1] - localColor.Components[1]) >
+         COLOR_THRESHOLD) ||
+        (fabsf(compositeColor.Components[2] - localColor.Components[2]) >
+         COLOR_THRESHOLD)) {
+      ++numBadPixels;
+    }
+  }
+  std::cout << (100 * numBadPixels) / numPixels << "% bad pixels." << std::endl;
+  if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
+    std::cout << "Composite image appears bad!" << std::endl;
+    SavePPM(localImage, "reference.ppm");
+    SavePPM(fullCompositeImage, "bad_composite.ppm");
+    exit(1);
+  }
+}
+
+static void writeImage(const Image& image, int trial) {
+  std::stringstream filename;
+  filename << "composite" << std::setfill('0') << std::setw(3) << trial
+           << ".ppm";
+  SavePPM(image, filename.str());
+}
+
 static void run(RunOptions& runOptions,
                 Compositor* compositor,
                 YamlWriter& yaml) {
@@ -397,120 +517,41 @@ static void run(RunOptions& runOptions,
     createTransforms(
         runOptions, trial, geometryInfo, yaml, modelview, projection);
 
-    std::unique_ptr<Image> compositeImage;
     std::unique_ptr<Image> fullCompositeImage;
 
     {
       Timer timeTotal(yaml, "total-seconds");
 
-      MPI_Group composeGroup;
-      if (localImage->blendIsOrderDependent()) {
-        // Determine (approximate) visibility order of process by sorting the
-        // depth of the transformed centroids.
-        std::vector<std::pair<float, int>> depthList(numProc);
-        for (int proc = 0; proc < numProc; proc++) {
-          glm::vec4 centroid(geometryInfo.centroids[proc], 1.0f);
-          centroid = modelview * centroid;
-          centroid = projection * centroid;
-          float depth = centroid.z / centroid.w;
-          depthList[proc] = std::pair<float, int>(depth, proc);
-        }
+      MPI_Group composeGroup =
+          createComposeGroup(localImage->blendIsOrderDependent(),
+                             geometryInfo,
+                             modelview,
+                             projection,
+                             MPI_COMM_WORLD);
 
-        std::sort(depthList.begin(),
-                  depthList.end(),
-                  [](const std::pair<float, int>& a,
-                     const std::pair<float, int>& b) -> bool {
-                    return (a.first < b.first);
-                  });
-
-        std::vector<int> rankOrder;
-        rankOrder.reserve(depthList.size());
-        for (auto&& depthEntry : depthList) {
-          rankOrder.push_back(depthEntry.second);
-        }
-
-        MPI_Group globalGroup;
-        MPI_Comm_group(MPI_COMM_WORLD, &globalGroup);
-        MPI_Group_incl(globalGroup, numProc, &rankOrder.front(), &composeGroup);
-        MPI_Group_free(&globalGroup);
-      } else {
-        MPI_Comm_group(MPI_COMM_WORLD, &composeGroup);
-      }
-
-      // Paint SECTION
-      {
-        Timer timePaint(yaml, "paint-seconds");
-
-        if (localImage->blendIsOrderDependent()) {
-          painter->paint(meshVisibilitySort(mesh, modelview, projection),
-                         localImage.get(),
-                         modelview,
-                         projection);
-        } else {
-          painter->paint(mesh, localImage.get(), modelview, projection);
-        }
-      }
+      doLocalPaint(*localImage, *painter, mesh, modelview, projection, yaml);
 
       // TODO: This barrier should be optional, but is needed for any of the
-      // timing below to be useful.
+      // timing of the composition to be useful.
       MPI_Barrier(MPI_COMM_WORLD);
 
-      // COMPOSITION SECTION
-      {
-        Timer timeCompositePlusCollect(yaml, "composite-seconds");
-
-        compositeImage =
-            compositor->compose(localImage.get(), composeGroup, MPI_COMM_WORLD);
-
-        fullCompositeImage = compositeImage->Gather(0, MPI_COMM_WORLD);
-      }
+      fullCompositeImage = doComposeImage(
+          *localImage, *compositor, composeGroup, MPI_COMM_WORLD, yaml);
 
       MPI_Group_free(&composeGroup);
     }
 
     if (runOptions.checkImage && (rank == 0)) {
-      const float COLOR_THRESHOLD = 0.01;
-      const float BAD_PIXEL_THRESHOLD = 0.02;
-
-      std::cout << "Checking image validity..." << std::flush;
-      if (localImage->blendIsOrderDependent()) {
-        painter->paint(meshVisibilitySort(fullMesh, modelview, projection),
-                       localImage.get(),
-                       modelview,
-                       projection);
-      } else {
-        painter->paint(fullMesh, localImage.get(), modelview, projection);
-      }
-
-      int numPixels = localImage->getNumberOfPixels();
-      int numBadPixels = 0;
-      for (int pixel = 0; pixel < numPixels; ++pixel) {
-        Color compositeColor = fullCompositeImage->getColor(pixel);
-        Color localColor = localImage->getColor(pixel);
-        if ((fabsf(compositeColor.Components[0] - localColor.Components[0]) >
-             COLOR_THRESHOLD) ||
-            (fabsf(compositeColor.Components[1] - localColor.Components[1]) >
-             COLOR_THRESHOLD) ||
-            (fabsf(compositeColor.Components[2] - localColor.Components[2]) >
-             COLOR_THRESHOLD)) {
-          ++numBadPixels;
-        }
-      }
-      std::cout << (100 * numBadPixels) / numPixels << "% bad pixels."
-                << std::endl;
-      if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
-        std::cout << "Composite image appears bad!" << std::endl;
-        SavePPM(*localImage, "reference.ppm");
-        SavePPM(*fullCompositeImage, "bad_composite.ppm");
-        exit(1);
-      }
+      checkImage(*fullCompositeImage,
+                 *localImage,
+                 *painter,
+                 fullMesh,
+                 modelview,
+                 projection);
     }
 
     if (runOptions.writeImage && (rank == 0)) {
-      std::stringstream filename;
-      filename << "composite" << std::setfill('0') << std::setw(3) << trial
-               << ".ppm";
-      SavePPM(*fullCompositeImage, filename.str());
+      writeImage(*fullCompositeImage, trial);
     }
   }
 
