@@ -191,12 +191,10 @@ static std::unique_ptr<Image> createImage(const RunOptions& runOptions,
           yaml.AddDictionaryEntry("color-buffer-format", "byte");
           return std::unique_ptr<Image>(new ImageRGBAUByteColorFloatDepth(
               runOptions.imageWidth, runOptions.imageHeight));
-          break;
         case COLOR_FLOAT:
           yaml.AddDictionaryEntry("color-buffer-format", "float");
           return std::unique_ptr<Image>(new ImageRGBFloatColorDepth(
               runOptions.imageWidth, runOptions.imageHeight));
-          break;
       }
       break;
     case DEPTH_NONE:
@@ -215,6 +213,9 @@ static std::unique_ptr<Image> createImage(const RunOptions& runOptions,
       }
       break;
   }
+  std::cerr << "Internal error: bad buffer format option" << std::endl;
+  exit(1);
+  return std::unique_ptr<Image>();
 }
 
 static std::unique_ptr<Painter> createPainter(const RunOptions& runOptions,
@@ -228,6 +229,10 @@ static std::unique_ptr<Painter> createPainter(const RunOptions& runOptions,
       yaml.AddDictionaryEntry("painter", "OpenGL");
       return std::unique_ptr<Painter>(new PainterOpenGL);
 #endif
+    default:
+      std::cerr << "Internal error: bad painter option" << std::endl;
+      exit(1);
+      return std::unique_ptr<Painter>();
   }
 }
 
@@ -436,8 +441,8 @@ static void checkImage(const Image& fullCompositeImage,
                        const Mesh& fullMesh,
                        const glm::mat4& modelview,
                        const glm::mat4& projection) {
-  const float COLOR_THRESHOLD = 0.01;
-  const float BAD_PIXEL_THRESHOLD = 0.02;
+  constexpr float COLOR_THRESHOLD = 0.01f;
+  constexpr float BAD_PIXEL_THRESHOLD = 0.02f;
 
   std::stringstream dummyStream;
   YamlWriter dummyYaml(dummyStream);
@@ -903,7 +908,7 @@ int MainLoop(int argc,
   }
 
   int seed =
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+      static_cast<int>(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
   if (options[RANDOM_SEED]) {
     seed = atoi(options[RANDOM_SEED].arg);
   }
