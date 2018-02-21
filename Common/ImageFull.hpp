@@ -11,6 +11,8 @@
 
 #include "Image.hpp"
 
+class ImageSparse;
+
 class ImageFull : public Image {
  public:
   ImageFull(int _width, int _height)
@@ -57,6 +59,8 @@ class ImageFull : public Image {
   void setDepth(int x, int y, float depth) {
     this->setDepth(this->pixelIndex(x, y), depth);
   }
+
+  virtual std::unique_ptr<ImageSparse> compress() const = 0;
 
   /// \brief Gathers all images to a single image.
   ///

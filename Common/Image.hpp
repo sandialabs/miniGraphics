@@ -43,6 +43,11 @@ class Image {
   };
   Internals internals;
 
+ protected:
+  void resize(int _width, int _height, int _regionBegin, int _regionEnd) {
+    this->internals = Internals(_width, _height, _regionBegin, _regionEnd);
+  }
+
  public:
   Image(int _width, int _height)
       : internals(_width, _height, 0, _width * _height) {}

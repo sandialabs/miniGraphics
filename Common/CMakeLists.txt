@@ -41,6 +41,8 @@ set(headers
   ImageRGBAUByteColorFloatDepth.hpp
   ImageRGBAUByteColorOnly.hpp
   ImageRGBFloatColorDepth.hpp
+  ImageSparse.hpp
+  ImageSparseColorDepth.hpp
   MainLoop.hpp
   MakeBox.hpp
   Mesh.hpp

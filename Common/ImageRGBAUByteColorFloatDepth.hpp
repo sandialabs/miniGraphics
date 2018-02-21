@@ -38,6 +38,8 @@ class ImageRGBAUByteColorFloatDepth
                                 int _regionEnd);
   ~ImageRGBAUByteColorFloatDepth() = default;
 
+  std::unique_ptr<ImageSparse> compress() const final;
+
   std::unique_ptr<Image> createNew(int _width,
                                    int _height,
                                    int _regionBegin,

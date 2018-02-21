@@ -49,8 +49,8 @@ class ImageColorDepth : public ImageFull {
   std::shared_ptr<std::vector<ColorType>> colorBuffer;
   std::shared_ptr<std::vector<DepthType>> depthBuffer;
 
-  static const int COLOR_BUFFER_TAG = 12900;  // Should be constexpr
-  static const int DEPTH_BUFFER_TAG = 12901;
+  static constexpr int COLOR_BUFFER_TAG = 12900;
+  static constexpr int DEPTH_BUFFER_TAG = 12901;
 
  public:
   ImageColorDepth(int _width, int _height)
@@ -79,6 +79,13 @@ class ImageColorDepth : public ImageFull {
   }
   const DepthType* getDepthBuffer(int pixelIndex = 0) const {
     return &this->depthBuffer->front() + pixelIndex;
+  }
+
+  void resizeBuffers(int newRegionBegin, int newRegionEnd) {
+    this->resize(
+        this->getWidth(), this->getHeight(), newRegionBegin, newRegionEnd);
+    this->colorBuffer->resize(this->getNumberOfPixels() * ColorVecSize);
+    this->depthBuffer->resize(this->getNumberOfPixels());
   }
 
   Color getColor(int pixelIndex) const final {

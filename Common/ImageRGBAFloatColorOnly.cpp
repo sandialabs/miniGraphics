@@ -35,6 +35,12 @@ ImageRGBAFloatColorOnly::ImageRGBAFloatColorOnly(int _width,
                                                  int _regionEnd)
     : ImageColorOnly(_width, _height, _regionBegin, _regionEnd) {}
 
+
+std::unique_ptr<ImageSparse> ImageRGBAFloatColorOnly::compress() const {
+  std::cerr << "Not implemented!" << std::endl;
+  exit(1);
+}
+
 std::unique_ptr<Image> ImageRGBAFloatColorOnly::createNew(
     int _width, int _height, int _regionBegin, int _regionEnd) const {
   return std::unique_ptr<Image>(
