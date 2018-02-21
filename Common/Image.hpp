@@ -82,8 +82,7 @@ class Image {
   }
 
   /// \brief Clears the image to the given color and depth (if applicable).
-  virtual void clear(const Color& color = Color(0, 0, 0, 0),
-                     float depth = 1.0f) = 0;
+  void clear(const Color& color = Color(0, 0, 0, 0), float depth = 1.0f);
 
   /// \brief Blend this image with another image
   ///
@@ -93,7 +92,7 @@ class Image {
   /// When blending, this image is blended "on top" of the other image. Some
   /// blend operations (like z-buffer) do not depend on the blendOrder, so in
   /// those cases it will be ignored.
-  virtual std::unique_ptr<Image> blend(const Image* otherImage) const = 0;
+  virtual std::unique_ptr<Image> blend(const Image& otherImage) const = 0;
 
   /// \brief Returns whether blending in this buffer is order dependent.
   ///
@@ -106,21 +105,16 @@ class Image {
   virtual bool blendIsOrderDependent() const = 0;
 
   /// \brief Creates a new image object of the same type as this one.
-  virtual std::unique_ptr<Image> createNew(int _width,
-                                           int _height,
-                                           int _regionBegin,
-                                           int _regionEnd) const = 0;
+  std::unique_ptr<Image> createNew(int _width,
+                                   int _height,
+                                   int _regionBegin,
+                                   int _regionEnd) const;
 
   /// \brief Creates a new image object of the same type as this one.
   ///
   /// The new image is given the same width, height, and region as this one.
   /// The memory is allocated but no data are set.
-  std::unique_ptr<Image> createNew() const {
-    return this->createNew(this->getWidth(),
-                           this->getHeight(),
-                           this->getRegionBegin(),
-                           this->getRegionEnd());
-  }
+  std::unique_ptr<Image> createNew() const;
 
   /// \brief Creates a new image containing a subrange of the given image.
   ///
@@ -198,6 +192,13 @@ class Image {
   /// This should be used internally by implementations of IReceive.
   std::vector<MPI_Request> IReceiveMetaData(int sourceRank,
                                             MPI_Comm communicator);
+
+  virtual void clearImpl(const Color& color, float depth) = 0;
+
+  virtual std::unique_ptr<Image> createNewImpl(int _width,
+                                               int _height,
+                                               int _regionBegin,
+                                               int _regionEnd) const = 0;
 };
 
 #endif  // IMAGE_HPP

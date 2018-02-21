@@ -105,10 +105,10 @@ std::unique_ptr<Image> BinarySwap::compose(Image *localImage,
     // Blend the incoming image and set the workingImage to the result.
     switch (role) {
       case PAIR_ROLE_EVEN:
-        workingImage = toKeep->blend(recvImage.get());
+        workingImage = toKeep->blend(*recvImage);
         break;
       case PAIR_ROLE_ODD:
-        workingImage = recvImage->blend(toKeep.get());
+        workingImage = recvImage->blend(*toKeep);
         break;
     }
 

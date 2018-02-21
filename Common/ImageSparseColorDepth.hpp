@@ -164,13 +164,8 @@ class ImageSparseColorDepth : public ImageSparse {
   }
 
  public:
-  void clear(const Color& color = Color(0, 0, 0, 0), float depth = 1.0f) final {
-    this->setBackground(color, depth);
-    this->clearKnownBackground();
-  }
-
-  std::unique_ptr<Image> blend(const Image* _otherImage) const final {
-    const ThisType* otherImage = dynamic_cast<const ThisType*>(_otherImage);
+  std::unique_ptr<Image> blend(const Image& _otherImage) const final {
+    const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attemptying to blend invalid images.");
 
     int maxNumActivePixels =
@@ -299,29 +294,6 @@ class ImageSparseColorDepth : public ImageSparse {
   }
 
   bool blendIsOrderDependent() const final { return false; }
-
-  std::unique_ptr<Image> createNew(int _width,
-                                   int _height,
-                                   int _regionBegin,
-                                   int _regionEnd) const final {
-    std::unique_ptr<Image> pixelStorageCopy =
-        this->pixelStorage->createNew(_width, _height, 0, 0);
-    StorageType* pixelStorageCopyCast =
-        dynamic_cast<StorageType*>(pixelStorageCopy.release());
-    assert(pixelStorageCopyCast != nullptr);
-    std::shared_ptr<StorageType> pixelStorageCopyShared(pixelStorageCopyCast);
-    std::shared_ptr<std::vector<RunLengthRegion>> newRunLengths(
-        new std::vector<RunLengthRegion>);
-    ThisType* newImage = new ThisType(_width,
-                                      _height,
-                                      _regionBegin,
-                                      _regionEnd,
-                                      pixelStorageCopyShared,
-                                      newRunLengths,
-                                      this->background);
-    newImage->clearKnownBackground();
-    return std::unique_ptr<Image>(newImage);
-  }
 
   std::unique_ptr<Image> copySubrange(int subregionBegin,
                                       int subregionEnd) const final {
@@ -525,6 +497,35 @@ class ImageSparseColorDepth : public ImageSparse {
                     pixelStorageRequests.end());
 
     return requests;
+  }
+
+ protected:
+  void clearImpl(const Color& color, float depth) final {
+    this->setBackground(color, depth);
+    this->clearKnownBackground();
+  }
+
+  std::unique_ptr<Image> createNewImpl(int _width,
+                                       int _height,
+                                       int _regionBegin,
+                                       int _regionEnd) const final {
+    std::unique_ptr<Image> pixelStorageCopy =
+        this->pixelStorage->createNew(_width, _height, 0, 0);
+    StorageType* pixelStorageCopyCast =
+        dynamic_cast<StorageType*>(pixelStorageCopy.release());
+    assert(pixelStorageCopyCast != nullptr);
+    std::shared_ptr<StorageType> pixelStorageCopyShared(pixelStorageCopyCast);
+    std::shared_ptr<std::vector<RunLengthRegion>> newRunLengths(
+        new std::vector<RunLengthRegion>);
+    ThisType* newImage = new ThisType(_width,
+                                      _height,
+                                      _regionBegin,
+                                      _regionEnd,
+                                      pixelStorageCopyShared,
+                                      newRunLengths,
+                                      this->background);
+    newImage->clearKnownBackground();
+    return std::unique_ptr<Image>(newImage);
   }
 };
 

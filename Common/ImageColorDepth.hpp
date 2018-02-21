@@ -14,6 +14,8 @@
 #include <memory>
 #include <vector>
 
+struct ImageColorDepthBase {};
+
 /// \brief Implementation of color/depth images
 ///
 /// ImageColorDepth is a base class of images that have both color and depth
@@ -37,7 +39,7 @@
 ///     of DepthType and returns a float object.
 ///
 template <typename Features>
-class ImageColorDepth : public ImageFull {
+class ImageColorDepth : public ImageFull, ImageColorDepthBase {
  public:
   using ColorType = typename Features::ColorType;
   using DepthType = typename Features::DepthType;
@@ -116,36 +118,8 @@ class ImageColorDepth : public ImageFull {
     Features::encodeDepth(depth, this->getDepthBuffer(pixelIndex));
   }
 
-  void clear(const Color& color = Color(0, 0, 0, 0), float depth = 1.0f) final {
-    int numPixels = this->getNumberOfPixels();
-    if (numPixels < 1) {
-      return;
-    }
-
-    // Encode the color and depth by calling setColor/setDepth for first pixel.
-    this->setColor(0, color);
-    this->setDepth(0, depth);
-
-    ColorType colorValue[ColorVecSize];
-    Features::encodeColor(color, colorValue);
-    DepthType depthValue;
-    Features::encodeDepth(depth, &depthValue);
-
-    ColorType* cBuffer = this->getColorBuffer();
-    DepthType* dBuffer = this->getDepthBuffer();
-
-    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
-      for (int colorComponent = 0; colorComponent < ColorVecSize;
-           ++colorComponent) {
-        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
-            colorValue[colorComponent];
-      }
-      dBuffer[pixelIndex] = depthValue;
-    }
-  }
-
-  std::unique_ptr<Image> blend(const Image* _otherImage) const final {
-    const ThisType* otherImage = dynamic_cast<const ThisType*>(_otherImage);
+  std::unique_ptr<Image> blend(const Image& _otherImage) const final {
+    const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attempting to blend invalid images.");
 
     int numPixels = this->getNumberOfPixels();
@@ -318,6 +292,31 @@ class ImageColorDepth : public ImageFull {
     requests.push_back(depthRequest);
 
     return requests;
+  }
+
+ protected:
+  void clearImpl(const Color& color, float depth) final {
+    int numPixels = this->getNumberOfPixels();
+    if (numPixels < 1) {
+      return;
+    }
+
+    ColorType colorValue[ColorVecSize];
+    Features::encodeColor(color, colorValue);
+    DepthType depthValue;
+    Features::encodeDepth(depth, &depthValue);
+
+    ColorType* cBuffer = this->getColorBuffer();
+    DepthType* dBuffer = this->getDepthBuffer();
+
+    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+      for (int colorComponent = 0; colorComponent < ColorVecSize;
+           ++colorComponent) {
+        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
+            colorValue[colorComponent];
+      }
+      dBuffer[pixelIndex] = depthValue;
+    }
   }
 };
 

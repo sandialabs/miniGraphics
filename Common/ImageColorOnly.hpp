@@ -14,6 +14,8 @@
 #include <memory>
 #include <vector>
 
+struct ImageColorOnlyBase {};
+
 /// \brief Implementation of color-only images
 ///
 /// ImageColorOnly is a base class of images that have a color buffer and use
@@ -31,7 +33,7 @@
 ///     values and returns a Color object.
 ///
 template <typename Features>
-class ImageColorOnly : public ImageFull {
+class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
  public:
   using ColorType = typename Features::ColorType;
   static constexpr int ColorVecSize = Features::ColorVecSize;
@@ -86,31 +88,8 @@ class ImageColorOnly : public ImageFull {
     // No depth
   }
 
-  void clear(const Color& color = Color(0, 0, 0, 0), float = 1.0f) final {
-    int numPixels = this->getNumberOfPixels();
-    if (numPixels < 1) {
-      return;
-    }
-
-    // Encode the color by calling setColor for first pixel.
-    this->setColor(0, color);
-
-    ColorType colorValue[ColorVecSize];
-    Features::encodeColor(color, colorValue);
-
-    ColorType* cBuffer = this->getColorBuffer();
-
-    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
-      for (int colorComponent = 0; colorComponent < ColorVecSize;
-           ++colorComponent) {
-        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
-            colorValue[colorComponent];
-      }
-    }
-  }
-
-  std::unique_ptr<Image> blend(const Image* _otherImage) const final {
-    const ThisType* otherImage = dynamic_cast<const ThisType*>(_otherImage);
+  std::unique_ptr<Image> blend(const Image& _otherImage) const final {
+    const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attempting to blend invalid images.");
 
     int numPixels = this->getNumberOfPixels();
@@ -245,6 +224,27 @@ class ImageColorOnly : public ImageFull {
 
     return requests;
   }
+
+protected:
+ void clearImpl(const Color& color, float) final {
+   int numPixels = this->getNumberOfPixels();
+   if (numPixels < 1) {
+     return;
+   }
+
+   ColorType colorValue[ColorVecSize];
+   Features::encodeColor(color, colorValue);
+
+   ColorType* cBuffer = this->getColorBuffer();
+
+   for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+     for (int colorComponent = 0; colorComponent < ColorVecSize;
+          ++colorComponent) {
+       cBuffer[pixelIndex * ColorVecSize + colorComponent] =
+           colorValue[colorComponent];
+     }
+   }
+ }
 };
 
 #endif  // IMAGECOLORONLY_HPP

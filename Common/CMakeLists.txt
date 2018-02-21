@@ -61,3 +61,7 @@ add_library(miniGraphicsCommon ${srcs} ${headers})
 set_source_files_properties(${headers} HEADER_ONLY TRUE)
 
 miniGraphics_target_features(miniGraphicsCommon)
+
+if(MINIGRAPHICS_ENABLE_TESTING)
+  add_subdirectory(Testing)
+endif()

@@ -49,12 +49,12 @@ std::unique_ptr<ImageSparse> ImageRGBAUByteColorOnly::compress() const {
   exit(1);
 }
 
-std::unique_ptr<Image> ImageRGBAUByteColorOnly::createNew(
+std::unique_ptr<const Image> ImageRGBAUByteColorOnly::shallowCopy() const {
+  return std::unique_ptr<const Image>(new ImageRGBAUByteColorOnly(*this));
+}
+
+std::unique_ptr<Image> ImageRGBAUByteColorOnly::createNewImpl(
     int _width, int _height, int _regionBegin, int _regionEnd) const {
   return std::unique_ptr<Image>(
       new ImageRGBAUByteColorOnly(_width, _height, _regionBegin, _regionEnd));
-}
-
-std::unique_ptr<const Image> ImageRGBAUByteColorOnly::shallowCopy() const {
-  return std::unique_ptr<const Image>(new ImageRGBAUByteColorOnly(*this));
 }
