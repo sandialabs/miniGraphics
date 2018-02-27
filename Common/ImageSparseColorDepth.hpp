@@ -190,9 +190,12 @@ class ImageSparseColorDepth : public ImageSparse {
     int bottomRunLengthIndex = 0;
     RunLengthRegion bottomRunLength;
     outImage->runLengths->push_back(RunLengthRegion());
-    while ((topRunLengthIndex < this->runLengths->size()) ||
-           (topRunLength.backgroundPixels > 0) ||
-           (topRunLength.foregroundPixels > 0)) {
+    while (((topRunLengthIndex < this->runLengths->size()) ||
+            (topRunLength.backgroundPixels > 0) ||
+            (topRunLength.foregroundPixels > 0)) &&
+           ((bottomRunLengthIndex < otherImage->runLengths->size()) ||
+            (bottomRunLength.backgroundPixels > 0) ||
+            (bottomRunLength.foregroundPixels > 0))) {
       if ((topRunLength.backgroundPixels < 1) &&
           (topRunLength.foregroundPixels < 1)) {
         topRunLength = this->runLengths->at(topRunLengthIndex);
