@@ -11,8 +11,25 @@
 
 #include "ImageColorDepth.hpp"
 
+struct ImageRGBAUByteColorFloatDepthFeatures {
+  using ColorType = unsigned int;
+  using DepthType = float;
+  static constexpr int ColorVecSize = 1;
+
+  static bool closer(const DepthType& distance1, const DepthType& distance2) {
+    return distance1 < distance2;
+  }
+
+  static void encodeColor(const Color& color,
+                          ColorType colorComponents[ColorVecSize]);
+  static Color decodeColor(const ColorType colorComponents[ColorVecSize]);
+
+  static void encodeDepth(float depth, DepthType depthComponents[1]);
+  static float decodeDepth(const DepthType depthComponents[1]);
+};
+
 class ImageRGBAUByteColorFloatDepth
-    : public ImageColorDepth<unsigned int, 1, float> {
+    : public ImageColorDepth<ImageRGBAUByteColorFloatDepthFeatures> {
  public:
   ImageRGBAUByteColorFloatDepth(int _width, int _height);
   ImageRGBAUByteColorFloatDepth(int _width,
@@ -20,14 +37,6 @@ class ImageRGBAUByteColorFloatDepth
                                 int _regionBegin,
                                 int _regionEnd);
   ~ImageRGBAUByteColorFloatDepth() = default;
-
-  Color getColor(int pixelIndex) const final;
-
-  void setColor(int pixelIndex, const Color &color) final;
-
-  float getDepth(int pixelIndex) const final;
-
-  void setDepth(int pixelIndex, float depth) final;
 
   std::unique_ptr<Image> createNew(int _width,
                                    int _height,

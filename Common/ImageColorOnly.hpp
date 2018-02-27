@@ -14,14 +14,31 @@
 #include <memory>
 #include <vector>
 
-template <typename _ColorType, int _ColorVecSize>
+/// \brief Implementation of color-only images
+///
+/// ImageColorOnly is a base class of images that have a color buffer and use
+/// an order-dependent color alpha blending. When subclassing this class, the
+/// derived class is expected to provide a "features" structure as the template
+/// argument. This features structure must contain the following items.
+///   - A ColorType typename specifying the base type of a color component.
+///   - A ColorVecSize constant expression of the number of color components.
+///   - A static function named blend that takes takes two ColorType arrays
+///     each representing a single color and a third ColorType array to put
+///     the result of blending one on top of the other.
+///   - A static function named encodeColor that takes a Color object and
+///     fills a given array of ColorType values.
+///   - A static function named decodeColor that takes an array of ColorType
+///     values and returns a Color object.
+///
+
+template <typename Features>
 class ImageColorOnly : public Image {
  public:
-  using ColorType = _ColorType;
-  static const int ColorVecSize = _ColorVecSize;  // Should be constexpr
+  using ColorType = typename Features::ColorType;
+  static constexpr int ColorVecSize = Features::ColorVecSize;
 
  private:
-  using ThisType = ImageColorOnly<ColorType, ColorVecSize>;
+  using ThisType = ImageColorOnly<Features>;
 
   std::shared_ptr<std::vector<ColorType>> colorBuffer;
 
@@ -47,6 +64,29 @@ class ImageColorOnly : public Image {
     return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
   }
 
+  Color getColor(int pixelIndex) const final {
+    assert(pixelIndex >= 0);
+    assert(pixelIndex < this->getNumberOfPixels());
+
+    return Features::decodeColor(this->getColorBuffer(pixelIndex));
+  }
+
+  void setColor(int pixelIndex, const Color& color) final {
+    assert(pixelIndex >= 0);
+    assert(pixelIndex < this->getNumberOfPixels());
+
+    Features::encodeColor(color, this->getColorBuffer(pixelIndex));
+  }
+
+  float getDepth(int) const final {
+    // No depth
+    return 1.0f;
+  }
+
+  void setDepth(int, float) final {
+    // No depth
+  }
+
   void clear(const Color& color = Color(0, 0, 0, 0), float = 1.0f) final {
     int numPixels = this->getNumberOfPixels();
     if (numPixels < 1) {
@@ -56,13 +96,10 @@ class ImageColorOnly : public Image {
     // Encode the color by calling setColor for first pixel.
     this->setColor(0, color);
 
-    ColorType* cBuffer = this->getColorBuffer();
-
     ColorType colorValue[ColorVecSize];
-    for (int colorComponent = 0; colorComponent < ColorVecSize;
-         ++colorComponent) {
-      colorValue[colorComponent] = cBuffer[colorComponent];
-    }
+    Features::encodeColor(color, colorValue);
+
+    ColorType* cBuffer = this->getColorBuffer();
 
     for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
       for (int colorComponent = 0; colorComponent < ColorVecSize;
@@ -73,10 +110,7 @@ class ImageColorOnly : public Image {
     }
   }
 
- protected:
-  template <typename BlendOperatorType>
-  std::unique_ptr<Image> blendImpl(const Image* _otherImage,
-                                   BlendOperatorType blendOperator) const {
+  std::unique_ptr<Image> blend(const Image* _otherImage) const final {
     const ThisType* otherImage = dynamic_cast<const ThisType*>(_otherImage);
     assert((otherImage != NULL) && "Attempting to blend invalid images.");
 
@@ -97,15 +131,14 @@ class ImageColorOnly : public Image {
     ColorType* outColorBuffer = outImage->getColorBuffer();
 
     for (int pixelIndex = 0; pixelIndex < numPixels; ++pixelIndex) {
-      blendOperator(topColorBuffer + (pixelIndex * ColorVecSize),
-                    bottomColorBuffer + (pixelIndex * ColorVecSize),
-                    outColorBuffer + (pixelIndex * ColorVecSize));
+      Features::blend(topColorBuffer + (pixelIndex * ColorVecSize),
+                      bottomColorBuffer + (pixelIndex * ColorVecSize),
+                      outColorBuffer + (pixelIndex * ColorVecSize));
     }
 
     return outImageHolder;
   }
 
- public:
   bool blendIsOrderDependent() const final { return true; }
 
   std::unique_ptr<Image> copySubrange(int subregionBegin,

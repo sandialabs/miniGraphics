@@ -15,7 +15,8 @@ YamlWriter::YamlWriter(std::ostream& outputStream)
 
 YamlWriter::~YamlWriter() {
   if (this->BlockStack.size() != 1) {
-    std::cerr <<  "YamlWriter destroyed before last block complete." << std::endl;
+    std::cerr << "YamlWriter destroyed before last block complete."
+              << std::endl;
   }
 }
 

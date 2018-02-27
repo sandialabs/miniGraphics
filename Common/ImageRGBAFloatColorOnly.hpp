@@ -11,7 +11,26 @@
 
 #include "ImageColorOnly.hpp"
 
-class ImageRGBAFloatColorOnly : public ImageColorOnly<float, 4> {
+struct ImageRGBAFloatColorOnlyFeatures {
+  using ColorType = float;
+  static constexpr int ColorVecSize = 4;
+
+  static void blend(const ColorType topColor[ColorVecSize],
+                    const ColorType bottomColor[ColorVecSize],
+                    ColorType outColor[ColorVecSize]) {
+    for (int component = 0; component < 4; ++component) {
+      outColor[component] =
+          topColor[component] + bottomColor[component] * (1.0f - topColor[3]);
+    }
+  }
+
+  static void encodeColor(const Color& color,
+                          ColorType colorComponents[ColorVecSize]);
+  static Color decodeColor(const ColorType colorComponents[ColorVecSize]);
+};
+
+class ImageRGBAFloatColorOnly
+    : public ImageColorOnly<ImageRGBAFloatColorOnlyFeatures> {
  public:
   ImageRGBAFloatColorOnly(int _width, int _height);
   ImageRGBAFloatColorOnly(int _width,
@@ -19,16 +38,6 @@ class ImageRGBAFloatColorOnly : public ImageColorOnly<float, 4> {
                           int _regionBegin,
                           int _regionEnd);
   ~ImageRGBAFloatColorOnly() = default;
-
-  Color getColor(int pixelIndex) const final;
-
-  void setColor(int pixelIndex, const Color& color) final;
-
-  float getDepth(int pixelIndex) const final;
-
-  void setDepth(int pixelIndex, float depth) final;
-
-  std::unique_ptr<Image> blend(const Image* _otherImage) const final;
 
   std::unique_ptr<Image> createNew(int _width,
                                    int _height,

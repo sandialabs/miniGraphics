@@ -10,6 +10,22 @@
 
 #include <assert.h>
 
+void ImageRGBAFloatColorOnlyFeatures::encodeColor(
+    const Color& color, ColorType colorComponents[ColorVecSize]) {
+  colorComponents[0] = color.Components[0];
+  colorComponents[1] = color.Components[1];
+  colorComponents[2] = color.Components[2];
+  colorComponents[3] = color.Components[3];
+}
+
+Color ImageRGBAFloatColorOnlyFeatures::decodeColor(
+    const ColorType colorComponents[ColorVecSize]) {
+  return Color(colorComponents[0],
+               colorComponents[1],
+               colorComponents[2],
+               colorComponents[3]);
+}
+
 ImageRGBAFloatColorOnly::ImageRGBAFloatColorOnly(int _width, int _height)
     : ImageColorOnly(_width, _height) {}
 
@@ -18,49 +34,6 @@ ImageRGBAFloatColorOnly::ImageRGBAFloatColorOnly(int _width,
                                                  int _regionBegin,
                                                  int _regionEnd)
     : ImageColorOnly(_width, _height, _regionBegin, _regionEnd) {}
-
-Color ImageRGBAFloatColorOnly::getColor(int pixelIndex) const {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  const float *colorArray = this->getColorBuffer(pixelIndex);
-  return Color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
-}
-
-void ImageRGBAFloatColorOnly::setColor(int pixelIndex, const Color &color) {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  float *colorArray = this->getColorBuffer(pixelIndex);
-
-  colorArray[0] = color.Components[0];
-  colorArray[1] = color.Components[1];
-  colorArray[2] = color.Components[2];
-  colorArray[3] = color.Components[3];
-}
-
-float ImageRGBAFloatColorOnly::getDepth(int) const {
-  // No depth
-  return 1.0f;
-}
-
-void ImageRGBAFloatColorOnly::setDepth(int, float) {
-  // No depth
-}
-
-std::unique_ptr<Image> ImageRGBAFloatColorOnly::blend(
-    const Image *_otherImage) const {
-  return this->blendImpl(_otherImage,
-                         [](const float topColor[4],
-                            const float bottomColor[4],
-                            float outColor[4]) {
-                           for (int component = 0; component < 4; ++component) {
-                             outColor[component] =
-                                 topColor[component] +
-                                 bottomColor[component] * (1.0f - topColor[3]);
-                           }
-                         });
-}
 
 std::unique_ptr<Image> ImageRGBAFloatColorOnly::createNew(
     int _width, int _height, int _regionBegin, int _regionEnd) const {

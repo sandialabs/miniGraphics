@@ -14,15 +14,37 @@
 #include <memory>
 #include <vector>
 
-template <typename _ColorType, int _ColorVecSize, typename _DepthType>
+/// \brief Implementation of color/depth images
+///
+/// ImageColorDepth is a base class of images that have both color and depth
+/// buffers and use a depth comparison for blending. When subclassing this
+/// class, the derived class is expected to provide a "features" structure as
+/// the template argument. This features structure must contain the following
+/// items.
+///   - A ColorType typename specifying the base type of a color component.
+///   - A ColorVecSize constant expression of the number of color components.
+///   - A DepthType typename specifying the base type of a depth component.
+///   - A static function named closer that takes two depth values (of
+///     DepthType) and returns true if the first value is closer than the
+///     second.
+///   - A static function named encodeColor that takes a Color object and
+///     fills a given array of ColorType values.
+///   - A static function named decodeColor that takes an array of ColorType
+///     values and returns a Color object.
+///   - A static function named encodeDepth that takes a float value and
+///     fills a given array (of size one) of DepthType.
+///   - A static function named decodeDepth that takes an array (of size 1)
+///     of DepthType and returns a float object.
+///
+template <typename Features>
 class ImageColorDepth : public Image {
  public:
-  using ColorType = _ColorType;
-  using DepthType = _DepthType;
-  static const int ColorVecSize = _ColorVecSize;  // Should be constexpr
+  using ColorType = typename Features::ColorType;
+  using DepthType = typename Features::DepthType;
+  static constexpr int ColorVecSize = Features::ColorVecSize;
 
  private:
-  using ThisType = ImageColorDepth<ColorType, ColorVecSize, DepthType>;
+  using ThisType = ImageColorDepth<Features>;
 
   std::shared_ptr<std::vector<ColorType>> colorBuffer;
   std::shared_ptr<std::vector<DepthType>> depthBuffer;
@@ -59,6 +81,34 @@ class ImageColorDepth : public Image {
     return &this->depthBuffer->front() + pixelIndex;
   }
 
+  Color getColor(int pixelIndex) const final {
+    assert(pixelIndex >= 0);
+    assert(pixelIndex < this->getNumberOfPixels());
+
+    return Features::decodeColor(this->getColorBuffer(pixelIndex));
+  }
+
+  void setColor(int pixelIndex, const Color& color) final {
+    assert(pixelIndex >= 0);
+    assert(pixelIndex < this->getNumberOfPixels());
+
+    Features::encodeColor(color, this->getColorBuffer(pixelIndex));
+  }
+
+  float getDepth(int pixelIndex) const final {
+    assert(pixelIndex >= 0);
+    assert(pixelIndex < this->getNumberOfPixels());
+
+    return Features::decodeDepth(this->getDepthBuffer(pixelIndex));
+  }
+
+  void setDepth(int pixelIndex, float depth) final {
+    assert(pixelIndex >= 0);
+    assert(pixelIndex < this->getNumberOfPixels());
+
+    Features::encodeDepth(depth, this->getDepthBuffer(pixelIndex));
+  }
+
   void clear(const Color& color = Color(0, 0, 0, 0), float depth = 1.0f) final {
     int numPixels = this->getNumberOfPixels();
     if (numPixels < 1) {
@@ -69,15 +119,13 @@ class ImageColorDepth : public Image {
     this->setColor(0, color);
     this->setDepth(0, depth);
 
+    ColorType colorValue[ColorVecSize];
+    Features::encodeColor(color, colorValue);
+    DepthType depthValue;
+    Features::encodeDepth(depth, &depthValue);
+
     ColorType* cBuffer = this->getColorBuffer();
     DepthType* dBuffer = this->getDepthBuffer();
-
-    ColorType colorValue[ColorVecSize];
-    for (int colorComponent = 0; colorComponent < ColorVecSize;
-         ++colorComponent) {
-      colorValue[colorComponent] = cBuffer[colorComponent];
-    }
-    DepthType depthValue = dBuffer[0];
 
     for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
       for (int colorComponent = 0; colorComponent < ColorVecSize;
@@ -113,7 +161,8 @@ class ImageColorDepth : public Image {
     DepthType* outDepthBuffer = outImage->getDepthBuffer();
 
     for (int pixelIndex = 0; pixelIndex < numPixels; ++pixelIndex) {
-      if (bottomDepthBuffer[pixelIndex] < topDepthBuffer[pixelIndex]) {
+      if (Features::closer(bottomDepthBuffer[pixelIndex],
+                           topDepthBuffer[pixelIndex])) {
         for (int colorComponent = 0; colorComponent < ColorVecSize;
              ++colorComponent) {
           outColorBuffer[pixelIndex * ColorVecSize + colorComponent] =
