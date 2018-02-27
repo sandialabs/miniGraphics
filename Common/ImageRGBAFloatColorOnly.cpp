@@ -8,6 +8,8 @@
 
 #include "ImageRGBAFloatColorOnly.hpp"
 
+#include "ImageSparseColorOnly.hpp"
+
 #include <assert.h>
 
 void ImageRGBAFloatColorOnlyFeatures::encodeColor(
@@ -37,8 +39,8 @@ ImageRGBAFloatColorOnly::ImageRGBAFloatColorOnly(int _width,
 
 
 std::unique_ptr<ImageSparse> ImageRGBAFloatColorOnly::compress() const {
-  std::cerr << "Not implemented!" << std::endl;
-  exit(1);
+  return std::unique_ptr<ImageSparse>(
+      new ImageSparseColorOnly<ImageRGBAFloatColorOnlyFeatures>(*this));
 }
 
 std::unique_ptr<const Image> ImageRGBAFloatColorOnly::shallowCopy() const {

@@ -47,14 +47,15 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
 
  public:
   ImageColorOnly(int _width, int _height)
-      : ImageFull(_width, _height),
-        colorBuffer(
-            new std::vector<ColorType>(_width * _height * ColorVecSize)) {}
+      : ImageFull(_width, _height), colorBuffer(new std::vector<ColorType>) {
+    this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
+  }
 
   ImageColorOnly(int _width, int _height, int _regionBegin, int _regionEnd)
       : ImageFull(_width, _height, _regionBegin, _regionEnd),
-        colorBuffer(new std::vector<ColorType>((_regionEnd - _regionBegin) *
-                                               ColorVecSize)) {}
+        colorBuffer(new std::vector<ColorType>) {
+    this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
+  }
 
   ~ImageColorOnly() = default;
 
@@ -63,6 +64,12 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
     return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+  }
+
+  void resizeBuffers(int newRegionBegin, int newRegionEnd) {
+    this->resize(
+        this->getWidth(), this->getHeight(), newRegionBegin, newRegionEnd);
+    this->colorBuffer->resize(this->getNumberOfPixels() * ColorVecSize);
   }
 
   Color getColor(int pixelIndex) const final {

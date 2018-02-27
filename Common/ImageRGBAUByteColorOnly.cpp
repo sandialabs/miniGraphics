@@ -8,6 +8,8 @@
 
 #include "ImageRGBAUByteColorOnly.hpp"
 
+#include "ImageSparseColorOnly.hpp"
+
 #include <assert.h>
 
 void ImageRGBAUByteColorOnlyFeatures::encodeColor(
@@ -45,8 +47,8 @@ ImageRGBAUByteColorOnly::ImageRGBAUByteColorOnly(int _width,
     : ImageColorOnly(_width, _height, _regionBegin, _regionEnd) {}
 
 std::unique_ptr<ImageSparse> ImageRGBAUByteColorOnly::compress() const {
-  std::cerr << "Not implemented!" << std::endl;
-  exit(1);
+  return std::unique_ptr<ImageSparse>(
+      new ImageSparseColorOnly<ImageRGBAUByteColorOnlyFeatures>(*this));
 }
 
 std::unique_ptr<const Image> ImageRGBAUByteColorOnly::shallowCopy() const {

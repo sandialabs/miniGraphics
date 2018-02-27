@@ -6,25 +6,24 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef IMAGESPARSECOLORDEPTH_HPP
-#define IMAGESPARSECOLORDEPTH_HPP
+#ifndef IMAGESPARSECOLORONLY_HPP
+#define IMAGESPARSECOLORONLY_HPP
 
 #include "ImageSparse.hpp"
 
-#include "ImageColorDepth.hpp"
+#include "ImageColorOnly.hpp"
 
 #include <algorithm>
 
 template <typename Features>
-class ImageSparseColorDepth : public ImageSparse {
+class ImageSparseColorOnly : public ImageSparse {
  public:
   using ColorType = typename Features::ColorType;
-  using DepthType = typename Features::DepthType;
   static constexpr int ColorVecSize = Features::ColorVecSize;
 
  private:
-  using ThisType = ImageSparseColorDepth<Features>;
-  using StorageType = ImageColorDepth<Features>;
+  using ThisType = ImageSparseColorOnly<Features>;
+  using StorageType = ImageColorOnly<Features>;
 
   std::shared_ptr<StorageType> pixelStorage;
   std::shared_ptr<std::vector<RunLengthRegion>> runLengths;
@@ -34,15 +33,13 @@ class ImageSparseColorDepth : public ImageSparse {
 
   struct BackgroundInfo {
     ColorType color[ColorVecSize];
-    DepthType depth;
   };
   BackgroundInfo background;
-  void setBackground(const Color& color, float depth) {
+  void setBackground(const Color& color) {
     Features::encodeColor(color, this->background.color);
-    Features::encodeDepth(depth, &this->background.depth);
   }
 
-  ImageSparseColorDepth(
+  ImageSparseColorOnly(
       int _width,
       int _height,
       int _regionBegin,
@@ -56,7 +53,7 @@ class ImageSparseColorDepth : public ImageSparse {
         background(_background) {}
 
  public:
-  ImageSparseColorDepth(const StorageType& toCompress)
+  ImageSparseColorOnly(const StorageType& toCompress)
       : ImageSparse(toCompress.getWidth(),
                     toCompress.getHeight(),
                     toCompress.getRegionBegin(),
@@ -70,15 +67,22 @@ class ImageSparseColorDepth : public ImageSparse {
       this->pixelStorage.reset(pixelStorageP);
     } else {
       throw std::runtime_error(
-          "ImageSparseColorDepth called with bad image type.");
+          "ImageSparseColorOnly called with bad image type.");
     }
-    this->setBackground(Color(0, 0, 0, 0), 1.0f);
+    this->setBackground(Color(0, 0, 0, 0));
     this->compress(toCompress);
   }
 
  private:
-  bool isBackground(const DepthType& depth) const {
-    return !Features::closer(depth, this->background.depth);
+  bool isBackground(const ColorType colorComponents[ColorVecSize]) const {
+    // Might want a more sophisticated way to check for background if we run
+    // into issues like numeric instability.
+    for (int i = 0; i < ColorVecSize; ++i) {
+      if (colorComponents[i] != this->background.color[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void compress(const StorageType& toCompress) {
@@ -89,12 +93,12 @@ class ImageSparseColorDepth : public ImageSparse {
     while (iPixel < numPixels) {
       RunLengthRegion runLength;
       while ((iPixel < numPixels) &&
-             this->isBackground(*toCompress.getDepthBuffer(iPixel))) {
+             this->isBackground(toCompress.getColorBuffer(iPixel))) {
         ++runLength.backgroundPixels;
         ++iPixel;
       }
       while ((iPixel < numPixels) &&
-             !this->isBackground(*toCompress.getDepthBuffer(iPixel))) {
+             !this->isBackground(toCompress.getColorBuffer(iPixel))) {
         ++runLength.foregroundPixels;
         ++iPixel;
       }
@@ -113,10 +117,6 @@ class ImageSparseColorDepth : public ImageSparse {
             toCompress.getColorBuffer(iPixel),
             toCompress.getColorBuffer(iPixel + runLength.foregroundPixels),
             this->pixelStorage->getColorBuffer(iActivePixel));
-        std::copy(
-            toCompress.getDepthBuffer(iPixel),
-            toCompress.getDepthBuffer(iPixel + runLength.foregroundPixels),
-            this->pixelStorage->getDepthBuffer(iActivePixel));
         iActivePixel += runLength.foregroundPixels;
         iPixel += runLength.foregroundPixels;
       }
@@ -171,11 +171,8 @@ class ImageSparseColorDepth : public ImageSparse {
                  this->getNumberOfPixels());
 
     const ColorType* topColorBuffer = this->pixelStorage->getColorBuffer();
-    const DepthType* topDepthBuffer = this->pixelStorage->getDepthBuffer();
     const ColorType* bottomColorBuffer =
         otherImage->pixelStorage->getColorBuffer();
-    const DepthType* bottomDepthBuffer =
-        otherImage->pixelStorage->getDepthBuffer();
 
     std::unique_ptr<Image> outImageHolder = this->createNew();
     ThisType* outImage = dynamic_cast<ThisType*>(outImageHolder.get());
@@ -183,7 +180,6 @@ class ImageSparseColorDepth : public ImageSparse {
     outImage->pixelStorage->resizeBuffers(0, maxNumActivePixels);
     outImage->runLengths->resize(0);
     ColorType* outColorBuffer = outImage->pixelStorage->getColorBuffer();
-    DepthType* outDepthBuffer = outImage->pixelStorage->getDepthBuffer();
 
     int topRunLengthIndex = 0;
     RunLengthRegion topRunLength;
@@ -226,11 +222,6 @@ class ImageSparseColorDepth : public ImageSparse {
         bottomColorBuffer += numPixels * ColorVecSize;
         outColorBuffer += numPixels * ColorVecSize;
 
-        std::copy(
-            bottomDepthBuffer, bottomDepthBuffer + numPixels, outDepthBuffer);
-        bottomDepthBuffer += numPixels;
-        outDepthBuffer += numPixels;
-
         topRunLength.backgroundPixels -= numPixels;
         bottomRunLength.foregroundPixels -= numPixels;
         outImage->runLengths->back().foregroundPixels += numPixels;
@@ -245,10 +236,6 @@ class ImageSparseColorDepth : public ImageSparse {
         topColorBuffer += numPixels * ColorVecSize;
         outColorBuffer += numPixels * ColorVecSize;
 
-        std::copy(topDepthBuffer, topDepthBuffer + numPixels, outDepthBuffer);
-        topDepthBuffer += numPixels;
-        outDepthBuffer += numPixels;
-
         bottomRunLength.backgroundPixels -= numPixels;
         topRunLength.foregroundPixels -= numPixels;
         outImage->runLengths->back().foregroundPixels += numPixels;
@@ -258,31 +245,14 @@ class ImageSparseColorDepth : public ImageSparse {
                                  bottomRunLength.foregroundPixels);
 
         for (int pixelIndex = 0; pixelIndex < numPixels; ++pixelIndex) {
-          if (Features::closer(bottomDepthBuffer[pixelIndex],
-                               topDepthBuffer[pixelIndex])) {
-            for (int colorComponent = 0; colorComponent < ColorVecSize;
-                 ++colorComponent) {
-              outColorBuffer[pixelIndex * ColorVecSize + colorComponent] =
-                  bottomColorBuffer[pixelIndex * ColorVecSize + colorComponent];
-            }
-            outDepthBuffer[pixelIndex] = bottomDepthBuffer[pixelIndex];
-          } else {
-            for (int colorComponent = 0; colorComponent < ColorVecSize;
-                 ++colorComponent) {
-              outColorBuffer[pixelIndex * ColorVecSize + colorComponent] =
-                  topColorBuffer[pixelIndex * ColorVecSize + colorComponent];
-            }
-            outDepthBuffer[pixelIndex] = topDepthBuffer[pixelIndex];
-          }
+          Features::blend(topColorBuffer + (pixelIndex * ColorVecSize),
+                          bottomColorBuffer + (pixelIndex * ColorVecSize),
+                          outColorBuffer + (pixelIndex * ColorVecSize));
         }
 
         topColorBuffer += numPixels * ColorVecSize;
         bottomColorBuffer += numPixels * ColorVecSize;
         outColorBuffer += numPixels * ColorVecSize;
-
-        topDepthBuffer += numPixels;
-        bottomDepthBuffer += numPixels;
-        outDepthBuffer += numPixels;
 
         topRunLength.foregroundPixels -= numPixels;
         bottomRunLength.foregroundPixels -= numPixels;
@@ -295,7 +265,7 @@ class ImageSparseColorDepth : public ImageSparse {
     return outImageHolder;
   }
 
-  bool blendIsOrderDependent() const final { return false; }
+  bool blendIsOrderDependent() const final { return true; }
 
   std::unique_ptr<Image> copySubrange(int subregionBegin,
                                       int subregionEnd) const final {
@@ -368,10 +338,6 @@ class ImageSparseColorDepth : public ImageSparse {
                 this->pixelStorage->getColorBuffer(inBufferIndex +
                                                    runLength.foregroundPixels),
                 subImage->pixelStorage->getColorBuffer(outBufferIndex));
-      std::copy(this->pixelStorage->getDepthBuffer(inBufferIndex),
-                this->pixelStorage->getDepthBuffer(inBufferIndex +
-                                                   runLength.foregroundPixels),
-                subImage->pixelStorage->getDepthBuffer(outBufferIndex));
       subImage->runLengths->push_back(runLength);
 
       // Move indices to end of recorded pixels.
@@ -405,7 +371,6 @@ class ImageSparseColorDepth : public ImageSparse {
         std::copy(this->background.color,
                   this->background.color + ColorVecSize,
                   outImage->getColorBuffer(outPixelIndex + i));
-        *outImage->getDepthBuffer(outPixelIndex + i) = this->background.depth;
       }
       outPixelIndex += runLength.backgroundPixels;
 
@@ -414,10 +379,6 @@ class ImageSparseColorDepth : public ImageSparse {
                   this->pixelStorage->getColorBuffer(
                       inBufferIndex + runLength.foregroundPixels),
                   outImage->getColorBuffer(outPixelIndex));
-        std::copy(this->pixelStorage->getDepthBuffer(inBufferIndex),
-                  this->pixelStorage->getDepthBuffer(
-                      inBufferIndex + runLength.foregroundPixels),
-                  outImage->getDepthBuffer(outPixelIndex));
         inBufferIndex += runLength.foregroundPixels;
         outPixelIndex += runLength.foregroundPixels;
       }
@@ -506,8 +467,8 @@ class ImageSparseColorDepth : public ImageSparse {
   }
 
  protected:
-  void clearImpl(const Color& color, float depth) final {
-    this->setBackground(color, depth);
+  void clearImpl(const Color& color, float) final {
+    this->setBackground(color);
     this->clearKnownBackground();
   }
 
@@ -535,4 +496,4 @@ class ImageSparseColorDepth : public ImageSparse {
   }
 };
 
-#endif  // IMAGESPARSECOLORDEPTH_HPP
+#endif  // IMAGESPARSECOLORONLY_HPP

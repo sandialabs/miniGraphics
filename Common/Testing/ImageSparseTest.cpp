@@ -414,9 +414,9 @@ static void DoImageTest(const std::string& imageTypeName) {
 int ImageSparseTest(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
 
-  //  DO_IMAGE_TEST(ImageRGBAFloatColorOnly);
+  DO_IMAGE_TEST(ImageRGBAFloatColorOnly);
   DO_IMAGE_TEST(ImageRGBAUByteColorFloatDepth);
-  //  DO_IMAGE_TEST(ImageRGBAUByteColorOnly);
+  DO_IMAGE_TEST(ImageRGBAUByteColorOnly);
   DO_IMAGE_TEST(ImageRGBFloatColorDepth);
 
   MPI_Finalize();

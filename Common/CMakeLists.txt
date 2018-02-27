@@ -43,6 +43,7 @@ set(headers
   ImageRGBFloatColorDepth.hpp
   ImageSparse.hpp
   ImageSparseColorDepth.hpp
+  ImageSparseColorOnly.hpp
   MainLoop.hpp
   MakeBox.hpp
   Mesh.hpp

@@ -57,15 +57,15 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
  public:
   ImageColorDepth(int _width, int _height)
       : ImageFull(_width, _height),
-        colorBuffer(new std::vector<ColorType>()),
-        depthBuffer(new std::vector<DepthType>()) {
+        colorBuffer(new std::vector<ColorType>),
+        depthBuffer(new std::vector<DepthType>) {
     this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
   }
 
   ImageColorDepth(int _width, int _height, int _regionBegin, int _regionEnd)
       : ImageFull(_width, _height, _regionBegin, _regionEnd),
-        colorBuffer(new std::vector<ColorType>()),
-        depthBuffer(new std::vector<DepthType>()) {
+        colorBuffer(new std::vector<ColorType>),
+        depthBuffer(new std::vector<DepthType>) {
     this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
   }
 
