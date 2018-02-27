@@ -48,12 +48,12 @@ std::unique_ptr<ImageSparse> ImageRGBFloatColorDepth::compress() const {
       new ImageSparseColorDepth<ImageRGBFloatColorDepthFeatures>(*this));
 }
 
-std::unique_ptr<const Image> ImageRGBFloatColorDepth::shallowCopy() const {
-  return std::unique_ptr<const Image>(new ImageRGBFloatColorDepth(*this));
-}
-
 std::unique_ptr<Image> ImageRGBFloatColorDepth::createNewImpl(
     int _width, int _height, int _regionBegin, int _regionEnd) const {
   return std::unique_ptr<Image>(
       new ImageRGBFloatColorDepth(_width, _height, _regionBegin, _regionEnd));
+}
+
+std::unique_ptr<const Image> ImageRGBFloatColorDepth::shallowCopyImpl() const {
+  return std::unique_ptr<const Image>(new ImageRGBFloatColorDepth(*this));
 }

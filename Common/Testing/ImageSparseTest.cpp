@@ -332,12 +332,24 @@ static void TestCompressUncompress() {
 }
 
 template <typename ImageType>
+static void TestShallowCopy() {
+  std::cout << "  Shallow copy" << std::endl;
+
+  std::unique_ptr<ImageSparse> image = createImage1<ImageType>()->compress();
+
+  std::unique_ptr<Image> imageCopy = image->shallowCopy();
+  TEST_ASSERT(dynamic_cast<ImageSparse*>(imageCopy.get()) != nullptr);
+  compareImages(*image, *imageCopy);
+}
+
+template <typename ImageType>
 static void TestDeepCopy() {
   std::cout << "  Deep copy" << std::endl;
 
   std::unique_ptr<ImageSparse> image = createImage1<ImageType>()->compress();
 
   std::unique_ptr<Image> imageCopy = image->deepCopy();
+  TEST_ASSERT(dynamic_cast<ImageSparse*>(imageCopy.get()) != nullptr);
   compareImages(*image, *imageCopy);
 }
 
@@ -403,6 +415,7 @@ template <typename ImageType>
 static void DoImageTest(const std::string& imageTypeName) {
   std::cout << imageTypeName << std::endl;
   TestCompressUncompress<ImageType>();
+  TestShallowCopy<ImageType>();
   TestDeepCopy<ImageType>();
   TestTransfer<ImageType>();
   TestSubrange<ImageType>();

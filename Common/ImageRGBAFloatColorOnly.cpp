@@ -43,12 +43,12 @@ std::unique_ptr<ImageSparse> ImageRGBAFloatColorOnly::compress() const {
       new ImageSparseColorOnly<ImageRGBAFloatColorOnlyFeatures>(*this));
 }
 
-std::unique_ptr<const Image> ImageRGBAFloatColorOnly::shallowCopy() const {
-  return std::unique_ptr<const Image>(new ImageRGBAFloatColorOnly(*this));
-}
-
 std::unique_ptr<Image> ImageRGBAFloatColorOnly::createNewImpl(
     int _width, int _height, int _regionBegin, int _regionEnd) const {
   return std::unique_ptr<Image>(
       new ImageRGBAFloatColorOnly(_width, _height, _regionBegin, _regionEnd));
+}
+
+std::unique_ptr<const Image> ImageRGBAFloatColorOnly::shallowCopyImpl() const {
+  return std::unique_ptr<const Image>(new ImageRGBAFloatColorOnly(*this));
 }

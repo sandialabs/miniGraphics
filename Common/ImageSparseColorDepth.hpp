@@ -384,10 +384,6 @@ class ImageSparseColorDepth : public ImageSparse {
     return outImageHolder;
   }
 
-  std::unique_ptr<const Image> shallowCopy() const final {
-    return std::unique_ptr<const Image>(new ThisType(*this));
-  }
-
   std::unique_ptr<ImageFull> uncompress() const final {
     std::unique_ptr<Image> outImageTmp =
         this->pixelStorage->createNew(this->getWidth(),
@@ -532,6 +528,10 @@ class ImageSparseColorDepth : public ImageSparse {
                                       this->background);
     newImage->clearKnownBackground();
     return std::unique_ptr<Image>(newImage);
+  }
+
+  std::unique_ptr<const Image> shallowCopyImpl() const final {
+    return std::unique_ptr<const Image>(new ThisType(*this));
   }
 };
 

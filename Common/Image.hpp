@@ -133,11 +133,13 @@ class Image {
     return this->copySubrange(0, this->getNumberOfPixels());
   }
 
-  virtual std::unique_ptr<const Image> shallowCopy() const = 0;
+  std::unique_ptr<const Image> shallowCopy() const {
+    return this->shallowCopyImpl();
+  }
 
   std::unique_ptr<Image> shallowCopy() {
     std::unique_ptr<const Image> constCopy =
-        const_cast<const Image*>(this)->shallowCopy();
+        const_cast<const Image*>(this)->shallowCopyImpl();
 
     return std::unique_ptr<Image>(const_cast<Image*>(constCopy.release()));
   }
@@ -199,6 +201,8 @@ class Image {
                                                int _height,
                                                int _regionBegin,
                                                int _regionEnd) const = 0;
+
+  virtual std::unique_ptr<const Image> shallowCopyImpl() const = 0;
 };
 
 #endif  // IMAGE_HPP

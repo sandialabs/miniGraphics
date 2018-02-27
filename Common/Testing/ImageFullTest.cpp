@@ -282,12 +282,24 @@ static std::unique_ptr<ImageType> createImageCombined(
 }
 
 template <typename ImageType>
+static void TestShallowCopy() {
+  std::cout << "  Shallow copy" << std::endl;
+
+  std::unique_ptr<ImageType> image = createImage1<ImageType>();
+
+  std::unique_ptr<Image> imageCopy = image->shallowCopy();
+  TEST_ASSERT(dynamic_cast<ImageType*>(imageCopy.get()) != nullptr);
+  compareImages(*image, *imageCopy);
+}
+
+template <typename ImageType>
 static void TestDeepCopy() {
   std::cout << "  Deep copy" << std::endl;
 
   std::unique_ptr<ImageType> image = createImage1<ImageType>();
 
   std::unique_ptr<Image> imageCopy = image->deepCopy();
+  TEST_ASSERT(dynamic_cast<ImageType*>(imageCopy.get()) != nullptr);
   compareImages(*image, *imageCopy);
 }
 
@@ -351,6 +363,7 @@ static void TestBlend() {
 template <typename ImageType>
 static void DoImageTest(const std::string& imageTypeName) {
   std::cout << imageTypeName << std::endl;
+  TestShallowCopy<ImageType>();
   TestDeepCopy<ImageType>();
   TestTransfer<ImageType>();
   TestSubrange<ImageType>();
