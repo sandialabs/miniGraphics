@@ -32,9 +32,23 @@ set(srcs
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Color.hpp
+  Compositor.hpp
+  Image.hpp
   ImageColorDepth.hpp
   ImageColorOnly.hpp
+  ImageRGBAFloatColorOnly.hpp
+  ImageRGBAUByteColorFloatDepth.hpp
+  ImageRGBAUByteColorOnly.hpp
+  ImageRGBFloatColorDepth.hpp
+  MainLoop.hpp
+  MakeBox.hpp
+  Mesh.hpp
+  MeshHelper.hpp
+  ReadSTL.hpp
+  SavePPM.hpp
+  Timer.hpp
   Triangle.hpp
+  YamlWriter.hpp
   )
 
 miniGraphics_create_config_header("common library")

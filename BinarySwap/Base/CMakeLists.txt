@@ -17,4 +17,11 @@ set(srcs
   BinarySwapBase.cpp
   )
 
-miniGraphics_executable(BinarySwapBase ${srcs})
+set(headers
+  BinarySwapBase.hpp
+  )
+
+miniGraphics_executable(BinarySwapBase
+  SOURCES ${srcs}
+  HEADERS ${headers}
+  )
