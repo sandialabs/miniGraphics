@@ -8,6 +8,8 @@
 
 cmake_minimum_required(VERSION 3.3)
 
+include(CMakeParseArguments)
+
 # Set up this directory in the CMAKE MODULE PATH
 set(miniGraphics_CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${miniGraphics_CMAKE_MODULE_PATH})
@@ -79,12 +81,22 @@ endfunction(miniGraphics_target_features)
 # The first argument is the name of the miniapp. A target with that name will
 # be created. The remaining arguments are source files.
 function(miniGraphics_executable miniapp_name)
-  set(srcs
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs HEADERS SOURCES)
+  cmake_parse_arguments(miniGraphics_executable
+    "${options}" "${oneValueArgs}" "${multiValueArgs}"
     ${ARGN}
+    )
+
+  set(srcs
+    ${miniGraphics_executable_SOURCES}
+    ${miniGraphics_executable_UNPARSED_ARGUMENTS}
     )
 
   set(headers
     ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
+    ${miniGraphics_executable_HEADERS}
     )
 
   miniGraphics_create_config_header(${miniapp_name})

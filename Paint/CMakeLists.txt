@@ -24,6 +24,7 @@ set(srcs
 set(headers
   ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsConfig.h
   Painter.hpp
+  PainterSimple.hpp
   )
 
 set(include_dirs)
@@ -35,8 +36,17 @@ if(MINIGRAPHICS_ENABLE_OPENGL)
   find_package(GLFW REQUIRED)
 
   set(srcs ${srcs}
-    ${miniGraphics_SOURCE_DIR}/Paint/PainterOpenGL.cpp
-    ${miniGraphics_SOURCE_DIR}/Paint/OpenGL_common/shader.cpp
+    PainterOpenGL.cpp
+    OpenGL_common/shader.cpp
+    )
+
+  set(headers ${headers}
+    PainterOpenGL.hpp
+    OpenGL_common/ColorFragmentShader.fragmentshader
+    OpenGL_common/SimpleFragmentShader.fragmentshader
+    OpenGL_common/SimpleVertexShader.vertexshader
+    OpenGL_common/TransformVertexShader.vertexshader
+    OpenGL_common/shader.hpp
     )
 
   set(include_dirs ${include_dirs}
