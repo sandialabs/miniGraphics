@@ -225,26 +225,26 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
     return requests;
   }
 
-protected:
- void clearImpl(const Color& color, float) final {
-   int numPixels = this->getNumberOfPixels();
-   if (numPixels < 1) {
-     return;
-   }
+ protected:
+  void clearImpl(const Color& color, float) final {
+    int numPixels = this->getNumberOfPixels();
+    if (numPixels < 1) {
+      return;
+    }
 
-   ColorType colorValue[ColorVecSize];
-   Features::encodeColor(color, colorValue);
+    ColorType colorValue[ColorVecSize];
+    Features::encodeColor(color, colorValue);
 
-   ColorType* cBuffer = this->getColorBuffer();
+    ColorType* cBuffer = this->getColorBuffer();
 
-   for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
-     for (int colorComponent = 0; colorComponent < ColorVecSize;
-          ++colorComponent) {
-       cBuffer[pixelIndex * ColorVecSize + colorComponent] =
-           colorValue[colorComponent];
-     }
-   }
- }
+    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+      for (int colorComponent = 0; colorComponent < ColorVecSize;
+           ++colorComponent) {
+        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
+            colorValue[colorComponent];
+      }
+    }
+  }
 };
 
 #endif  // IMAGECOLORONLY_HPP

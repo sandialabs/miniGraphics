@@ -10,6 +10,8 @@
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
 #include <Common/ImageRGBAUByteColorOnly.hpp>
 #include <Common/ImageRGBFloatColorDepth.hpp>
+#include <Common/ImageSparse.hpp>
+#include <Common/SavePPM.hpp>
 
 #include <iostream>
 #include <string>
@@ -69,12 +71,49 @@ static void compareImages(const ImageFull& image1, const ImageFull& image2) {
     }
   }
 
+  if (!(numBadPixels < BAD_PIXEL_THRESHOLD * numPixels) &&
+      (image1.getRegionBegin() == 0) &&
+      (image1.getRegionEnd() == image1.getNumberOfPixels())) {
+    SavePPM(image1, "image1.ppm");
+    SavePPM(image2, "image2.ppm");
+  }
   TEST_ASSERT(numBadPixels < BAD_PIXEL_THRESHOLD * numPixels);
 }
 
+static void compareImages(const ImageSparse& image1,
+                          const ImageSparse& image2) {
+  compareImages(*image1.uncompress(), *image2.uncompress());
+}
+
+static void compareImages(const ImageFull& image1, const ImageSparse& image2) {
+  compareImages(image1, *image2.uncompress());
+}
+
+static void compareImages(const ImageSparse& image1, const ImageFull& image2) {
+  compareImages(*image1.uncompress(), image2);
+}
+
 static void compareImages(const Image& image1, const Image& image2) {
-  compareImages(*dynamic_cast<const ImageFull*>(&image1),
-                *dynamic_cast<const ImageFull*>(&image2));
+  const ImageFull* imageFull1 = dynamic_cast<const ImageFull*>(&image1);
+  const ImageFull* imageFull2 = dynamic_cast<const ImageFull*>(&image2);
+  const ImageSparse* imageSparse1 = dynamic_cast<const ImageSparse*>(&image1);
+  const ImageSparse* imageSparse2 = dynamic_cast<const ImageSparse*>(&image2);
+  if (imageFull1 != nullptr) {
+    if (imageFull2 != nullptr) {
+      compareImages(*imageFull1, *imageFull2);
+    } else {
+      assert(imageSparse2 != nullptr);
+      compareImages(*imageFull1, *imageSparse2);
+    }
+  } else {
+    assert(imageSparse1 != nullptr);
+    if (imageFull2 != nullptr) {
+      compareImages(*imageSparse1, *imageFull2);
+    } else {
+      assert(imageSparse2 != nullptr);
+      compareImages(*imageSparse1, *imageSparse2);
+    }
+  }
 }
 
 template <typename ImageType>
@@ -153,7 +192,7 @@ static std::unique_ptr<ImageType> createColorDepthImage2(int regionBegin,
         (y < IMAGE_HEIGHT - BORDER) && (x <= (IMAGE_HEIGHT - y))) {
       image->setColor(pixelIndex - regionBegin, color);
       image->setDepth(pixelIndex - regionBegin,
-                      static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
+                      0.5f * static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
     }
   }
 
@@ -214,14 +253,15 @@ static std::unique_ptr<ImageType> createColorDepthImageCombined(int regionBegin,
     int y = pixelIndex / IMAGE_WIDTH;
     if ((x > BORDER) && (x < IMAGE_WIDTH - BORDER) && (y > BORDER) &&
         (y < IMAGE_HEIGHT - BORDER)) {
-      if ((x <= y) && (x > (IMAGE_HEIGHT - y) || (x < (IMAGE_WIDTH / 2)))) {
+      if ((x <= y) && (x > (IMAGE_HEIGHT - y) || (x < (IMAGE_WIDTH - x) / 2))) {
         image->setColor(pixelIndex - regionBegin, color1);
         image->setDepth(pixelIndex - regionBegin,
                         static_cast<float>(x) / IMAGE_WIDTH);
       } else if (x <= (IMAGE_HEIGHT - y)) {
         image->setColor(pixelIndex - regionBegin, color2);
-        image->setDepth(pixelIndex - regionBegin,
-                        static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
+        image->setDepth(
+            pixelIndex - regionBegin,
+            0.5f * static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
       }
     }
   }
@@ -282,10 +322,20 @@ static std::unique_ptr<ImageType> createImageCombined(
 }
 
 template <typename ImageType>
+static void TestCompressUncompress() {
+  std::cout << "  Compress/Uncompress" << std::endl;
+
+  std::unique_ptr<ImageType> fullImage = createImage1<ImageType>();
+  std::unique_ptr<ImageSparse> sparseImage = fullImage->compress();
+
+  compareImages(*fullImage, *sparseImage->uncompress());
+}
+
+template <typename ImageType>
 static void TestDeepCopy() {
   std::cout << "  Deep copy" << std::endl;
 
-  std::unique_ptr<ImageType> image = createImage1<ImageType>();
+  std::unique_ptr<ImageSparse> image = createImage1<ImageType>()->compress();
 
   std::unique_ptr<Image> imageCopy = image->deepCopy();
   compareImages(*image, *imageCopy);
@@ -298,7 +348,7 @@ static void TestTransfer() {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  std::unique_ptr<ImageType> srcImage = createImage1<ImageType>();
+  std::unique_ptr<ImageSparse> srcImage = createImage1<ImageType>()->compress();
 
   std::unique_ptr<Image> destImage = srcImage->createNew();
   std::vector<MPI_Request> recvRequests =
@@ -321,7 +371,7 @@ static void TestSubrange() {
   constexpr int MID1 = IMAGE_WIDTH * IMAGE_HEIGHT / 3;
   constexpr int MID2 = IMAGE_WIDTH * IMAGE_HEIGHT / 2;
 
-  std::unique_ptr<ImageType> srcImage = createImage1<ImageType>();
+  std::unique_ptr<ImageSparse> srcImage = createImage1<ImageType>()->compress();
 
   std::cout << "    Mid 1" << std::endl;
   std::unique_ptr<Image> subImage = srcImage->copySubrange(0, MID1);
@@ -340,8 +390,9 @@ template <typename ImageType>
 static void TestBlend() {
   std::cout << "  Blend" << std::endl;
 
-  std::unique_ptr<ImageType> topImage = createImage1<ImageType>();
-  std::unique_ptr<ImageType> bottomImage = createImage2<ImageType>();
+  std::unique_ptr<ImageSparse> topImage = createImage1<ImageType>()->compress();
+  std::unique_ptr<ImageSparse> bottomImage =
+      createImage2<ImageType>()->compress();
 
   std::unique_ptr<Image> blendImage = topImage->blend(*bottomImage);
 
@@ -351,6 +402,7 @@ static void TestBlend() {
 template <typename ImageType>
 static void DoImageTest(const std::string& imageTypeName) {
   std::cout << imageTypeName << std::endl;
+  TestCompressUncompress<ImageType>();
   TestDeepCopy<ImageType>();
   TestTransfer<ImageType>();
   TestSubrange<ImageType>();
@@ -359,12 +411,12 @@ static void DoImageTest(const std::string& imageTypeName) {
 
 #define DO_IMAGE_TEST(ImageType) DoImageTest<ImageType>(#ImageType)
 
-int ImageFullTest(int argc, char* argv[]) {
+int ImageSparseTest(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
 
-  DO_IMAGE_TEST(ImageRGBAFloatColorOnly);
+  //  DO_IMAGE_TEST(ImageRGBAFloatColorOnly);
   DO_IMAGE_TEST(ImageRGBAUByteColorFloatDepth);
-  DO_IMAGE_TEST(ImageRGBAUByteColorOnly);
+  //  DO_IMAGE_TEST(ImageRGBAUByteColorOnly);
   DO_IMAGE_TEST(ImageRGBFloatColorDepth);
 
   MPI_Finalize();

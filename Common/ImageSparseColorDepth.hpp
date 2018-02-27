@@ -94,6 +94,7 @@ class ImageSparseColorDepth : public ImageSparse {
     int numPixels = toCompress.getNumberOfPixels();
     int numActivePixels = 0;
     int iPixel = 0;
+    this->runLengths->resize(0);
     while (iPixel < numPixels) {
       RunLengthRegion runLength;
       while ((iPixel < numPixels) &&
@@ -121,6 +122,10 @@ class ImageSparseColorDepth : public ImageSparse {
             toCompress.getColorBuffer(iPixel),
             toCompress.getColorBuffer(iPixel + runLength.foregroundPixels),
             this->pixelStorage->getColorBuffer(iActivePixel));
+        std::copy(
+            toCompress.getDepthBuffer(iPixel),
+            toCompress.getDepthBuffer(iPixel + runLength.foregroundPixels),
+            this->pixelStorage->getDepthBuffer(iActivePixel));
         iActivePixel += runLength.foregroundPixels;
         iPixel += runLength.foregroundPixels;
       }
@@ -129,6 +134,7 @@ class ImageSparseColorDepth : public ImageSparse {
     // Sanity checks
     assert(iPixel == this->getNumberOfPixels());
     assert(iActivePixel == this->pixelStorage->getNumberOfPixels());
+    this->shrinkArrays();
   }
 
   // Clears the image using the background information already captured.
@@ -180,10 +186,11 @@ class ImageSparseColorDepth : public ImageSparse {
     const DepthType* bottomDepthBuffer =
         otherImage->pixelStorage->getDepthBuffer();
 
-    std::unique_ptr<Image> outImageHolder = this->createNew(
-        this->getWidth(), this->getHeight(), 0, maxNumActivePixels);
+    std::unique_ptr<Image> outImageHolder = this->createNew();
     ThisType* outImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((outImage != NULL) && "Internal error: createNew bad type.");
+    outImage->pixelStorage->resizeBuffers(0, maxNumActivePixels);
+    outImage->runLengths->resize(0);
     ColorType* outColorBuffer = outImage->pixelStorage->getColorBuffer();
     DepthType* outDepthBuffer = outImage->pixelStorage->getDepthBuffer();
 
@@ -202,7 +209,7 @@ class ImageSparseColorDepth : public ImageSparse {
       }
       if ((bottomRunLength.backgroundPixels < 1) &&
           (bottomRunLength.foregroundPixels < 1)) {
-        bottomRunLength = this->runLengths->at(bottomRunLengthIndex);
+        bottomRunLength = otherImage->runLengths->at(bottomRunLengthIndex);
         ++bottomRunLengthIndex;
       }
 
@@ -235,6 +242,7 @@ class ImageSparseColorDepth : public ImageSparse {
 
         topRunLength.backgroundPixels -= numPixels;
         bottomRunLength.foregroundPixels -= numPixels;
+        outImage->runLengths->back().foregroundPixels += numPixels;
       } else if (bottomRunLength.backgroundPixels > 0) {
         // Case 3: Bottom image in background, top image in foreground.
         int numPixels = std::min(bottomRunLength.backgroundPixels,
@@ -252,6 +260,7 @@ class ImageSparseColorDepth : public ImageSparse {
 
         bottomRunLength.backgroundPixels -= numPixels;
         topRunLength.foregroundPixels -= numPixels;
+        outImage->runLengths->back().foregroundPixels += numPixels;
       } else {
         // Case 4: Both images are in foreground, blend them.
         int numPixels = std::min(topRunLength.foregroundPixels,
@@ -285,6 +294,7 @@ class ImageSparseColorDepth : public ImageSparse {
 
         topRunLength.foregroundPixels -= numPixels;
         bottomRunLength.foregroundPixels -= numPixels;
+        outImage->runLengths->back().foregroundPixels += numPixels;
       }
     }
 
@@ -313,6 +323,7 @@ class ImageSparseColorDepth : public ImageSparse {
         0,
         std::min(this->getNumberOfPixels(),
                  this->pixelStorage->getNumberOfPixels()));
+    subImage->runLengths->resize(0);
 
     // Skip over run lengths before subregionBegin
     int pixelIndex = 0;
@@ -330,8 +341,9 @@ class ImageSparseColorDepth : public ImageSparse {
       ++runLengthIndex;
     }
 
-    if (pixelIndex > subregionBegin) {
-      RunLengthRegion runLength = this->runLengths->at(runLengthIndex - 1);
+    while (pixelIndex < subregionEnd) {
+      RunLengthRegion runLength = this->runLengths->at(runLengthIndex);
+      ++runLengthIndex;
 
       // Handle special case where pixelIndex is before subregionBegin (which
       // can happen in the first run length).
@@ -356,7 +368,7 @@ class ImageSparseColorDepth : public ImageSparse {
       } else if (pixelsRemaining <
                  (runLength.backgroundPixels + runLength.foregroundPixels)) {
         runLength.foregroundPixels =
-            pixelsRemaining - runLength.foregroundPixels;
+            pixelsRemaining - runLength.backgroundPixels;
       }
 
       // Copy the pixel information.
@@ -405,16 +417,18 @@ class ImageSparseColorDepth : public ImageSparse {
       }
       outPixelIndex += runLength.backgroundPixels;
 
-      std::copy(this->pixelStorage->getColorBuffer(inBufferIndex),
-                this->pixelStorage->getColorBuffer(inBufferIndex +
-                                                   runLength.foregroundPixels),
-                outImage->getColorBuffer(outPixelIndex));
-      std::copy(this->pixelStorage->getDepthBuffer(inBufferIndex),
-                this->pixelStorage->getDepthBuffer(inBufferIndex +
-                                                   runLength.foregroundPixels),
-                outImage->getDepthBuffer(outPixelIndex));
-      inBufferIndex += runLength.foregroundPixels;
-      outPixelIndex += runLength.foregroundPixels;
+      if (runLength.foregroundPixels > 0) {
+        std::copy(this->pixelStorage->getColorBuffer(inBufferIndex),
+                  this->pixelStorage->getColorBuffer(
+                      inBufferIndex + runLength.foregroundPixels),
+                  outImage->getColorBuffer(outPixelIndex));
+        std::copy(this->pixelStorage->getDepthBuffer(inBufferIndex),
+                  this->pixelStorage->getDepthBuffer(
+                      inBufferIndex + runLength.foregroundPixels),
+                  outImage->getDepthBuffer(outPixelIndex));
+        inBufferIndex += runLength.foregroundPixels;
+        outPixelIndex += runLength.foregroundPixels;
+      }
     }
 
     assert(inBufferIndex == this->pixelStorage->getNumberOfPixels());

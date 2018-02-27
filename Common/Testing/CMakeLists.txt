@@ -8,6 +8,7 @@
 
 set(srcs
   ImageFullTest.cpp
+  ImageSparseTest.cpp
   )
 
 set(test_target miniGraphicsCommonTests)
