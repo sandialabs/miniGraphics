@@ -69,7 +69,7 @@ static void compareImages(const ImageFull& image1, const ImageFull& image2) {
     }
   }
 
-  TEST_ASSERT(numBadPixels < BAD_PIXEL_THRESHOLD * numPixels);
+  TEST_ASSERT(numBadPixels <= BAD_PIXEL_THRESHOLD * numPixels);
 }
 
 static void compareImages(const Image& image1, const Image& image2) {
@@ -304,26 +304,36 @@ static void TestDeepCopy() {
 }
 
 template <typename ImageType>
-static void TestTransfer() {
-  std::cout << "  Transfer" << std::endl;
-
+static void TryTransfer(const ImageType& srcImage) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  std::unique_ptr<ImageType> srcImage = createImage1<ImageType>();
-
-  std::unique_ptr<Image> destImage = srcImage->createNew();
+  std::unique_ptr<Image> destImage = srcImage.createNew();
   std::vector<MPI_Request> recvRequests =
       destImage->IReceive(rank, MPI_COMM_WORLD);
 
-  std::vector<MPI_Request> sendRequests = srcImage->ISend(rank, MPI_COMM_WORLD);
+  std::vector<MPI_Request> sendRequests = srcImage.ISend(rank, MPI_COMM_WORLD);
 
   std::vector<MPI_Status> statuses(recvRequests.size());
   MPI_Waitall(recvRequests.size(), &recvRequests.front(), &statuses.front());
-  compareImages(*srcImage, *destImage);
+  compareImages(srcImage, *destImage);
 
   statuses.resize(sendRequests.size());
   MPI_Waitall(sendRequests.size(), &sendRequests.front(), &statuses.front());
+}
+
+template <typename ImageType>
+static void TestTransfer() {
+  std::cout << "  Transfer regular image" << std::endl;
+  std::unique_ptr<ImageType> srcImage = createImage1<ImageType>();
+  TryTransfer(*srcImage);
+
+  std::cout << "  Transfer clear image" << std::endl;
+  srcImage->clear();
+  TryTransfer(*srcImage);
+
+  std::cout << "  Transfer empty image" << std::endl;
+  TryTransfer(ImageType(0, 0));
 }
 
 template <typename ImageType>
