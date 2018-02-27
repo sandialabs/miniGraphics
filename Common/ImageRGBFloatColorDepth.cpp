@@ -10,6 +10,28 @@
 
 #include <assert.h>
 
+void ImageRGBFloatColorDepthFeatures::encodeColor(
+    const Color& color, ColorType colorComponents[ColorVecSize]) {
+  colorComponents[0] = color.Components[0];
+  colorComponents[1] = color.Components[1];
+  colorComponents[2] = color.Components[2];
+}
+
+Color ImageRGBFloatColorDepthFeatures::decodeColor(
+    const ColorType colorComponents[ColorVecSize]) {
+  return Color(colorComponents[0], colorComponents[1], colorComponents[2]);
+}
+
+void ImageRGBFloatColorDepthFeatures::encodeDepth(
+    float depth, DepthType depthComponents[1]) {
+  depthComponents[0] = depth;
+}
+
+float ImageRGBFloatColorDepthFeatures::decodeDepth(
+    const DepthType depthComponents[1]) {
+  return depthComponents[0];
+}
+
 ImageRGBFloatColorDepth::ImageRGBFloatColorDepth(int _width, int _height)
     : ImageColorDepth(_width, _height) {}
 
@@ -18,39 +40,6 @@ ImageRGBFloatColorDepth::ImageRGBFloatColorDepth(int _width,
                                                  int _regionBegin,
                                                  int _regionEnd)
     : ImageColorDepth(_width, _height, _regionBegin, _regionEnd) {}
-
-Color ImageRGBFloatColorDepth::getColor(int pixelIndex) const {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  const float *colorArray = this->getColorBuffer(pixelIndex);
-  return Color(colorArray[0], colorArray[1], colorArray[2]);
-}
-
-void ImageRGBFloatColorDepth::setColor(int pixelIndex, const Color &color) {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  float *colorArray = this->getColorBuffer(pixelIndex);
-
-  colorArray[0] = color.Components[0];
-  colorArray[1] = color.Components[1];
-  colorArray[2] = color.Components[2];
-}
-
-float ImageRGBFloatColorDepth::getDepth(int pixelIndex) const {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  return *this->getDepthBuffer(pixelIndex);
-}
-
-void ImageRGBFloatColorDepth::setDepth(int pixelIndex, float depth) {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  *this->getDepthBuffer(pixelIndex) = depth;
-}
 
 std::unique_ptr<Image> ImageRGBFloatColorDepth::createNew(
     int _width, int _height, int _regionBegin, int _regionEnd) const {

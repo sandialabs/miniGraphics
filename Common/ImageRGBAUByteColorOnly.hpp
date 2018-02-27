@@ -11,7 +11,34 @@
 
 #include "ImageColorOnly.hpp"
 
-class ImageRGBAUByteColorOnly : public ImageColorOnly<unsigned int, 1> {
+struct ImageRGBAUByteColorOnlyFeatures {
+  using ColorType = unsigned int;
+  static constexpr int ColorVecSize = 1;
+
+  static void blend(const ColorType topColorEncoded[ColorVecSize],
+                    const ColorType bottomColorEncoded[ColorVecSize],
+                    ColorType outColorEncoded[ColorVecSize]) {
+    const unsigned char *topColor =
+        reinterpret_cast<const unsigned char *>(topColorEncoded);
+    const unsigned char *bottomColor =
+        reinterpret_cast<const unsigned char *>(bottomColorEncoded);
+    unsigned char *outColor =
+        reinterpret_cast<unsigned char *>(outColorEncoded);
+    float bottomScale = 1.0f - topColor[3] / 255.0f;
+    for (int component = 0; component < 4; ++component) {
+      outColor[component] =
+          topColor[component] +
+          static_cast<unsigned char>(bottomColor[component] * bottomScale);
+    }
+  }
+
+  static void encodeColor(const Color &color,
+                          ColorType colorComponents[ColorVecSize]);
+  static Color decodeColor(const ColorType colorComponents[ColorVecSize]);
+};
+
+class ImageRGBAUByteColorOnly
+    : public ImageColorOnly<ImageRGBAUByteColorOnlyFeatures> {
  public:
   ImageRGBAUByteColorOnly(int _width, int _height);
   ImageRGBAUByteColorOnly(int _width,
@@ -19,16 +46,6 @@ class ImageRGBAUByteColorOnly : public ImageColorOnly<unsigned int, 1> {
                           int _regionBegin,
                           int _regionEnd);
   ~ImageRGBAUByteColorOnly() = default;
-
-  Color getColor(int pixelIndex) const final;
-
-  void setColor(int pixelIndex, const Color& color) final;
-
-  float getDepth(int pixelIndex) const final;
-
-  void setDepth(int pixelIndex, float depth) final;
-
-  std::unique_ptr<Image> blend(const Image* _otherImage) const final;
 
   std::unique_ptr<Image> createNew(int _width,
                                    int _height,

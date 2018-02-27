@@ -907,8 +907,8 @@ int MainLoop(int argc,
     runOptions.zoomMove = CAMERA_RANDOM;
   }
 
-  int seed =
-      static_cast<int>(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+  int seed = static_cast<int>(
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
   if (options[RANDOM_SEED]) {
     seed = atoi(options[RANDOM_SEED].arg);
   }

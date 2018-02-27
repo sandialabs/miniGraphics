@@ -10,22 +10,21 @@
 
 #include <assert.h>
 
-ImageRGBAUByteColorFloatDepth::ImageRGBAUByteColorFloatDepth(int _width,
-                                                             int _height)
-    : ImageColorDepth(_width, _height) {}
+void ImageRGBAUByteColorFloatDepthFeatures::encodeColor(
+    const Color &color, ColorType colorComponents[ColorVecSize]) {
+  unsigned char *colorArray =
+      reinterpret_cast<unsigned char *>(colorComponents);
 
-ImageRGBAUByteColorFloatDepth::ImageRGBAUByteColorFloatDepth(int _width,
-                                                             int _height,
-                                                             int _regionBegin,
-                                                             int _regionEnd)
-    : ImageColorDepth(_width, _height, _regionBegin, _regionEnd) {}
+  colorArray[0] = color.GetComponentAsByte(0);
+  colorArray[1] = color.GetComponentAsByte(1);
+  colorArray[2] = color.GetComponentAsByte(2);
+  colorArray[3] = color.GetComponentAsByte(3);
+}
 
-Color ImageRGBAUByteColorFloatDepth::getColor(int pixelIndex) const {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
+Color ImageRGBAUByteColorFloatDepthFeatures::decodeColor(
+    const ColorType colorComponents[ColorVecSize]) {
   const unsigned char *colorArray =
-      reinterpret_cast<const unsigned char *>(this->getColorBuffer(pixelIndex));
+      reinterpret_cast<const unsigned char *>(colorComponents);
 
   Color color;
   color.SetComponentFromByte(0, colorArray[0]);
@@ -36,33 +35,26 @@ Color ImageRGBAUByteColorFloatDepth::getColor(int pixelIndex) const {
   return color;
 }
 
-void ImageRGBAUByteColorFloatDepth::setColor(int pixelIndex,
-                                             const Color &color) {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  unsigned char *colorArray =
-      reinterpret_cast<unsigned char *>(this->getColorBuffer(pixelIndex));
-
-  colorArray[0] = color.GetComponentAsByte(0);
-  colorArray[1] = color.GetComponentAsByte(1);
-  colorArray[2] = color.GetComponentAsByte(2);
-  colorArray[3] = color.GetComponentAsByte(3);
+void ImageRGBAUByteColorFloatDepthFeatures::encodeDepth(
+    float depth, DepthType depthComponents[1]) {
+  depthComponents[0] = depth;
 }
 
-float ImageRGBAUByteColorFloatDepth::getDepth(int pixelIndex) const {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
-
-  return *this->getDepthBuffer(pixelIndex);
+float ImageRGBAUByteColorFloatDepthFeatures::decodeDepth(
+    const DepthType depthComponents[1]) {
+  return depthComponents[0];
 }
 
-void ImageRGBAUByteColorFloatDepth::setDepth(int pixelIndex, float depth) {
-  assert(pixelIndex >= 0);
-  assert(pixelIndex < this->getNumberOfPixels());
 
-  *this->getDepthBuffer(pixelIndex) = depth;
-}
+ImageRGBAUByteColorFloatDepth::ImageRGBAUByteColorFloatDepth(int _width,
+                                                             int _height)
+    : ImageColorDepth(_width, _height) {}
+
+ImageRGBAUByteColorFloatDepth::ImageRGBAUByteColorFloatDepth(int _width,
+                                                             int _height,
+                                                             int _regionBegin,
+                                                             int _regionEnd)
+    : ImageColorDepth(_width, _height, _regionBegin, _regionEnd) {}
 
 std::unique_ptr<Image> ImageRGBAUByteColorFloatDepth::createNew(
     int _width, int _height, int _regionBegin, int _regionEnd) const {
