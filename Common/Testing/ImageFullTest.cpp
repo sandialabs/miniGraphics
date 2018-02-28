@@ -11,6 +11,7 @@
 #include <Common/ImageRGBAUByteColorOnly.hpp>
 #include <Common/ImageRGBFloatColorDepth.hpp>
 
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <type_traits>
@@ -59,11 +60,11 @@ static void compareImages(const ImageFull& image1, const ImageFull& image2) {
   for (int pixel = 0; pixel < numPixels; ++pixel) {
     Color color1 = image1.getColor(pixel);
     Color color2 = image2.getColor(pixel);
-    if ((fabsf(color1.Components[0] - color2.Components[0]) >
+    if ((std::abs(color1.Components[0] - color2.Components[0]) >
          COLOR_THRESHOLD) ||
-        (fabsf(color1.Components[1] - color2.Components[1]) >
+        (std::abs(color1.Components[1] - color2.Components[1]) >
          COLOR_THRESHOLD) ||
-        (fabsf(color1.Components[2] - color2.Components[2]) >
+        (std::abs(color1.Components[2] - color2.Components[2]) >
          COLOR_THRESHOLD)) {
       ++numBadPixels;
     }
