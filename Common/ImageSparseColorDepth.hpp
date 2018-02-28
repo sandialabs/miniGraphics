@@ -165,6 +165,13 @@ class ImageSparseColorDepth : public ImageSparse {
     const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attemptying to blend invalid images.");
 
+    if (this->pixelStorage->getNumberOfPixels() < 1) {
+      return otherImage->deepCopy();
+    }
+    if (otherImage->pixelStorage->getNumberOfPixels() < 1) {
+      return this->deepCopy();
+    }
+
     int maxNumActivePixels =
         std::min(this->pixelStorage->getNumberOfPixels() +
                      otherImage->pixelStorage->getNumberOfPixels(),
@@ -367,14 +374,16 @@ class ImageSparseColorDepth : public ImageSparse {
       }
 
       // Copy the pixel information.
-      std::copy(this->pixelStorage->getColorBuffer(inBufferIndex),
-                this->pixelStorage->getColorBuffer(inBufferIndex +
-                                                   runLength.foregroundPixels),
-                subImage->pixelStorage->getColorBuffer(outBufferIndex));
-      std::copy(this->pixelStorage->getDepthBuffer(inBufferIndex),
-                this->pixelStorage->getDepthBuffer(inBufferIndex +
-                                                   runLength.foregroundPixels),
-                subImage->pixelStorage->getDepthBuffer(outBufferIndex));
+      if (runLength.foregroundPixels > 0) {
+        std::copy(this->pixelStorage->getColorBuffer(inBufferIndex),
+                  this->pixelStorage->getColorBuffer(
+                      inBufferIndex + runLength.foregroundPixels),
+                  subImage->pixelStorage->getColorBuffer(outBufferIndex));
+        std::copy(this->pixelStorage->getDepthBuffer(inBufferIndex),
+                  this->pixelStorage->getDepthBuffer(
+                      inBufferIndex + runLength.foregroundPixels),
+                  subImage->pixelStorage->getDepthBuffer(outBufferIndex));
+      }
       subImage->runLengths->push_back(runLength);
 
       // Move indices to end of recorded pixels.

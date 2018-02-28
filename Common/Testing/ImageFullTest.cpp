@@ -360,14 +360,27 @@ static void TestSubrange() {
 
 template <typename ImageType>
 static void TestBlend() {
-  std::cout << "  Blend" << std::endl;
-
   std::unique_ptr<ImageType> topImage = createImage1<ImageType>();
   std::unique_ptr<ImageType> bottomImage = createImage2<ImageType>();
 
+  std::cout << "  Blend non-empty" << std::endl;
   std::unique_ptr<Image> blendImage = topImage->blend(*bottomImage);
-
   compareImages(*blendImage, *createImageCombined<ImageType>());
+
+  std::unique_ptr<Image> emptyImage = topImage->createNew();
+  emptyImage->clear();
+
+  std::cout << "  Blend top empty" << std::endl;
+  blendImage = emptyImage->blend(*bottomImage);
+  compareImages(*blendImage, *bottomImage);
+
+  std::cout << "  Blend bottom empty" << std::endl;
+  blendImage = topImage->blend(*emptyImage);
+  compareImages(*blendImage, *topImage);
+
+  std::cout << "  Blend both empty" << std::endl;
+  blendImage = emptyImage->blend(*emptyImage);
+  compareImages(*blendImage, *emptyImage);
 }
 
 template <typename ImageType>

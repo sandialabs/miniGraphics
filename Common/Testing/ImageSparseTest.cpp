@@ -340,6 +340,12 @@ static void TestShallowCopy() {
   std::unique_ptr<Image> imageCopy = image->shallowCopy();
   TEST_ASSERT(dynamic_cast<ImageSparse*>(imageCopy.get()) != nullptr);
   compareImages(*image, *imageCopy);
+
+  std::cout << "  Shallow copy empty image" << std::endl;
+  image->clear();
+  imageCopy = image->shallowCopy();
+  TEST_ASSERT(dynamic_cast<ImageSparse*>(imageCopy.get()) != nullptr);
+  compareImages(*image, *imageCopy);
 }
 
 template <typename ImageType>
@@ -349,6 +355,12 @@ static void TestDeepCopy() {
   std::unique_ptr<ImageSparse> image = createImage1<ImageType>()->compress();
 
   std::unique_ptr<Image> imageCopy = image->deepCopy();
+  TEST_ASSERT(dynamic_cast<ImageSparse*>(imageCopy.get()) != nullptr);
+  compareImages(*image, *imageCopy);
+
+  std::cout << "  Deep copy empty image" << std::endl;
+  image->clear();
+  imageCopy = image->deepCopy();
   TEST_ASSERT(dynamic_cast<ImageSparse*>(imageCopy.get()) != nullptr);
   compareImages(*image, *imageCopy);
 }
@@ -411,15 +423,28 @@ static void TestSubrange() {
 
 template <typename ImageType>
 static void TestBlend() {
-  std::cout << "  Blend" << std::endl;
-
   std::unique_ptr<ImageSparse> topImage = createImage1<ImageType>()->compress();
   std::unique_ptr<ImageSparse> bottomImage =
       createImage2<ImageType>()->compress();
 
+  std::cout << "  Blend non-empty" << std::endl;
   std::unique_ptr<Image> blendImage = topImage->blend(*bottomImage);
-
   compareImages(*blendImage, *createImageCombined<ImageType>());
+
+  std::unique_ptr<Image> emptyImage = topImage->createNew();
+  emptyImage->clear();
+
+  std::cout << "  Blend top empty" << std::endl;
+  blendImage = emptyImage->blend(*bottomImage);
+  compareImages(*blendImage, *bottomImage);
+
+  std::cout << "  Blend bottom empty" << std::endl;
+  blendImage = topImage->blend(*emptyImage);
+  compareImages(*blendImage, *topImage);
+
+  std::cout << "  Blend both empty" << std::endl;
+  blendImage = emptyImage->blend(*emptyImage);
+  compareImages(*blendImage, *emptyImage);
 }
 
 template <typename ImageType>
