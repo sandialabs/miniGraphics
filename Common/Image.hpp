@@ -16,7 +16,7 @@
 #include <memory>
 #include <vector>
 
-#include "Color.hpp"
+#include <Common/Color.hpp>
 
 #include <mpi.h>
 
@@ -42,6 +42,11 @@ class Image {
     }
   };
   Internals internals;
+
+ protected:
+  void resize(int _width, int _height, int _regionBegin, int _regionEnd) {
+    this->internals = Internals(_width, _height, _regionBegin, _regionEnd);
+  }
 
  public:
   Image(int _width, int _height)
@@ -76,49 +81,8 @@ class Image {
     y = (pixelIndex + this->getRegionBegin()) / this->getWidth();
   }
 
-  /// \brief Gets the color of the n'th pixel.
-  virtual Color getColor(int pixelIndex) const = 0;
-
-  /// \brief Gets the color at the given x and y location.
-  Color getColor(int x, int y) const {
-    return this->getColor(this->pixelIndex(x, y));
-  }
-
-  /// \brief Sets the color of the n'th pixel.
-  virtual void setColor(int pixelIndex, const Color& color) = 0;
-
-  /// \brief Sets the color at the given x and y location.
-  void setColor(int x, int y, const Color& color) {
-    this->setColor(this->pixelIndex(x, y), color);
-  }
-
-  /// \brief Gets the depth of the n'th pixel.
-  ///
-  /// Return value not defined if this image does not have a depth plane.
-  virtual float getDepth(int pixelIndex) const = 0;
-
-  /// \brief Gets the depth at the given x and y location
-  ///
-  /// Return value not defined if this image does not have a depth plane.
-  float getDepth(int x, int y) const {
-    return this->getDepth(this->pixelIndex(x, y));
-  }
-
-  /// \brief Sets the depth of the n'th pixel.
-  ///
-  /// If this image does not have a depth plane, this does nothing.
-  virtual void setDepth(int pixelIndex, float depth) = 0;
-
-  /// \brief Sets the depth at the given x and y location.
-  ///
-  /// If this image does not have a depth plane, this does nothing.
-  void setDepth(int x, int y, float depth) {
-    this->setDepth(this->pixelIndex(x, y), depth);
-  }
-
   /// \brief Clears the image to the given color and depth (if applicable).
-  virtual void clear(const Color& color = Color(0, 0, 0, 0),
-                     float depth = 1.0f) = 0;
+  void clear(const Color& color = Color(0, 0, 0, 0), float depth = 1.0f);
 
   /// \brief Blend this image with another image
   ///
@@ -128,7 +92,7 @@ class Image {
   /// When blending, this image is blended "on top" of the other image. Some
   /// blend operations (like z-buffer) do not depend on the blendOrder, so in
   /// those cases it will be ignored.
-  virtual std::unique_ptr<Image> blend(const Image* otherImage) const = 0;
+  virtual std::unique_ptr<Image> blend(const Image& otherImage) const = 0;
 
   /// \brief Returns whether blending in this buffer is order dependent.
   ///
@@ -141,21 +105,16 @@ class Image {
   virtual bool blendIsOrderDependent() const = 0;
 
   /// \brief Creates a new image object of the same type as this one.
-  virtual std::unique_ptr<Image> createNew(int _width,
-                                           int _height,
-                                           int _regionBegin,
-                                           int _regionEnd) const = 0;
+  std::unique_ptr<Image> createNew(int _width,
+                                   int _height,
+                                   int _regionBegin,
+                                   int _regionEnd) const;
 
   /// \brief Creates a new image object of the same type as this one.
   ///
   /// The new image is given the same width, height, and region as this one.
   /// The memory is allocated but no data are set.
-  std::unique_ptr<Image> createNew() const {
-    return this->createNew(this->getWidth(),
-                           this->getHeight(),
-                           this->getRegionBegin(),
-                           this->getRegionEnd());
-  }
+  std::unique_ptr<Image> createNew() const;
 
   /// \brief Creates a new image containing a subrange of the given image.
   ///
@@ -174,22 +133,16 @@ class Image {
     return this->copySubrange(0, this->getNumberOfPixels());
   }
 
-  virtual std::unique_ptr<const Image> shallowCopy() const = 0;
+  std::unique_ptr<const Image> shallowCopy() const {
+    return this->shallowCopyImpl();
+  }
 
   std::unique_ptr<Image> shallowCopy() {
     std::unique_ptr<const Image> constCopy =
-        const_cast<const Image*>(this)->shallowCopy();
+        const_cast<const Image*>(this)->shallowCopyImpl();
 
     return std::unique_ptr<Image>(const_cast<Image*>(constCopy.release()));
   }
-
-  /// \brief Gathers all images to a single image.
-  ///
-  /// Given an MPI communicator and a destination rank, collects all images
-  /// to the destination rank. It is assumed that all images contain a
-  /// distinct subregion.
-  virtual std::unique_ptr<Image> Gather(int recvRank,
-                                        MPI_Comm communicator) const = 0;
 
   /// \brief Sends this image to another process without blocking.
   ///
@@ -241,6 +194,15 @@ class Image {
   /// This should be used internally by implementations of IReceive.
   std::vector<MPI_Request> IReceiveMetaData(int sourceRank,
                                             MPI_Comm communicator);
+
+  virtual void clearImpl(const Color& color, float depth) = 0;
+
+  virtual std::unique_ptr<Image> createNewImpl(int _width,
+                                               int _height,
+                                               int _regionBegin,
+                                               int _regionEnd) const = 0;
+
+  virtual std::unique_ptr<const Image> shallowCopyImpl() const = 0;
 };
 
 #endif  // IMAGE_HPP

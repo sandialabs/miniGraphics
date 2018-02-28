@@ -36,10 +36,14 @@ set(headers
   Image.hpp
   ImageColorDepth.hpp
   ImageColorOnly.hpp
+  ImageFull.hpp
   ImageRGBAFloatColorOnly.hpp
   ImageRGBAUByteColorFloatDepth.hpp
   ImageRGBAUByteColorOnly.hpp
   ImageRGBFloatColorDepth.hpp
+  ImageSparse.hpp
+  ImageSparseColorDepth.hpp
+  ImageSparseColorOnly.hpp
   MainLoop.hpp
   MakeBox.hpp
   Mesh.hpp
@@ -58,3 +62,7 @@ add_library(miniGraphicsCommon ${srcs} ${headers})
 set_source_files_properties(${headers} HEADER_ONLY TRUE)
 
 miniGraphics_target_features(miniGraphicsCommon)
+
+if(MINIGRAPHICS_ENABLE_TESTING)
+  add_subdirectory(Testing)
+endif()

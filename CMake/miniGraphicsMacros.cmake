@@ -12,7 +12,7 @@ include(CMakeParseArguments)
 
 # Set up this directory in the CMAKE MODULE PATH
 set(miniGraphics_CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${miniGraphics_CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${CMAK$E_MODULE_PATH} ${miniGraphics_CMAKE_MODULE_PATH})
 
 # Set up the binary output paths
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib CACHE PATH

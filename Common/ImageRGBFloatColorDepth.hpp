@@ -38,12 +38,15 @@ class ImageRGBFloatColorDepth
                           int _regionEnd);
   ~ImageRGBFloatColorDepth() = default;
 
-  std::unique_ptr<Image> createNew(int _width,
-                                   int _height,
-                                   int _regionBegin,
-                                   int _regionEnd) const final;
+  std::unique_ptr<ImageSparse> compress() const final;
 
-  std::unique_ptr<const Image> shallowCopy() const final;
+ protected:
+  std::unique_ptr<Image> createNewImpl(int _width,
+                                       int _height,
+                                       int _regionBegin,
+                                       int _regionEnd) const final;
+
+  std::unique_ptr<const Image> shallowCopyImpl() const final;
 };
 
 #endif  // IMAGERGBFLOATCOLORDEPTH_HPP

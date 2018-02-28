@@ -34,7 +34,7 @@ static inline void clamp(T &variable, T min, T max) {
   variable = std::max(min, std::min(max, variable));
 }
 
-inline void PainterSimple::fillLine(Image &image,
+inline void PainterSimple::fillLine(ImageFull &image,
                                     int y,
                                     const glm::vec3 &edgeDir1,
                                     const glm::vec3 &edgeBase1,
@@ -80,7 +80,7 @@ inline void PainterSimple::fillLine(Image &image,
   }
 }
 
-void PainterSimple::fillTriangle(Image &image,
+void PainterSimple::fillTriangle(ImageFull &image,
                                  const Triangle &triangle,
                                  const glm::mat4 &modelview,
                                  const glm::mat4 &projection,
@@ -135,7 +135,7 @@ void PainterSimple::fillTriangle(Image &image,
 }
 
 void PainterSimple::paint(const Mesh &mesh,
-                          Image &image,
+                          ImageFull &image,
                           const glm::mat4 &modelview,
                           const glm::mat4 &projection) {
   image.clear();

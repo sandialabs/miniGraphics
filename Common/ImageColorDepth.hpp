@@ -9,10 +9,12 @@
 #ifndef IMAGECOLORDEPTH_HPP
 #define IMAGECOLORDEPTH_HPP
 
-#include "Image.hpp"
+#include "ImageFull.hpp"
 
 #include <memory>
 #include <vector>
+
+struct ImageColorDepthBase {};
 
 /// \brief Implementation of color/depth images
 ///
@@ -37,7 +39,7 @@
 ///     of DepthType and returns a float object.
 ///
 template <typename Features>
-class ImageColorDepth : public Image {
+class ImageColorDepth : public ImageFull, ImageColorDepthBase {
  public:
   using ColorType = typename Features::ColorType;
   using DepthType = typename Features::DepthType;
@@ -49,21 +51,23 @@ class ImageColorDepth : public Image {
   std::shared_ptr<std::vector<ColorType>> colorBuffer;
   std::shared_ptr<std::vector<DepthType>> depthBuffer;
 
-  static const int COLOR_BUFFER_TAG = 12900;  // Should be constexpr
-  static const int DEPTH_BUFFER_TAG = 12901;
+  static constexpr int COLOR_BUFFER_TAG = 12900;
+  static constexpr int DEPTH_BUFFER_TAG = 12901;
 
  public:
   ImageColorDepth(int _width, int _height)
-      : Image(_width, _height),
-        colorBuffer(
-            new std::vector<ColorType>(_width * _height * ColorVecSize)),
-        depthBuffer(new std::vector<DepthType>(_width * _height)) {}
+      : ImageFull(_width, _height),
+        colorBuffer(new std::vector<ColorType>),
+        depthBuffer(new std::vector<DepthType>) {
+    this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
+  }
 
   ImageColorDepth(int _width, int _height, int _regionBegin, int _regionEnd)
-      : Image(_width, _height, _regionBegin, _regionEnd),
-        colorBuffer(new std::vector<ColorType>((_regionEnd - _regionBegin) *
-                                               ColorVecSize)),
-        depthBuffer(new std::vector<DepthType>(_regionEnd - _regionBegin)) {}
+      : ImageFull(_width, _height, _regionBegin, _regionEnd),
+        colorBuffer(new std::vector<ColorType>),
+        depthBuffer(new std::vector<DepthType>) {
+    this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
+  }
 
   ~ImageColorDepth() = default;
 
@@ -79,6 +83,13 @@ class ImageColorDepth : public Image {
   }
   const DepthType* getDepthBuffer(int pixelIndex = 0) const {
     return &this->depthBuffer->front() + pixelIndex;
+  }
+
+  void resizeBuffers(int newRegionBegin, int newRegionEnd) {
+    this->resize(
+        this->getWidth(), this->getHeight(), newRegionBegin, newRegionEnd);
+    this->colorBuffer->resize(this->getNumberOfPixels() * ColorVecSize);
+    this->depthBuffer->resize(this->getNumberOfPixels());
   }
 
   Color getColor(int pixelIndex) const final {
@@ -109,36 +120,8 @@ class ImageColorDepth : public Image {
     Features::encodeDepth(depth, this->getDepthBuffer(pixelIndex));
   }
 
-  void clear(const Color& color = Color(0, 0, 0, 0), float depth = 1.0f) final {
-    int numPixels = this->getNumberOfPixels();
-    if (numPixels < 1) {
-      return;
-    }
-
-    // Encode the color and depth by calling setColor/setDepth for first pixel.
-    this->setColor(0, color);
-    this->setDepth(0, depth);
-
-    ColorType colorValue[ColorVecSize];
-    Features::encodeColor(color, colorValue);
-    DepthType depthValue;
-    Features::encodeDepth(depth, &depthValue);
-
-    ColorType* cBuffer = this->getColorBuffer();
-    DepthType* dBuffer = this->getDepthBuffer();
-
-    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
-      for (int colorComponent = 0; colorComponent < ColorVecSize;
-           ++colorComponent) {
-        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
-            colorValue[colorComponent];
-      }
-      dBuffer[pixelIndex] = depthValue;
-    }
-  }
-
-  std::unique_ptr<Image> blend(const Image* _otherImage) const final {
-    const ThisType* otherImage = dynamic_cast<const ThisType*>(_otherImage);
+  std::unique_ptr<Image> blend(const Image& _otherImage) const final {
+    const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attempting to blend invalid images.");
 
     int numPixels = this->getNumberOfPixels();
@@ -206,8 +189,8 @@ class ImageColorDepth : public Image {
     return outImageHolder;
   }
 
-  std::unique_ptr<Image> Gather(int recvRank,
-                                MPI_Comm communicator) const final {
+  std::unique_ptr<ImageFull> Gather(int recvRank,
+                                    MPI_Comm communicator) const final {
     int rank;
     MPI_Comm_rank(communicator, &rank);
 
@@ -241,7 +224,7 @@ class ImageColorDepth : public Image {
                         this->getHeight(),
                         0,
                         this->getWidth() * this->getHeight());
-    ThisType* recvImage = dynamic_cast<ThisType*>(outImageHolder.get());
+    ThisType* recvImage = dynamic_cast<ThisType*>(outImageHolder.release());
     assert((recvImage != NULL) && "Internal error: createNew bad type.");
 
     MPI_Gatherv(this->getColorBuffer(),
@@ -254,7 +237,7 @@ class ImageColorDepth : public Image {
                 recvRank,
                 communicator);
 
-    return outImageHolder;
+    return std::unique_ptr<ImageFull>(recvImage);
   }
 
   std::vector<MPI_Request> ISend(int destRank,
@@ -262,8 +245,24 @@ class ImageColorDepth : public Image {
     std::vector<MPI_Request> requests =
         this->ISendMetaData(destRank, communicator);
 
+    const void* colorBuffer;
+    const void* depthBuffer;
+    int dummyBuffer;
+
+    if (this->getNumberOfPixels() != 0) {
+      colorBuffer = &this->colorBuffer->front();
+      depthBuffer = &this->depthBuffer->front();
+    } else {
+      // If our image has zero pixels, then the vectors containing data are
+      // empty. We still need to send a message, and I suspect some
+      // implementations of MPI will still want a valid buffer even if we are
+      // not actually using it. So in this case, just set up a dummy buffer.
+      colorBuffer = &dummyBuffer;
+      depthBuffer = &dummyBuffer;
+    }
+
     MPI_Request colorRequest;
-    MPI_Isend(&this->colorBuffer->front(),
+    MPI_Isend(colorBuffer,
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               destRank,
@@ -273,7 +272,7 @@ class ImageColorDepth : public Image {
     requests.push_back(colorRequest);
 
     MPI_Request depthRequest;
-    MPI_Isend(&this->depthBuffer->front(),
+    MPI_Isend(depthBuffer,
               this->getNumberOfPixels() * sizeof(DepthType),
               MPI_BYTE,
               destRank,
@@ -290,8 +289,24 @@ class ImageColorDepth : public Image {
     std::vector<MPI_Request> requests =
         this->IReceiveMetaData(sourceRank, communicator);
 
+    void* colorBuffer;
+    void* depthBuffer;
+    int dummyBuffer;
+
+    if (this->getNumberOfPixels() != 0) {
+      colorBuffer = &this->colorBuffer->front();
+      depthBuffer = &this->depthBuffer->front();
+    } else {
+      // If our image has zero pixels, then the vectors containing data are
+      // empty. We still need to send a message, and I suspect some
+      // implementations of MPI will still want a valid buffer even if we are
+      // not actually using it. So in this case, just set up a dummy buffer.
+      colorBuffer = &dummyBuffer;
+      depthBuffer = &dummyBuffer;
+    }
+
     MPI_Request colorRequest;
-    MPI_Irecv(&this->colorBuffer->front(),
+    MPI_Irecv(colorBuffer,
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               sourceRank,
@@ -301,7 +316,7 @@ class ImageColorDepth : public Image {
     requests.push_back(colorRequest);
 
     MPI_Request depthRequest;
-    MPI_Irecv(&this->depthBuffer->front(),
+    MPI_Irecv(depthBuffer,
               this->getNumberOfPixels() * sizeof(DepthType),
               MPI_BYTE,
               sourceRank,
@@ -311,6 +326,31 @@ class ImageColorDepth : public Image {
     requests.push_back(depthRequest);
 
     return requests;
+  }
+
+ protected:
+  void clearImpl(const Color& color, float depth) final {
+    int numPixels = this->getNumberOfPixels();
+    if (numPixels < 1) {
+      return;
+    }
+
+    ColorType colorValue[ColorVecSize];
+    Features::encodeColor(color, colorValue);
+    DepthType depthValue;
+    Features::encodeDepth(depth, &depthValue);
+
+    ColorType* cBuffer = this->getColorBuffer();
+    DepthType* dBuffer = this->getDepthBuffer();
+
+    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+      for (int colorComponent = 0; colorComponent < ColorVecSize;
+           ++colorComponent) {
+        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
+            colorValue[colorComponent];
+      }
+      dBuffer[pixelIndex] = depthValue;
+    }
   }
 };
 

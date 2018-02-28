@@ -14,6 +14,7 @@
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
 #include <Common/ImageRGBAUByteColorOnly.hpp>
 #include <Common/ImageRGBFloatColorDepth.hpp>
+#include <Common/ImageSparse.hpp>
 #include <Common/MakeBox.hpp>
 #include <Common/MeshHelper.hpp>
 #include <Common/ReadSTL.hpp>
@@ -66,6 +67,7 @@ enum optionIndex {
   OVERLAP,
   COLOR_FORMAT,
   DEPTH_FORMAT,
+  IMAGE_COMPRESS,
   CAMERA_THETA,
   CAMERA_PHI,
   CAMERA_ZOOM,
@@ -97,6 +99,7 @@ struct RunOptions {
   float overlap;
   colorType colorFormat;
   depthType depthFormat;
+  bool compressImages;
   float thetaRotation;
   float phiRotation;
   float zoom;
@@ -118,6 +121,7 @@ struct RunOptions {
         overlap(-0.05f),
         colorFormat(COLOR_UBYTE),
         depthFormat(DEPTH_FLOAT),
+        compressImages(true),
         thetaRotation(25.0f),
         phiRotation(15.0f),
         zoom(1.0f),
@@ -178,8 +182,8 @@ struct GeometryInfo {
   }
 };
 
-static std::unique_ptr<Image> createImage(const RunOptions& runOptions,
-                                          YamlWriter& yaml) {
+static std::unique_ptr<ImageFull> createImage(const RunOptions& runOptions,
+                                              YamlWriter& yaml) {
   yaml.AddDictionaryEntry("image-width", runOptions.imageWidth);
   yaml.AddDictionaryEntry("image-height", runOptions.imageHeight);
 
@@ -189,11 +193,11 @@ static std::unique_ptr<Image> createImage(const RunOptions& runOptions,
       switch (runOptions.colorFormat) {
         case COLOR_UBYTE:
           yaml.AddDictionaryEntry("color-buffer-format", "byte");
-          return std::unique_ptr<Image>(new ImageRGBAUByteColorFloatDepth(
+          return std::unique_ptr<ImageFull>(new ImageRGBAUByteColorFloatDepth(
               runOptions.imageWidth, runOptions.imageHeight));
         case COLOR_FLOAT:
           yaml.AddDictionaryEntry("color-buffer-format", "float");
-          return std::unique_ptr<Image>(new ImageRGBFloatColorDepth(
+          return std::unique_ptr<ImageFull>(new ImageRGBFloatColorDepth(
               runOptions.imageWidth, runOptions.imageHeight));
       }
       break;
@@ -202,12 +206,12 @@ static std::unique_ptr<Image> createImage(const RunOptions& runOptions,
       switch (runOptions.colorFormat) {
         case COLOR_UBYTE:
           yaml.AddDictionaryEntry("color-buffer-format", "byte");
-          return std::unique_ptr<Image>(new ImageRGBAUByteColorOnly(
+          return std::unique_ptr<ImageFull>(new ImageRGBAUByteColorOnly(
               runOptions.imageWidth, runOptions.imageHeight));
           break;
         case COLOR_FLOAT:
           yaml.AddDictionaryEntry("color-buffer-format", "float");
-          return std::unique_ptr<Image>(new ImageRGBAFloatColorOnly(
+          return std::unique_ptr<ImageFull>(new ImageRGBAFloatColorOnly(
               runOptions.imageWidth, runOptions.imageHeight));
           break;
       }
@@ -215,7 +219,7 @@ static std::unique_ptr<Image> createImage(const RunOptions& runOptions,
   }
   std::cerr << "Internal error: bad buffer format option" << std::endl;
   exit(1);
-  return std::unique_ptr<Image>();
+  return std::unique_ptr<ImageFull>();
 }
 
 static std::unique_ptr<Painter> createPainter(const RunOptions& runOptions,
@@ -404,7 +408,7 @@ static MPI_Group createComposeGroup(bool blendIsOrderDependent,
   }
 }
 
-static void doLocalPaint(Image& localImage,
+static void doLocalPaint(ImageFull& localImage,
                          Painter& painter,
                          const Mesh& mesh,
                          const glm::mat4& modelview,
@@ -422,21 +426,57 @@ static void doLocalPaint(Image& localImage,
   }
 }
 
-static std::unique_ptr<Image> doComposeImage(Image& localImage,
-                                             Compositor& compositor,
-                                             MPI_Group composeGroup,
-                                             MPI_Comm communicator,
-                                             YamlWriter& yaml) {
+static std::unique_ptr<ImageFull> doComposeImage(const RunOptions& runOptions,
+                                                 ImageFull& localImage,
+                                                 Compositor& compositor,
+                                                 MPI_Group composeGroup,
+                                                 MPI_Comm communicator,
+                                                 YamlWriter& yaml) {
   Timer timeCompositePlusCollect(yaml, "composite-seconds");
 
-  std::unique_ptr<Image> compositeImage =
-      compositor.compose(&localImage, composeGroup, MPI_COMM_WORLD);
+  std::unique_ptr<Image> imageToCompose;
 
-  return compositeImage->Gather(0, MPI_COMM_WORLD);
+  if (runOptions.compressImages) {
+    Timer timeCompress(yaml, "compress-seconds");
+    imageToCompose = localImage.compress()->shallowCopy();
+  } else {
+    imageToCompose = localImage.shallowCopy();
+  }
+
+  std::unique_ptr<Image> compositeImage;
+  {
+    // The partial composite is the time it takes to compose all the pixels
+    // but leave them on whatever process they ended up in. This is often
+    // the reported composite time in many papers.
+    Timer timePartialComposite(yaml, "partial-composite-seconds");
+
+    compositeImage =
+        compositor.compose(imageToCompose.get(), composeGroup, communicator);
+  }
+
+  std::unique_ptr<ImageFull> uncompressedCompositeImage;
+  if (runOptions.compressImages) {
+    Timer timeUncompress(yaml, "uncompress-seconds");
+
+    ImageSparse* compressedCompositeImage =
+        dynamic_cast<ImageSparse*>(compositeImage.get());
+    uncompressedCompositeImage = compressedCompositeImage->uncompress();
+  } else {
+    uncompressedCompositeImage.reset(
+        dynamic_cast<ImageFull*>(compositeImage.release()));
+  }
+
+  std::unique_ptr<ImageFull> gatheredImage;
+  {
+    Timer timeGather(yaml, "gather-seconds");
+
+    gatheredImage = uncompressedCompositeImage->Gather(0, communicator);
+  }
+  return gatheredImage;
 }
 
-static void checkImage(const Image& fullCompositeImage,
-                       Image& localImage,
+static void checkImage(const ImageFull& fullCompositeImage,
+                       ImageFull& localImage,
                        Painter& painter,
                        const Mesh& fullMesh,
                        const glm::mat4& modelview,
@@ -473,7 +513,7 @@ static void checkImage(const Image& fullCompositeImage,
   }
 }
 
-static void writeImage(const Image& image, int trial) {
+static void writeImage(const ImageFull& image, int trial) {
   std::stringstream filename;
   filename << "composite" << std::setfill('0') << std::setw(3) << trial
            << ".ppm";
@@ -489,12 +529,12 @@ static void run(RunOptions& runOptions,
   int numProc;
   MPI_Comm_size(MPI_COMM_WORLD, &numProc);
 
-  std::unique_ptr<Image> localImage = createImage(runOptions, yaml);
-  if (localImage->blendIsOrderDependent()) {
-    yaml.AddDictionaryEntry("rendering-order-dependent", "yes");
-  } else {
-    yaml.AddDictionaryEntry("rendering-order-dependent", "no");
-  }
+  std::unique_ptr<ImageFull> localImage = createImage(runOptions, yaml);
+  yaml.AddDictionaryEntry("rendering-order-dependent",
+                          localImage->blendIsOrderDependent() ? "yes" : "no");
+
+  yaml.AddDictionaryEntry("image-compression",
+                          runOptions.compressImages ? "on" : "off");
 
   std::unique_ptr<Painter> painter = createPainter(runOptions, yaml);
 
@@ -522,7 +562,7 @@ static void run(RunOptions& runOptions,
     createTransforms(
         runOptions, trial, geometryInfo, yaml, modelview, projection);
 
-    std::unique_ptr<Image> fullCompositeImage;
+    std::unique_ptr<ImageFull> fullCompositeImage;
 
     {
       Timer timeTotal(yaml, "total-seconds");
@@ -540,8 +580,12 @@ static void run(RunOptions& runOptions,
       // timing of the composition to be useful.
       MPI_Barrier(MPI_COMM_WORLD);
 
-      fullCompositeImage = doComposeImage(
-          *localImage, *compositor, composeGroup, MPI_COMM_WORLD, yaml);
+      fullCompositeImage = doComposeImage(runOptions,
+                                          *localImage,
+                                          *compositor,
+                                          composeGroup,
+                                          MPI_COMM_WORLD,
+                                          yaml);
 
       MPI_Group_free(&composeGroup);
     }
@@ -705,6 +749,14 @@ int MainLoop(int argc,
      "                         the compositing to an alpha blending mode.\n"});
 
   usage.push_back(
+    {IMAGE_COMPRESS,ENABLE,       "",  "enable-image-compress", option::Arg::None,
+     "  --enable-image-compress Compress images during compositing using active\n"
+     "                         run length encoding. (Default)"});
+  usage.push_back(
+    {IMAGE_COMPRESS,DISABLE,      "",  "disable-image-compress", option::Arg::None,
+     "  --disable-image-compress Do not compress images during compositing.\n"});
+
+  usage.push_back(
     {CAMERA_THETA, CAMERA_STILL,  "",  "camera-theta", FloatArg,
      "  --camera-theta=<angle> Set the camera theta value to a specific value\n"
      "                         in degrees."});
@@ -859,6 +911,10 @@ int MainLoop(int argc,
         static_cast<depthType>(options[DEPTH_FORMAT].type());
   }
 
+  if (options[IMAGE_COMPRESS]) {
+    runOptions.compressImages = (options[IMAGE_COMPRESS].type() == ENABLE);
+  }
+
   if (options[OVERLAP]) {
     runOptions.overlap = strtof(options[OVERLAP].arg, NULL);
   }
@@ -918,9 +974,11 @@ int MainLoop(int argc,
 
   if (rank == 0) {
     std::cout << "Rank " << rank << " on pid " << getpid() << std::endl;
+    std::cout << "Random seed: " << seed << std::endl;
 #if 0
     int ready = 0;
-    while (!ready);
+    while (!ready)
+      ;
 #endif
   }
 

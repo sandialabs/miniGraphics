@@ -9,10 +9,12 @@
 #ifndef IMAGECOLORONLY_HPP
 #define IMAGECOLORONLY_HPP
 
-#include "Image.hpp"
+#include "ImageFull.hpp"
 
 #include <memory>
 #include <vector>
+
+struct ImageColorOnlyBase {};
 
 /// \brief Implementation of color-only images
 ///
@@ -30,9 +32,8 @@
 ///   - A static function named decodeColor that takes an array of ColorType
 ///     values and returns a Color object.
 ///
-
 template <typename Features>
-class ImageColorOnly : public Image {
+class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
  public:
   using ColorType = typename Features::ColorType;
   static constexpr int ColorVecSize = Features::ColorVecSize;
@@ -46,14 +47,15 @@ class ImageColorOnly : public Image {
 
  public:
   ImageColorOnly(int _width, int _height)
-      : Image(_width, _height),
-        colorBuffer(
-            new std::vector<ColorType>(_width * _height * ColorVecSize)) {}
+      : ImageFull(_width, _height), colorBuffer(new std::vector<ColorType>) {
+    this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
+  }
 
   ImageColorOnly(int _width, int _height, int _regionBegin, int _regionEnd)
-      : Image(_width, _height, _regionBegin, _regionEnd),
-        colorBuffer(new std::vector<ColorType>((_regionEnd - _regionBegin) *
-                                               ColorVecSize)) {}
+      : ImageFull(_width, _height, _regionBegin, _regionEnd),
+        colorBuffer(new std::vector<ColorType>) {
+    this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
+  }
 
   ~ImageColorOnly() = default;
 
@@ -62,6 +64,12 @@ class ImageColorOnly : public Image {
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
     return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+  }
+
+  void resizeBuffers(int newRegionBegin, int newRegionEnd) {
+    this->resize(
+        this->getWidth(), this->getHeight(), newRegionBegin, newRegionEnd);
+    this->colorBuffer->resize(this->getNumberOfPixels() * ColorVecSize);
   }
 
   Color getColor(int pixelIndex) const final {
@@ -87,31 +95,8 @@ class ImageColorOnly : public Image {
     // No depth
   }
 
-  void clear(const Color& color = Color(0, 0, 0, 0), float = 1.0f) final {
-    int numPixels = this->getNumberOfPixels();
-    if (numPixels < 1) {
-      return;
-    }
-
-    // Encode the color by calling setColor for first pixel.
-    this->setColor(0, color);
-
-    ColorType colorValue[ColorVecSize];
-    Features::encodeColor(color, colorValue);
-
-    ColorType* cBuffer = this->getColorBuffer();
-
-    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
-      for (int colorComponent = 0; colorComponent < ColorVecSize;
-           ++colorComponent) {
-        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
-            colorValue[colorComponent];
-      }
-    }
-  }
-
-  std::unique_ptr<Image> blend(const Image* _otherImage) const final {
-    const ThisType* otherImage = dynamic_cast<const ThisType*>(_otherImage);
+  std::unique_ptr<Image> blend(const Image& _otherImage) const final {
+    const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attempting to blend invalid images.");
 
     int numPixels = this->getNumberOfPixels();
@@ -160,8 +145,8 @@ class ImageColorOnly : public Image {
     return outImageHolder;
   }
 
-  std::unique_ptr<Image> Gather(int recvRank,
-                                MPI_Comm communicator) const final {
+  std::unique_ptr<ImageFull> Gather(int recvRank,
+                                    MPI_Comm communicator) const final {
     int rank;
     MPI_Comm_rank(communicator, &rank);
 
@@ -195,7 +180,7 @@ class ImageColorOnly : public Image {
                         this->getHeight(),
                         0,
                         this->getWidth() * this->getHeight());
-    ThisType* recvImage = dynamic_cast<ThisType*>(outImageHolder.get());
+    ThisType* recvImage = dynamic_cast<ThisType*>(outImageHolder.release());
     assert((recvImage != NULL) && "Internal error: createNew bad type.");
 
     MPI_Gatherv(this->getColorBuffer(),
@@ -208,7 +193,7 @@ class ImageColorOnly : public Image {
                 recvRank,
                 communicator);
 
-    return outImageHolder;
+    return std::unique_ptr<ImageFull>(recvImage);
   }
 
   std::vector<MPI_Request> ISend(int destRank,
@@ -216,8 +201,21 @@ class ImageColorOnly : public Image {
     std::vector<MPI_Request> requests =
         this->ISendMetaData(destRank, communicator);
 
+    const void* colorBuffer;
+    int dummyBuffer;
+
+    if (this->getNumberOfPixels() != 0) {
+      colorBuffer = &this->colorBuffer->front();
+    } else {
+      // If our image has zero pixels, then the vector containing data is
+      // empty. We still need to send a message, and I suspect some
+      // implementations of MPI will still want a valid buffer even if we are
+      // not actually using it. So in this case, just set up a dummy buffer.
+      colorBuffer = &dummyBuffer;
+    }
+
     MPI_Request colorRequest;
-    MPI_Isend(&this->colorBuffer->front(),
+    MPI_Isend(colorBuffer,
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               destRank,
@@ -234,8 +232,21 @@ class ImageColorOnly : public Image {
     std::vector<MPI_Request> requests =
         this->IReceiveMetaData(sourceRank, communicator);
 
+    void* colorBuffer;
+    int dummyBuffer;
+
+    if (this->getNumberOfPixels() != 0) {
+      colorBuffer = &this->colorBuffer->front();
+    } else {
+      // If our image has zero pixels, then the vector containing data is
+      // empty. We still need to send a message, and I suspect some
+      // implementations of MPI will still want a valid buffer even if we are
+      // not actually using it. So in this case, just set up a dummy buffer.
+      colorBuffer = &dummyBuffer;
+    }
+
     MPI_Request colorRequest;
-    MPI_Irecv(&this->colorBuffer->front(),
+    MPI_Irecv(colorBuffer,
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               sourceRank,
@@ -245,6 +256,27 @@ class ImageColorOnly : public Image {
     requests.push_back(colorRequest);
 
     return requests;
+  }
+
+ protected:
+  void clearImpl(const Color& color, float) final {
+    int numPixels = this->getNumberOfPixels();
+    if (numPixels < 1) {
+      return;
+    }
+
+    ColorType colorValue[ColorVecSize];
+    Features::encodeColor(color, colorValue);
+
+    ColorType* cBuffer = this->getColorBuffer();
+
+    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+      for (int colorComponent = 0; colorComponent < ColorVecSize;
+           ++colorComponent) {
+        cBuffer[pixelIndex * ColorVecSize + colorComponent] =
+            colorValue[colorComponent];
+      }
+    }
   }
 };
 

@@ -10,6 +10,24 @@
 
 Image::~Image() {}
 
+void Image::clear(const Color &color, float depth) {
+  this->clearImpl(color, depth);
+}
+
+std::unique_ptr<Image> Image::createNew(int _width,
+                                        int _height,
+                                        int _regionBegin,
+                                        int _regionEnd) const {
+  return this->createNewImpl(_width, _height, _regionBegin, _regionEnd);
+}
+
+std::unique_ptr<Image> Image::createNew() const {
+  return this->createNew(this->getWidth(),
+                         this->getHeight(),
+                         this->getRegionBegin(),
+                         this->getRegionEnd());
+}
+
 void Image::Send(int destRank, MPI_Comm communicator) const {
   std::vector<MPI_Request> requests = this->ISend(destRank, communicator);
 

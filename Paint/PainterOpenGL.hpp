@@ -24,7 +24,7 @@ class PainterOpenGL : public Painter {
   ~PainterOpenGL();
 
   void paint(const Mesh& mesh,
-             Image& image,
+             ImageFull& image,
              const glm::mat4x4& modelview,
              const glm::mat4x4& projection) final;
 };

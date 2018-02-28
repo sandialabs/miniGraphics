@@ -10,4 +10,9 @@ cmake_minimum_required(VERSION 3.3)
 
 project(miniGraphics)
 
+option(MINIGRAPHICS_ENABLE_TESTING "Turn on/off building tests." ON)
+if (MINIGRAPHICS_ENABLE_TESTING)
+  enable_testing()
+endif()
+
 add_subdirectory(BinarySwap)

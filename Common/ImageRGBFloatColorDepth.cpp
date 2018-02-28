@@ -8,6 +8,8 @@
 
 #include "ImageRGBFloatColorDepth.hpp"
 
+#include "ImageSparseColorDepth.hpp"
+
 #include <assert.h>
 
 void ImageRGBFloatColorDepthFeatures::encodeColor(
@@ -41,12 +43,17 @@ ImageRGBFloatColorDepth::ImageRGBFloatColorDepth(int _width,
                                                  int _regionEnd)
     : ImageColorDepth(_width, _height, _regionBegin, _regionEnd) {}
 
-std::unique_ptr<Image> ImageRGBFloatColorDepth::createNew(
+std::unique_ptr<ImageSparse> ImageRGBFloatColorDepth::compress() const {
+  return std::unique_ptr<ImageSparse>(
+      new ImageSparseColorDepth<ImageRGBFloatColorDepthFeatures>(*this));
+}
+
+std::unique_ptr<Image> ImageRGBFloatColorDepth::createNewImpl(
     int _width, int _height, int _regionBegin, int _regionEnd) const {
   return std::unique_ptr<Image>(
       new ImageRGBFloatColorDepth(_width, _height, _regionBegin, _regionEnd));
 }
 
-std::unique_ptr<const Image> ImageRGBFloatColorDepth::shallowCopy() const {
+std::unique_ptr<const Image> ImageRGBFloatColorDepth::shallowCopyImpl() const {
   return std::unique_ptr<const Image>(new ImageRGBFloatColorDepth(*this));
 }
