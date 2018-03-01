@@ -72,17 +72,33 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
   ~ImageColorDepth() = default;
 
   ColorType* getColorBuffer(int pixelIndex = 0) {
-    return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    if (!this->colorBuffer->empty()) {
+      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    } else {
+      return nullptr;
+    }
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
-    return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    if (!this->colorBuffer->empty()) {
+      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    } else {
+      return nullptr;
+    }
   }
 
   DepthType* getDepthBuffer(int pixelIndex = 0) {
-    return &this->depthBuffer->front() + pixelIndex;
+    if (!this->depthBuffer->empty()) {
+      return &this->depthBuffer->front() + pixelIndex;
+    } else {
+      return nullptr;
+    }
   }
   const DepthType* getDepthBuffer(int pixelIndex = 0) const {
-    return &this->depthBuffer->front() + pixelIndex;
+    if (!this->depthBuffer->empty()) {
+      return &this->depthBuffer->front() + pixelIndex;
+    } else {
+      return nullptr;
+    }
   }
 
   void resizeBuffers(int newRegionBegin, int newRegionEnd) {
@@ -245,24 +261,8 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     std::vector<MPI_Request> requests =
         this->ISendMetaData(destRank, communicator);
 
-    const void* colorBuffer;
-    const void* depthBuffer;
-    int dummyBuffer;
-
-    if (this->getNumberOfPixels() != 0) {
-      colorBuffer = &this->colorBuffer->front();
-      depthBuffer = &this->depthBuffer->front();
-    } else {
-      // If our image has zero pixels, then the vectors containing data are
-      // empty. We still need to send a message, and I suspect some
-      // implementations of MPI will still want a valid buffer even if we are
-      // not actually using it. So in this case, just set up a dummy buffer.
-      colorBuffer = &dummyBuffer;
-      depthBuffer = &dummyBuffer;
-    }
-
     MPI_Request colorRequest;
-    MPI_Isend(colorBuffer,
+    MPI_Isend(this->getColorBuffer(),
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               destRank,
@@ -272,7 +272,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     requests.push_back(colorRequest);
 
     MPI_Request depthRequest;
-    MPI_Isend(depthBuffer,
+    MPI_Isend(this->getDepthBuffer(),
               this->getNumberOfPixels() * sizeof(DepthType),
               MPI_BYTE,
               destRank,
@@ -289,24 +289,8 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     std::vector<MPI_Request> requests =
         this->IReceiveMetaData(sourceRank, communicator);
 
-    void* colorBuffer;
-    void* depthBuffer;
-    int dummyBuffer;
-
-    if (this->getNumberOfPixels() != 0) {
-      colorBuffer = &this->colorBuffer->front();
-      depthBuffer = &this->depthBuffer->front();
-    } else {
-      // If our image has zero pixels, then the vectors containing data are
-      // empty. We still need to send a message, and I suspect some
-      // implementations of MPI will still want a valid buffer even if we are
-      // not actually using it. So in this case, just set up a dummy buffer.
-      colorBuffer = &dummyBuffer;
-      depthBuffer = &dummyBuffer;
-    }
-
     MPI_Request colorRequest;
-    MPI_Irecv(colorBuffer,
+    MPI_Irecv(this->getColorBuffer(),
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               sourceRank,
@@ -316,7 +300,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     requests.push_back(colorRequest);
 
     MPI_Request depthRequest;
-    MPI_Irecv(depthBuffer,
+    MPI_Irecv(this->getDepthBuffer(),
               this->getNumberOfPixels() * sizeof(DepthType),
               MPI_BYTE,
               sourceRank,

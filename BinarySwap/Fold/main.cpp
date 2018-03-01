@@ -7,9 +7,9 @@
 // certain rights in this software.
 
 #include <Common/MainLoop.hpp>
-#include "BinarySwapBase.hpp"
+#include "BinarySwapFold.hpp"
 
 int main(int argc, char* argv[]) {
-  BinarySwapBase compositor;
+  BinarySwapFold compositor;
   return MainLoop(argc, argv, &compositor);
 }

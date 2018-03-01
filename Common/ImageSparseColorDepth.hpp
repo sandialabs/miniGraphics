@@ -456,17 +456,9 @@ class ImageSparseColorDepth : public ImageSparse {
     // Make sure we don't send arrays larger than necessary.
     this->shrinkArrays();
 
-    const void* rlBuffer;
-    int dummyBuffer;
-
+    const void* rlBuffer = NULL;
     if (this->runLengths->size() != 0) {
       rlBuffer = &this->runLengths->front();
-    } else {
-      // If our run length vector is empty we still need to send a message, and
-      // I suspect some implementations of MPI will still want a valid buffer
-      // even if we are not actually using it. So in this case, just set up a
-      // dummy buffer.
-      rlBuffer = &dummyBuffer;
     }
 
     MPI_Request runLengthsRequest;

@@ -7,3 +7,4 @@
 ## certain rights in this software.
 
 add_subdirectory(Base)
+add_subdirectory(Fold)
