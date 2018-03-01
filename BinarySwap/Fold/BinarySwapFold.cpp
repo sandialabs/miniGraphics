@@ -63,8 +63,8 @@ std::unique_ptr<Image> BinarySwapFold::compose(Image *localImage,
   // that order-dependent blending will be correct. Do that by alternating
   // processes to pick and processes to remove.
   for (int i = 0; i < numProcsToRemove; ++i) {
-    int rankToRecv = 2*i;
-    int rankToSend = 2*i + 1;
+    int rankToRecv = 2 * i;
+    int rankToSend = 2 * i + 1;
     procsToRemove[i] = rankToSend;
     if (myGroupRank == rankToRecv) {
       // This process absorbs an image from another process.

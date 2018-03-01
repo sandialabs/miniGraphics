@@ -6,19 +6,9 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "BinarySwapBase.hpp"
+#include "BinarySwapRemainder.hpp"
 
 enum PairRole { PAIR_ROLE_EVEN, PAIR_ROLE_ODD };
-
-static bool isPowerOfTwo(int x) {
-  while (x > 1) {
-    if ((x % 2) != 0) {
-      return false;
-    }
-    x /= 2;
-  }
-  return true;
-}
 
 static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
   MPI_Group commGroup;
@@ -29,12 +19,14 @@ static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
   return realRank;
 }
 
-std::unique_ptr<Image> BinarySwapBase::compose(Image *localImage,
-                                               MPI_Group group,
-                                               MPI_Comm communicator) {
-  // Binary-swap is a recursive algorithm. We start with a process group with
-  // all the processes, then divide and conquer the group until we only have
-  // groups of size 1.
+std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
+                                                    MPI_Group group,
+                                                    MPI_Comm communicator) {
+  // Binary-swap-remainder is a recursive algorithm that operates very similar
+  // to the base algorithm. (You should understand the base algorithm before
+  // reading this one.) The only difference is that at an iteration if the
+  // group cannot be divided in two even parts, the remaining process transfers
+  // all its data to members of a group.
   MPI_Group workingGroup;
   int dummy;
   MPI_Group_excl(group, 0, &dummy, &workingGroup);  // Copies group
@@ -47,14 +39,6 @@ std::unique_ptr<Image> BinarySwapBase::compose(Image *localImage,
 
   std::unique_ptr<Image> workingImage = localImage->shallowCopy();
 
-  // This version of binary swap only works if the communicator size is a power
-  // of two.
-  if (!isPowerOfTwo(numProc)) {
-    std::cerr << "Binary-swap only works with powers-of-two processors"
-              << std::endl;
-    exit(1);
-  }
-
   while (numProc > 1) {
     // At each iteration of the binary-swap algorithm, divide the image in half.
     std::unique_ptr<Image> topHalf =
@@ -62,6 +46,26 @@ std::unique_ptr<Image> BinarySwapBase::compose(Image *localImage,
     std::unique_ptr<Image> bottomHalf =
         workingImage->copySubrange(workingImage->getNumberOfPixels() / 2,
                                    workingImage->getNumberOfPixels());
+
+    bool haveRemainder = ((numProc % 2) == 1);
+    if (haveRemainder && (rank == (numProc - 1))) {
+      // My process is in the remainder. Offload my images to processes in
+      // another group and drop out of the composition.
+      std::vector<MPI_Request> topSendRequests = topHalf->ISend(
+          getRealRank(workingGroup, numProc - 3, communicator), communicator);
+      std::vector<MPI_Request> bottomSendRequests = bottomHalf->ISend(
+          getRealRank(workingGroup, numProc - 2, communicator), communicator);
+
+      MPI_Waitall(topSendRequests.size(),
+                  &topSendRequests.front(),
+                  MPI_STATUSES_IGNORE);
+      MPI_Waitall(bottomSendRequests.size(),
+                  &bottomSendRequests.front(),
+                  MPI_STATUSES_IGNORE);
+
+      workingImage = workingImage->copySubrange(0, 0);
+      break;
+    }
 
     std::unique_ptr<Image> toKeep;
     std::unique_ptr<Image> toSend;
@@ -112,6 +116,13 @@ std::unique_ptr<Image> BinarySwapBase::compose(Image *localImage,
         break;
     }
 
+    // Receive any images from the remainder if necessary
+    if (haveRemainder && (rank >= numProc - 3)) {
+      recvImage->Receive(getRealRank(workingGroup, numProc - 1, communicator),
+                         communicator);
+      workingImage = workingImage->blend(*recvImage);
+    }
+
     // Wait for my images to finish sending.
     MPI_Waitall(
         sendRequests.size(), &sendRequests.front(), MPI_STATUSES_IGNORE);
@@ -120,7 +131,7 @@ std::unique_ptr<Image> BinarySwapBase::compose(Image *localImage,
     // of the image as me.
     int rankRange[1][3];
     rankRange[0][0] = (role == PAIR_ROLE_EVEN) ? 0 : 1;
-    rankRange[0][1] = numProc - 1;
+    rankRange[0][1] = numProc - (haveRemainder ? 2 : 1);
     rankRange[0][2] = 2;
 
     MPI_Group subGroup;
