@@ -29,9 +29,9 @@ static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
   return realRank;
 }
 
-std::unique_ptr<Image> BinarySwap::compose(Image *localImage,
-                                           MPI_Group group,
-                                           MPI_Comm communicator) {
+std::unique_ptr<Image> BinarySwapBase::compose(Image *localImage,
+                                               MPI_Group group,
+                                               MPI_Comm communicator) {
   // Binary-swap is a recursive algorithm. We start with a process group with
   // all the processes, then divide and conquer the group until we only have
   // groups of size 1.
