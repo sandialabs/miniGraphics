@@ -60,10 +60,18 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
   ~ImageColorOnly() = default;
 
   ColorType* getColorBuffer(int pixelIndex = 0) {
-    return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    if (!this->colorBuffer->empty()) {
+      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    } else {
+      return nullptr;
+    }
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
-    return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    if (!this->colorBuffer->empty()) {
+      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
+    } else {
+      return nullptr;
+    }
   }
 
   void resizeBuffers(int newRegionBegin, int newRegionEnd) {
@@ -201,21 +209,8 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
     std::vector<MPI_Request> requests =
         this->ISendMetaData(destRank, communicator);
 
-    const void* colorBuffer;
-    int dummyBuffer;
-
-    if (this->getNumberOfPixels() != 0) {
-      colorBuffer = &this->colorBuffer->front();
-    } else {
-      // If our image has zero pixels, then the vector containing data is
-      // empty. We still need to send a message, and I suspect some
-      // implementations of MPI will still want a valid buffer even if we are
-      // not actually using it. So in this case, just set up a dummy buffer.
-      colorBuffer = &dummyBuffer;
-    }
-
     MPI_Request colorRequest;
-    MPI_Isend(colorBuffer,
+    MPI_Isend(this->getColorBuffer(),
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               destRank,
@@ -232,21 +227,8 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
     std::vector<MPI_Request> requests =
         this->IReceiveMetaData(sourceRank, communicator);
 
-    void* colorBuffer;
-    int dummyBuffer;
-
-    if (this->getNumberOfPixels() != 0) {
-      colorBuffer = &this->colorBuffer->front();
-    } else {
-      // If our image has zero pixels, then the vector containing data is
-      // empty. We still need to send a message, and I suspect some
-      // implementations of MPI will still want a valid buffer even if we are
-      // not actually using it. So in this case, just set up a dummy buffer.
-      colorBuffer = &dummyBuffer;
-    }
-
     MPI_Request colorRequest;
-    MPI_Irecv(colorBuffer,
+    MPI_Irecv(this->getColorBuffer(),
               this->getNumberOfPixels() * sizeof(ColorType) * ColorVecSize,
               MPI_BYTE,
               sourceRank,
