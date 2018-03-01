@@ -24,4 +24,5 @@ set(headers
 miniGraphics_executable(BinarySwapBase
   SOURCES ${srcs}
   HEADERS ${headers}
+  POWER_OF_TWO_ONLY
   )

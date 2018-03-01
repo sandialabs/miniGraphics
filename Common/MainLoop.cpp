@@ -481,7 +481,7 @@ static void checkImage(const ImageFull& fullCompositeImage,
                        const Mesh& fullMesh,
                        const glm::mat4& modelview,
                        const glm::mat4& projection) {
-  constexpr float COLOR_THRESHOLD = 0.01f;
+  constexpr float COLOR_THRESHOLD = 0.02f;
   constexpr float BAD_PIXEL_THRESHOLD = 0.02f;
 
   std::stringstream dummyStream;

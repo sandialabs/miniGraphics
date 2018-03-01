@@ -77,11 +77,23 @@ function(miniGraphics_target_features target_name)
   endif()
 endfunction(miniGraphics_target_features)
 
+# Find the largest power of two less than or equal to the given value.
+function(miniGraphics_find_power_of_two var value)
+  set(power2 1)
+  while(power2 LESS value)
+    math(EXPR power2 "${power2} * 2")
+  endwhile()
+  if (power2 GREATER value)
+    math(EXPR power2 "${power2} / 2")
+  endif()
+  set(${var} ${power2} PARENT_SCOPE)
+endfunction(miniGraphics_find_power_of_two)
+
 # Call this function to build one of the miniGraphics miniapps.
 # The first argument is the name of the miniapp. A target with that name will
 # be created. The remaining arguments are source files.
 function(miniGraphics_executable miniapp_name)
-  set(options)
+  set(options DISABLE_TESTS POWER_OF_TWO_ONLY)
   set(oneValueArgs)
   set(multiValueArgs HEADERS SOURCES)
   cmake_parse_arguments(miniGraphics_executable
@@ -109,6 +121,41 @@ function(miniGraphics_executable miniapp_name)
     PRIVATE miniGraphicsCommon miniGraphicsPaint)
 
   set_source_files_properties(${headers} HEADER_ONLY TRUE)
+
+  if(MINIGRAPHICS_ENABLE_TESTING AND NOT miniGraphics_executable_DISABLE_TESTS)
+    set(base_options
+      --width=100 --height=100
+      --trials=1
+      --yaml-output=test-runs.yaml
+      )
+    if(miniGraphics_executable_POWER_OF_TWO_ONLY)
+      miniGraphics_find_power_of_two(np ${MPIEXEC_MAX_NUMPROCS})
+    else()
+      set(np ${MPIEXEC_MAX_NUMPROCS})
+    endif()
+    foreach(color_buffer_option --color-ubyte --color-float)
+      foreach(depth_buffer_option --depth-float --depth-none)
+        foreach(image_compress_option --disable-image-compress --enable-image-compress)
+          set(test_name ${miniapp_name}${color_buffer_option}${depth_buffer_option}${image_compress_option})
+          set(test_options
+            ${base_options}
+            ${color_buffer_option}
+            ${depth_buffer_option}
+            ${image_compress_option}
+            )
+          add_test(
+            NAME ${test_name}
+            COMMAND ${MPIEXEC}
+              ${MPIEXEC_NUMPROC_FLAG} ${np}
+              ${MPIEXEC_PREFLAGS}
+              $<TARGET_FILE:${miniapp_name}>
+              ${MPIEXEC_POSTFLAGS}
+              ${test_options}
+            )
+        endforeach(image_compress_option)
+      endforeach(depth_buffer_option)
+    endforeach(color_buffer_option)
+  endif()
 endfunction(miniGraphics_executable)
 
 if(NOT TARGET miniGraphicsCommon)
