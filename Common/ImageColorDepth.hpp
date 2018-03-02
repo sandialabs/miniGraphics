@@ -140,43 +140,99 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attempting to blend invalid images.");
 
-    int numPixels = this->getNumberOfPixels();
-    assert((numPixels == otherImage->getNumberOfPixels()) &&
-           "Attempting to blend images of different sizes.");
+    const ThisType* topImage = this;
+    const ThisType* bottomImage = otherImage;
 
-    const ColorType* topColorBuffer = this->getColorBuffer();
-    const DepthType* topDepthBuffer = this->getDepthBuffer();
-    const ColorType* bottomColorBuffer = otherImage->getColorBuffer();
-    const DepthType* bottomDepthBuffer = otherImage->getDepthBuffer();
+    assert(topImage->getRegionBegin() <= bottomImage->getRegionEnd());
+    assert(bottomImage->getRegionBegin() <= topImage->getRegionEnd());
 
-    std::unique_ptr<Image> outImageHolder =
-        this->createNew(this->getWidth(),
-                        this->getHeight(),
-                        this->getRegionBegin(),
-                        this->getRegionEnd());
+    int totalRegionBegin =
+        std::min(topImage->getRegionBegin(), bottomImage->getRegionBegin());
+    int totalRegionEnd =
+        std::max(topImage->getRegionEnd(), bottomImage->getRegionEnd());
+
+    std::unique_ptr<Image> outImageHolder = topImage->createNew(
+        this->getWidth(), this->getHeight(), totalRegionBegin, totalRegionEnd);
     ThisType* outImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((outImage != NULL) && "Internal error: createNew bad type.");
-    ColorType* outColorBuffer = outImage->getColorBuffer();
-    DepthType* outDepthBuffer = outImage->getDepthBuffer();
 
-    for (int pixelIndex = 0; pixelIndex < numPixels; ++pixelIndex) {
-      if (Features::closer(bottomDepthBuffer[pixelIndex],
-                           topDepthBuffer[pixelIndex])) {
-        for (int colorComponent = 0; colorComponent < ColorVecSize;
-             ++colorComponent) {
-          outColorBuffer[pixelIndex * ColorVecSize + colorComponent] =
-              bottomColorBuffer[pixelIndex * ColorVecSize + colorComponent];
-        }
-        outDepthBuffer[pixelIndex] = bottomDepthBuffer[pixelIndex];
-      } else {
-        for (int colorComponent = 0; colorComponent < ColorVecSize;
-             ++colorComponent) {
-          outColorBuffer[pixelIndex * ColorVecSize + colorComponent] =
-              topColorBuffer[pixelIndex * ColorVecSize + colorComponent];
-        }
-        outDepthBuffer[pixelIndex] = topDepthBuffer[pixelIndex];
-      }
+    int topPixelIndex = 0;
+    int bottomPixelIndex = 0;
+    int outPixelIndex = 0;
+
+    // Manage where part of one image has a region that starts before the other
+    if (topImage->getRegionBegin() < bottomImage->getRegionBegin()) {
+      int numToCopy =
+          bottomImage->getRegionBegin() - topImage->getRegionBegin();
+      std::copy(topImage->getColorBuffer(0),
+                topImage->getColorBuffer(numToCopy),
+                outImage->getColorBuffer(0));
+      std::copy(topImage->getDepthBuffer(0),
+                topImage->getDepthBuffer(numToCopy),
+                outImage->getDepthBuffer(0));
+      topPixelIndex += numToCopy;
+      outPixelIndex += numToCopy;
+    } else if (bottomImage->getRegionBegin() < topImage->getRegionBegin()) {
+      int numToCopy =
+          topImage->getRegionBegin() - bottomImage->getRegionBegin();
+      std::copy(bottomImage->getColorBuffer(0),
+                bottomImage->getColorBuffer(numToCopy),
+                outImage->getColorBuffer(0));
+      std::copy(bottomImage->getDepthBuffer(0),
+                bottomImage->getDepthBuffer(numToCopy),
+                outImage->getDepthBuffer(0));
+      bottomPixelIndex += numToCopy;
+      outPixelIndex += numToCopy;
     }
+
+    // Blend where the two images intersect
+    while ((topPixelIndex < topImage->getNumberOfPixels()) &&
+           (bottomPixelIndex < bottomImage->getNumberOfPixels())) {
+      if (Features::closer(*bottomImage->getDepthBuffer(bottomPixelIndex),
+                           *topImage->getDepthBuffer(topPixelIndex))) {
+        std::copy(bottomImage->getColorBuffer(bottomPixelIndex),
+                  bottomImage->getColorBuffer(bottomPixelIndex + 1),
+                  outImage->getColorBuffer(outPixelIndex));
+        *outImage->getDepthBuffer(outPixelIndex) =
+            *bottomImage->getDepthBuffer(bottomPixelIndex);
+      } else {
+        std::copy(topImage->getColorBuffer(topPixelIndex),
+                  topImage->getColorBuffer(topPixelIndex + 1),
+                  outImage->getColorBuffer(outPixelIndex));
+        *outImage->getDepthBuffer(outPixelIndex) =
+            *topImage->getDepthBuffer(topPixelIndex);
+      }
+      ++topPixelIndex;
+      ++bottomPixelIndex;
+      ++outPixelIndex;
+    }
+
+    // Manage where part of one image has a region past the end of the other
+    if (topPixelIndex < topImage->getNumberOfPixels()) {
+      int numToCopy = topImage->getNumberOfPixels() - topPixelIndex;
+      std::copy(topImage->getColorBuffer(topPixelIndex),
+                topImage->getColorBuffer(topPixelIndex + numToCopy),
+                outImage->getColorBuffer(outPixelIndex));
+      std::copy(topImage->getDepthBuffer(topPixelIndex),
+                topImage->getDepthBuffer(topPixelIndex + numToCopy),
+                outImage->getDepthBuffer(outPixelIndex));
+      topPixelIndex += numToCopy;
+      outPixelIndex += numToCopy;
+    }
+
+    if (bottomPixelIndex < bottomImage->getNumberOfPixels()) {
+      int numToCopy = bottomImage->getNumberOfPixels() - bottomPixelIndex;
+      std::copy(bottomImage->getColorBuffer(bottomPixelIndex),
+                bottomImage->getColorBuffer(bottomPixelIndex + numToCopy),
+                outImage->getColorBuffer(outPixelIndex));
+      std::copy(bottomImage->getDepthBuffer(bottomPixelIndex),
+                bottomImage->getDepthBuffer(bottomPixelIndex + numToCopy),
+                outImage->getDepthBuffer(outPixelIndex));
+      bottomPixelIndex += numToCopy;
+      outPixelIndex += numToCopy;
+    }
+
+    assert(outPixelIndex == outImage->getNumberOfPixels());
 
     return outImageHolder;
   }

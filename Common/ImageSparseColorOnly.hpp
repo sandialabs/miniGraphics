@@ -165,23 +165,35 @@ class ImageSparseColorOnly : public ImageSparse {
     const ThisType* otherImage = dynamic_cast<const ThisType*>(&_otherImage);
     assert((otherImage != NULL) && "Attemptying to blend invalid images.");
 
-    if (this->pixelStorage->getNumberOfPixels() < 1) {
-      return otherImage->deepCopy();
+    const ThisType* topImage = this;
+    const ThisType* bottomImage = otherImage;
+
+    topImage->shrinkArrays();
+    bottomImage->shrinkArrays();
+
+    if (topImage->pixelStorage->getNumberOfPixels() < 1) {
+      return bottomImage->deepCopy();
     }
-    if (otherImage->pixelStorage->getNumberOfPixels() < 1) {
-      return this->deepCopy();
+    if (bottomImage->pixelStorage->getNumberOfPixels() < 1) {
+      return topImage->deepCopy();
     }
+
+    int totalRegionBegin =
+        std::min(topImage->getRegionBegin(), bottomImage->getRegionBegin());
+    int totalRegionEnd =
+        std::max(topImage->getRegionEnd(), bottomImage->getRegionEnd());
 
     int maxNumActivePixels =
-        std::min(this->pixelStorage->getNumberOfPixels() +
-                     otherImage->pixelStorage->getNumberOfPixels(),
-                 this->getNumberOfPixels());
+        std::min(topImage->pixelStorage->getNumberOfPixels() +
+                     bottomImage->pixelStorage->getNumberOfPixels(),
+                 totalRegionEnd - totalRegionBegin);
 
-    const ColorType* topColorBuffer = this->pixelStorage->getColorBuffer();
+    const ColorType* topColorBuffer = topImage->pixelStorage->getColorBuffer();
     const ColorType* bottomColorBuffer =
-        otherImage->pixelStorage->getColorBuffer();
+        bottomImage->pixelStorage->getColorBuffer();
 
-    std::unique_ptr<Image> outImageHolder = this->createNew();
+    std::unique_ptr<Image> outImageHolder = this->createNew(
+        this->getWidth(), this->getHeight(), totalRegionBegin, totalRegionEnd);
     ThisType* outImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((outImage != NULL) && "Internal error: createNew bad type.");
     outImage->pixelStorage->resizeBuffers(0, maxNumActivePixels);
@@ -192,21 +204,78 @@ class ImageSparseColorOnly : public ImageSparse {
     RunLengthRegion topRunLength;
     int bottomRunLengthIndex = 0;
     RunLengthRegion bottomRunLength;
-    outImage->runLengths->push_back(RunLengthRegion());
-    while (((topRunLengthIndex < this->runLengths->size()) ||
+
+    // Manage where part of one image has a region that starts before the other
+    if (topImage->getRegionBegin() < bottomImage->getRegionBegin()) {
+      int numToCopy =
+          bottomImage->getRegionBegin() - topImage->getRegionBegin();
+      while (numToCopy > 0) {
+        topRunLength = topImage->runLengths->at(topRunLengthIndex);
+        ++topRunLengthIndex;
+        RunLengthRegion outRunLength;
+
+        outRunLength.backgroundPixels =
+            std::min(topRunLength.backgroundPixels, numToCopy);
+        numToCopy -= outRunLength.backgroundPixels;
+        topRunLength.backgroundPixels -= outRunLength.backgroundPixels;
+
+        outRunLength.foregroundPixels =
+            std::min(topRunLength.foregroundPixels, numToCopy);
+        numToCopy -= outRunLength.foregroundPixels;
+        topRunLength.foregroundPixels -= outRunLength.foregroundPixels;
+        std::copy(topColorBuffer,
+                  topColorBuffer + outRunLength.foregroundPixels * ColorVecSize,
+                  outColorBuffer);
+        topColorBuffer += outRunLength.foregroundPixels * ColorVecSize;
+        outColorBuffer += outRunLength.foregroundPixels * ColorVecSize;
+
+        outImage->runLengths->push_back(outRunLength);
+      }
+    } else if (bottomImage->getRegionBegin() < topImage->getRegionBegin()) {
+      int numToCopy =
+          topImage->getRegionBegin() - bottomImage->getRegionBegin();
+      while (numToCopy > 0) {
+        bottomRunLength = bottomImage->runLengths->at(bottomRunLengthIndex);
+        ++bottomRunLengthIndex;
+        RunLengthRegion outRunLength;
+
+        outRunLength.backgroundPixels =
+            std::min(bottomRunLength.backgroundPixels, numToCopy);
+        numToCopy -= outRunLength.backgroundPixels;
+        bottomRunLength.backgroundPixels -= outRunLength.backgroundPixels;
+
+        outRunLength.foregroundPixels =
+            std::min(bottomRunLength.foregroundPixels, numToCopy);
+        numToCopy -= outRunLength.foregroundPixels;
+        bottomRunLength.foregroundPixels -= outRunLength.foregroundPixels;
+        std::copy(
+            bottomColorBuffer,
+            bottomColorBuffer + outRunLength.foregroundPixels * ColorVecSize,
+            outColorBuffer);
+        bottomColorBuffer += outRunLength.foregroundPixels * ColorVecSize;
+        outColorBuffer += outRunLength.foregroundPixels * ColorVecSize;
+
+        outImage->runLengths->push_back(outRunLength);
+      }
+    } else {
+      outImage->runLengths->push_back(RunLengthRegion());
+    }
+
+    // Blend where the two images intersect
+    while (((topRunLengthIndex < topImage->runLengths->size()) ||
             (topRunLength.backgroundPixels > 0) ||
             (topRunLength.foregroundPixels > 0)) &&
-           ((bottomRunLengthIndex < otherImage->runLengths->size()) ||
+           ((bottomRunLengthIndex < bottomImage->runLengths->size()) ||
             (bottomRunLength.backgroundPixels > 0) ||
             (bottomRunLength.foregroundPixels > 0))) {
       if ((topRunLength.backgroundPixels < 1) &&
           (topRunLength.foregroundPixels < 1)) {
-        topRunLength = this->runLengths->at(topRunLengthIndex);
+        topRunLength = topImage->runLengths->at(topRunLengthIndex);
         ++topRunLengthIndex;
       }
       if ((bottomRunLength.backgroundPixels < 1) &&
           (bottomRunLength.foregroundPixels < 1)) {
-        bottomRunLength = otherImage->runLengths->at(bottomRunLengthIndex);
+        bottomRunLength = bottomImage->runLengths->at(bottomRunLengthIndex);
         ++bottomRunLengthIndex;
       }
 
@@ -268,6 +337,52 @@ class ImageSparseColorOnly : public ImageSparse {
         bottomRunLength.foregroundPixels -= numPixels;
         outImage->runLengths->back().foregroundPixels += numPixels;
       }
+    }
+
+    // Manage where part of one image has a region past the end of the other
+    if ((topRunLengthIndex < topImage->runLengths->size()) ||
+        (topRunLength.backgroundPixels > 0) ||
+        (topRunLength.foregroundPixels > 0)) {
+      if ((topRunLength.backgroundPixels == 0) ||
+          (outImage->runLengths->back().foregroundPixels == 0)) {
+        outImage->runLengths->back().backgroundPixels +=
+            topRunLength.backgroundPixels;
+        outImage->runLengths->back().foregroundPixels +=
+            topRunLength.foregroundPixels;
+      } else {
+        outImage->runLengths->push_back(topRunLength);
+      }
+      outImage->runLengths->insert(
+          outImage->runLengths->end(),
+          topImage->runLengths->begin() + topRunLengthIndex,
+          topImage->runLengths->end());
+      std::copy(
+          topColorBuffer,
+          const_cast<const ColorType*>(topImage->pixelStorage->getColorBuffer(
+              topImage->pixelStorage->getNumberOfPixels())),
+          outColorBuffer);
+    }
+    if ((bottomRunLengthIndex < bottomImage->runLengths->size()) ||
+        (bottomRunLength.backgroundPixels > 0) ||
+        (bottomRunLength.foregroundPixels > 0)) {
+      if ((bottomRunLength.backgroundPixels == 0) ||
+          (outImage->runLengths->back().foregroundPixels == 0)) {
+        outImage->runLengths->back().backgroundPixels +=
+            bottomRunLength.backgroundPixels;
+        outImage->runLengths->back().foregroundPixels +=
+            bottomRunLength.foregroundPixels;
+      } else {
+        outImage->runLengths->push_back(bottomRunLength);
+      }
+      outImage->runLengths->insert(
+          outImage->runLengths->end(),
+          bottomImage->runLengths->begin() + bottomRunLengthIndex,
+          bottomImage->runLengths->end());
+      std::copy(bottomColorBuffer,
+                const_cast<const ColorType*>(
+                    bottomImage->pixelStorage->getColorBuffer(
+                        bottomImage->pixelStorage->getNumberOfPixels())),
+                outColorBuffer);
     }
 
     outImage->shrinkArrays();
