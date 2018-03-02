@@ -10,6 +10,7 @@
 #include <Common/ImageRGBAUByteColorFloatDepth.hpp>
 #include <Common/ImageRGBAUByteColorOnly.hpp>
 #include <Common/ImageRGBFloatColorDepth.hpp>
+#include <Common/SavePPM.hpp>
 
 #include <cmath>
 #include <iostream>
@@ -50,8 +51,8 @@ constexpr int IMAGE_HEIGHT = 100;
 constexpr int BORDER = 10;
 
 static void compareImages(const ImageFull& image1, const ImageFull& image2) {
-  constexpr float COLOR_THRESHOLD = 0.01f;
-  constexpr float BAD_PIXEL_THRESHOLD = 0.01f;
+  constexpr float COLOR_THRESHOLD = 0.02f;
+  constexpr float BAD_PIXEL_THRESHOLD = 0.02f;
 
   TEST_ASSERT(image1.getNumberOfPixels() == image2.getNumberOfPixels());
 
@@ -70,6 +71,14 @@ static void compareImages(const ImageFull& image1, const ImageFull& image2) {
     }
   }
 
+#if 0
+  if (!(numBadPixels <= BAD_PIXEL_THRESHOLD * numPixels) &&
+      (image1.getRegionBegin() == 0) &&
+      (image1.getRegionEnd() == image1.getNumberOfPixels())) {
+    SavePPM(image1, "image1.ppm");
+    SavePPM(image2, "image2.ppm");
+  }
+#endif
   TEST_ASSERT(numBadPixels <= BAD_PIXEL_THRESHOLD * numPixels);
 }
 
@@ -364,6 +373,7 @@ static void TestBlend() {
   std::unique_ptr<ImageType> topImage = createImage1<ImageType>();
   std::unique_ptr<ImageType> bottomImage = createImage2<ImageType>();
 
+
   std::cout << "  Blend non-empty" << std::endl;
   std::unique_ptr<Image> blendImage = topImage->blend(*bottomImage);
   compareImages(*blendImage, *createImageCombined<ImageType>());
@@ -382,6 +392,48 @@ static void TestBlend() {
   std::cout << "  Blend both empty" << std::endl;
   blendImage = emptyImage->blend(*emptyImage);
   compareImages(*blendImage, *emptyImage);
+
+  constexpr int MID1 = IMAGE_WIDTH * IMAGE_HEIGHT / 3;
+  constexpr int MID2 = IMAGE_WIDTH * IMAGE_HEIGHT / 2;
+  constexpr int END = IMAGE_WIDTH * IMAGE_HEIGHT;
+
+  std::cout << "  Blend unaligned 1" << std::endl;
+  blendImage = topImage->copySubrange(0, MID2)->blend(
+      *bottomImage->copySubrange(MID1, END));
+  compareImages(*blendImage->copySubrange(0, MID1),
+                *topImage->copySubrange(0, MID1));
+  compareImages(*blendImage->copySubrange(MID1, MID2),
+                *createImageCombined<ImageType>()->copySubrange(MID1, MID2));
+  compareImages(*blendImage->copySubrange(MID2, END),
+                *bottomImage->copySubrange(MID2, END));
+
+  std::cout << "  Blend unaligned 2" << std::endl;
+  blendImage = topImage->copySubrange(MID1, END)->blend(
+      *bottomImage->copySubrange(0, MID2));
+  compareImages(*blendImage->copySubrange(0, MID1),
+                *bottomImage->copySubrange(0, MID1));
+  compareImages(*blendImage->copySubrange(MID1, MID2),
+                *createImageCombined<ImageType>()->copySubrange(MID1, MID2));
+  compareImages(*blendImage->copySubrange(MID2, END),
+                *topImage->copySubrange(MID2, END));
+
+  std::cout << "  Blend unaligned 3" << std::endl;
+  blendImage = topImage->copySubrange(MID1, MID2)->blend(*bottomImage);
+  compareImages(*blendImage->copySubrange(0, MID1),
+                *bottomImage->copySubrange(0, MID1));
+  compareImages(*blendImage->copySubrange(MID1, MID2),
+                *createImageCombined<ImageType>()->copySubrange(MID1, MID2));
+  compareImages(*blendImage->copySubrange(MID2, END),
+                *bottomImage->copySubrange(MID2, END));
+
+  std::cout << "  Blend unaligned 4" << std::endl;
+  blendImage = topImage->blend(*bottomImage->copySubrange(MID1, MID2));
+  compareImages(*blendImage->copySubrange(0, MID1),
+                *topImage->copySubrange(0, MID1));
+  compareImages(*blendImage->copySubrange(MID1, MID2),
+                *createImageCombined<ImageType>()->copySubrange(MID1, MID2));
+  compareImages(*blendImage->copySubrange(MID2, END),
+                *topImage->copySubrange(MID2, END));
 }
 
 template <typename ImageType>

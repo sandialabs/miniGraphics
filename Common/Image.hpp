@@ -92,6 +92,13 @@ class Image {
   /// When blending, this image is blended "on top" of the other image. Some
   /// blend operations (like z-buffer) do not depend on the blendOrder, so in
   /// those cases it will be ignored.
+  ///
+  /// The blending will respect the region windowed in the image. The region of
+  /// the output will be the union of the two regions. If the region begin of
+  /// one image is before that of the other, that part of the image is copied
+  /// to the output. Likewise for the region end. It is an error to have a gap
+  /// between the region end of one image and the region begin of the other.
+  ///
   virtual std::unique_ptr<Image> blend(const Image& otherImage) const = 0;
 
   /// \brief Returns whether blending in this buffer is order dependent.
