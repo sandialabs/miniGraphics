@@ -83,7 +83,7 @@ std::unique_ptr<Image> BinarySwapFold::compose(Image *localImage,
 
   // Create a new group with the folded processes removed.
   MPI_Group subGroup;
-  MPI_Group_excl(group, numProcsToRemove, &procsToRemove.front(), &subGroup);
+  MPI_Group_excl(group, numProcsToRemove, procsToRemove.data(), &subGroup);
 
   // Now call the base binary-swap algorithm.
   std::unique_ptr<Image> resultImage =

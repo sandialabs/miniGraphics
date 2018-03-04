@@ -399,7 +399,7 @@ static MPI_Group createComposeGroup(bool blendIsOrderDependent,
     }
 
     MPI_Group composeGroup;
-    MPI_Group_incl(globalGroup, numProc, &rankOrder.front(), &composeGroup);
+    MPI_Group_incl(globalGroup, numProc, rankOrder.data(), &composeGroup);
     MPI_Group_free(&globalGroup);
     return composeGroup;
   } else {
@@ -831,35 +831,35 @@ int MainLoop(int argc,
 
   RunOptions runOptions;
 
-  option::Stats stats(&usage.front(), argc - 1, argv + 1);  // Skip program name
+  option::Stats stats(usage.data(), argc - 1, argv + 1);  // Skip program name
   std::vector<option::Option> options(stats.options_max);
   std::vector<option::Option> buffer(stats.buffer_max);
   option::Parser parse(
-      &usage.front(), argc - 1, argv + 1, &options.front(), &buffer.front());
+      usage.data(), argc - 1, argv + 1, options.data(), buffer.data());
 
   if (parse.error()) {
     return 1;
   }
 
   if (options[HELP]) {
-    option::printUsage(std::cout, &usage.front());
+    option::printUsage(std::cout, usage.data());
     return 0;
   }
 
   if (options[DUMMY]) {
     std::cerr << "Unknown option: " << options[DUMMY].name << std::endl;
-    option::printUsage(std::cerr, &usage.front());
+    option::printUsage(std::cerr, usage.data());
     return 1;
   }
 
   if (parse.nonOptionsCount() > 0) {
     std::cerr << "Unknown option: " << parse.nonOption(0) << std::endl;
-    option::printUsage(std::cerr, &usage.front());
+    option::printUsage(std::cerr, usage.data());
     return 1;
   }
 
   if (!compositor->setOptions(options, yaml)) {
-    option::printUsage(std::cerr, &usage.front());
+    option::printUsage(std::cerr, usage.data());
     return 1;
   }
 

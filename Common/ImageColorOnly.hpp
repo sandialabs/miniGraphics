@@ -61,18 +61,10 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
   ~ImageColorOnly() = default;
 
   ColorType* getColorBuffer(int pixelIndex = 0) {
-    if (!this->colorBuffer->empty()) {
-      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
-    } else {
-      return nullptr;
-    }
+    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
-    if (!this->colorBuffer->empty()) {
-      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
-    } else {
-      return nullptr;
-    }
+    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
   }
 
   void resizeBuffers(int newRegionBegin, int newRegionEnd) {
@@ -216,7 +208,7 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
     MPI_Gather(&regionBegin,
                1,
                MPI_INT,
-               &allRegionBegin.front(),
+               allRegionBegin.data(),
                1,
                MPI_INT,
                recvRank,
@@ -227,7 +219,7 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
     MPI_Gather(&dataSize,
                1,
                MPI_INT,
-               &allRegionCounts.front(),
+               allRegionCounts.data(),
                1,
                MPI_INT,
                recvRank,
@@ -245,8 +237,8 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
                 dataSize,
                 MPI_BYTE,
                 recvImage->getColorBuffer(),
-                &allRegionCounts.front(),
-                &allRegionBegin.front(),
+                allRegionCounts.data(),
+                allRegionBegin.data(),
                 MPI_BYTE,
                 recvRank,
                 communicator);

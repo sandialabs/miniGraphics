@@ -72,33 +72,17 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
   ~ImageColorDepth() = default;
 
   ColorType* getColorBuffer(int pixelIndex = 0) {
-    if (!this->colorBuffer->empty()) {
-      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
-    } else {
-      return nullptr;
-    }
+    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
-    if (!this->colorBuffer->empty()) {
-      return &this->colorBuffer->front() + (pixelIndex * ColorVecSize);
-    } else {
-      return nullptr;
-    }
+    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
   }
 
   DepthType* getDepthBuffer(int pixelIndex = 0) {
-    if (!this->depthBuffer->empty()) {
-      return &this->depthBuffer->front() + pixelIndex;
-    } else {
-      return nullptr;
-    }
+    return this->depthBuffer->data() + pixelIndex;
   }
   const DepthType* getDepthBuffer(int pixelIndex = 0) const {
-    if (!this->depthBuffer->empty()) {
-      return &this->depthBuffer->front() + pixelIndex;
-    } else {
-      return nullptr;
-    }
+    return this->depthBuffer->data() + pixelIndex;
   }
 
   void resizeBuffers(int newRegionBegin, int newRegionEnd) {
@@ -274,7 +258,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     MPI_Gather(&regionBegin,
                1,
                MPI_INT,
-               &allRegionBegin.front(),
+               allRegionBegin.data(),
                1,
                MPI_INT,
                recvRank,
@@ -285,7 +269,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     MPI_Gather(&dataSize,
                1,
                MPI_INT,
-               &allRegionCounts.front(),
+               allRegionCounts.data(),
                1,
                MPI_INT,
                recvRank,
@@ -303,8 +287,8 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
                 dataSize,
                 MPI_BYTE,
                 recvImage->getColorBuffer(),
-                &allRegionCounts.front(),
-                &allRegionBegin.front(),
+                allRegionCounts.data(),
+                allRegionBegin.data(),
                 MPI_BYTE,
                 recvRank,
                 communicator);

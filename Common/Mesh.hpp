@@ -60,44 +60,44 @@ class Mesh {
   float* getPointCoordinatesBuffer(int vertexIndex = 0) {
     assert((vertexIndex >= 0) && (vertexIndex) <= this->getNumberOfVertices());
     this->boundsValid = false;
-    return &this->pointCoordinates.front() + (3 * vertexIndex);
+    return this->pointCoordinates.data() + (3 * vertexIndex);
   }
   const float* getPointCoordinatesBuffer(int vertexIndex = 0) const {
     assert((vertexIndex >= 0) && (vertexIndex) <= this->getNumberOfVertices());
-    return &this->pointCoordinates.front() + (3 * vertexIndex);
+    return this->pointCoordinates.data() + (3 * vertexIndex);
   }
 
   int* getTriangleConnectionsBuffer(int triangleIndex = 0) {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
-    return &this->triangleConnections.front() + (3 * triangleIndex);
+    return this->triangleConnections.data() + (3 * triangleIndex);
   }
   const int* getTriangleConnectionsBuffer(int triangleIndex = 0) const {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
-    return &this->triangleConnections.front() + (3 * triangleIndex);
+    return this->triangleConnections.data() + (3 * triangleIndex);
   }
 
   float* getTriangleNormalsBuffer(int triangleIndex = 0) {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
-    return &this->triangleNormals.front() + (3 * triangleIndex);
+    return this->triangleNormals.data() + (3 * triangleIndex);
   }
   const float* getTriangleNormalsBuffer(int triangleIndex = 0) const {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
-    return &this->triangleNormals.front() + (3 * triangleIndex);
+    return this->triangleNormals.data() + (3 * triangleIndex);
   }
 
   float* getTriangleColorsBuffer(int triangleIndex = 0) {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
-    return &this->triangleColors.front() + (4 * triangleIndex);
+    return this->triangleColors.data() + (4 * triangleIndex);
   }
   const float* getTriangleColorsBuffer(int triangleIndex = 0) const {
     assert((triangleIndex >= 0) &&
            (triangleIndex <= this->getNumberOfTriangles()));
-    return &this->triangleColors.front() + (4 * triangleIndex);
+    return this->triangleColors.data() + (4 * triangleIndex);
   }
 
   glm::vec3 getPointCoordinates(int vertexIndex) const;

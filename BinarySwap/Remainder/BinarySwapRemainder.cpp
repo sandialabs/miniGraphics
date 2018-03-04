@@ -56,11 +56,10 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
       std::vector<MPI_Request> bottomSendRequests = bottomHalf->ISend(
           getRealRank(workingGroup, numProc - 2, communicator), communicator);
 
-      MPI_Waitall(topSendRequests.size(),
-                  &topSendRequests.front(),
-                  MPI_STATUSES_IGNORE);
+      MPI_Waitall(
+          topSendRequests.size(), topSendRequests.data(), MPI_STATUSES_IGNORE);
       MPI_Waitall(bottomSendRequests.size(),
-                  &bottomSendRequests.front(),
+                  bottomSendRequests.data(),
                   MPI_STATUSES_IGNORE);
 
       workingImage = workingImage->copySubrange(0, 0);
@@ -103,8 +102,7 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
         getRealRank(workingGroup, partnerRank, communicator), communicator);
 
     // Wait for my image to come in.
-    MPI_Waitall(
-        recvRequests.size(), &recvRequests.front(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(recvRequests.size(), recvRequests.data(), MPI_STATUSES_IGNORE);
 
     // Blend the incoming image and set the workingImage to the result.
     switch (role) {
@@ -124,8 +122,7 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
     }
 
     // Wait for my images to finish sending.
-    MPI_Waitall(
-        sendRequests.size(), &sendRequests.front(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUSES_IGNORE);
 
     // Create a sub-communicator containing all the processes with same portion
     // of the image as me.
