@@ -172,7 +172,7 @@ void BinarySwapTelescoping::composeLittleGroup(Image *localImage,
   }
 
   // Wait for everything to finish sending.
-  MPI_Waitall(sendRequests.size(), &sendRequests.front(), MPI_STATUSES_IGNORE);
+  MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUSES_IGNORE);
 }
 
 std::unique_ptr<Image> BinarySwapTelescoping::compose(Image *localImage,

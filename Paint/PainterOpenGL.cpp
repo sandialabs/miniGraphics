@@ -198,7 +198,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
   glBufferData(GL_ARRAY_BUFFER,
                vertexBufferData.size() * sizeof(float),
-               &vertexBufferData.front(),
+               vertexBufferData.data(),
                GL_STATIC_DRAW);
 
   GLuint normalbuffer;
@@ -206,7 +206,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
   glBufferData(GL_ARRAY_BUFFER,
                normalBufferData.size() * sizeof(float),
-               &normalBufferData.front(),
+               normalBufferData.data(),
                GL_STATIC_DRAW);
 
   GLuint colorbuffer;
@@ -214,7 +214,7 @@ void PainterOpenGL::paint(const Mesh& mesh,
   glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
   glBufferData(GL_ARRAY_BUFFER,
                colorBufferData.size() * sizeof(float),
-               &colorBufferData.front(),
+               colorBufferData.data(),
                GL_STATIC_DRAW);
 
   // ---------------------------------------------

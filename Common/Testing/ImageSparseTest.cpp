@@ -379,12 +379,10 @@ static void TryTransfer(const ImageType& srcImage) {
 
   std::vector<MPI_Request> sendRequests = srcImage.ISend(rank, MPI_COMM_WORLD);
 
-  std::vector<MPI_Status> statuses(recvRequests.size());
-  MPI_Waitall(recvRequests.size(), &recvRequests.front(), &statuses.front());
+  MPI_Waitall(recvRequests.size(), recvRequests.data(), MPI_STATUSES_IGNORE);
   compareImages(srcImage, *destImage);
 
-  statuses.resize(sendRequests.size());
-  MPI_Waitall(sendRequests.size(), &sendRequests.front(), &statuses.front());
+  MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUSES_IGNORE);
 }
 
 template <typename ImageType>

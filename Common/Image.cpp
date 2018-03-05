@@ -31,17 +31,15 @@ std::unique_ptr<Image> Image::createNew() const {
 void Image::Send(int destRank, MPI_Comm communicator) const {
   std::vector<MPI_Request> requests = this->ISend(destRank, communicator);
 
-  MPI_Waitall(static_cast<int>(requests.size()),
-              &requests.front(),
-              MPI_STATUSES_IGNORE);
+  MPI_Waitall(
+      static_cast<int>(requests.size()), requests.data(), MPI_STATUSES_IGNORE);
 }
 
 void Image::Receive(int sourceRank, MPI_Comm communicator) {
   std::vector<MPI_Request> requests = this->IReceive(sourceRank, communicator);
 
-  MPI_Waitall(static_cast<int>(requests.size()),
-              &requests.front(),
-              MPI_STATUSES_IGNORE);
+  MPI_Waitall(
+      static_cast<int>(requests.size()), requests.data(), MPI_STATUSES_IGNORE);
 }
 
 static const int IMAGE_INTERNALS_TAG = 59463;

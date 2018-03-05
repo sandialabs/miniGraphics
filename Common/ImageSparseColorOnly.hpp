@@ -532,13 +532,8 @@ class ImageSparseColorOnly : public ImageSparse {
     // Make sure we don't send arrays larger than necessary.
     this->shrinkArrays();
 
-    const void* rlBuffer = NULL;
-    if (this->runLengths->size() != 0) {
-      rlBuffer = &this->runLengths->front();
-    }
-
     MPI_Request runLengthsRequest;
-    MPI_Isend(rlBuffer,
+    MPI_Isend(this->runLengths->data(),
               sizeof(RunLengthRegion) * this->runLengths->size(),
               MPI_BYTE,
               destRank,
@@ -574,7 +569,7 @@ class ImageSparseColorOnly : public ImageSparse {
     // Make sure run length buffer large enough for maximum size image.
     this->runLengths->resize(this->getNumberOfPixels() / 2 + 1);
     MPI_Request runLengthsRequest;
-    MPI_Irecv(&this->runLengths->front(),
+    MPI_Irecv(this->runLengths->data(),
               sizeof(RunLengthRegion) * this->runLengths->size(),
               MPI_BYTE,
               sourceRank,
