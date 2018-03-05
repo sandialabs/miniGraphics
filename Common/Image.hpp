@@ -136,6 +136,21 @@ class Image {
   virtual std::unique_ptr<Image> copySubrange(int subregionBegin,
                                               int subregionEnd) const = 0;
 
+  /// \brief Creates a shallow copy containing a subrange of the given image.
+  ///
+  /// Returns a new image object that contains a shallow copy of the data
+  /// from this image, but adjusts the region to look at a smaller window
+  /// of the data. This is useful to transfer or blend a subregion of the
+  /// image without incurring the cost of copying the data.
+  ///
+  /// Note that the argument \c subregionBegin and \c subregionEnd are given
+  /// with respect to the region of the current image. Thus, if the current
+  /// region is from pixel 100 to pixel 200 and you call \c CopySubrange from
+  /// 50 to 100, you get the second 50 pixels currently held, which are in the
+  /// position of pixels 150 to 200 with respect to the original image.
+  virtual std::unique_ptr<const Image> window(int subregionBegin,
+                                              int subregionEnd) const = 0;
+
   std::unique_ptr<Image> deepCopy() const {
     return this->copySubrange(0, this->getNumberOfPixels());
   }

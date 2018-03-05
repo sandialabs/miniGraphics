@@ -14,11 +14,14 @@
 class ImageSparse;
 
 class ImageFull : public Image {
+ protected:
+  int bufferOffset;
+
  public:
   ImageFull(int _width, int _height)
-      : Image(_width, _height, 0, _width * _height) {}
+      : Image(_width, _height, 0, _width * _height), bufferOffset(0) {}
   ImageFull(int _width, int _height, int _regionBegin, int _regionEnd)
-      : Image(_width, _height, _regionBegin, _regionEnd) {}
+      : Image(_width, _height, _regionBegin, _regionEnd), bufferOffset(0) {}
 
   /// \brief Gets the color of the n'th pixel.
   virtual Color getColor(int pixelIndex) const = 0;
@@ -58,6 +61,24 @@ class ImageFull : public Image {
   /// If this image does not have a depth plane, this does nothing.
   void setDepth(int x, int y, float depth) {
     this->setDepth(this->pixelIndex(x, y), depth);
+  }
+
+  std::unique_ptr<const Image> window(int subregionBegin,
+                                      int subregionEnd) const final {
+    assert(subregionBegin <= subregionEnd);
+    assert(subregionBegin >= 0);
+    assert(subregionEnd <= this->getNumberOfPixels());
+
+    std::unique_ptr<const Image> windowedImageHolder = this->shallowCopy();
+    ImageFull* windowedImage = const_cast<ImageFull*>(
+        dynamic_cast<const ImageFull*>(windowedImageHolder.get()));
+    windowedImage->resize(this->getWidth(),
+                          this->getHeight(),
+                          subregionBegin + this->getRegionBegin(),
+                          subregionEnd + this->getRegionBegin());
+    windowedImage->bufferOffset = this->bufferOffset + subregionBegin;
+
+    return windowedImageHolder;
   }
 
   virtual std::unique_ptr<ImageSparse> compress() const = 0;

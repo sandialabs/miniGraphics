@@ -19,6 +19,7 @@ set(srcs
   ImageRGBAUByteColorFloatDepth.cpp
   ImageRGBAUByteColorOnly.cpp
   ImageRGBFloatColorDepth.cpp
+  ImageSparse.cpp
   MakeBox.cpp
   MainLoop.cpp
   Mesh.cpp
