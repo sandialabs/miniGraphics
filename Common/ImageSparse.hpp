@@ -121,7 +121,13 @@ class ImageSparse : public Image {
     assert((totalInactivePixels + totalActivePixels) ==
            this->getNumberOfPixels());
     assert(totalActivePixels <= pixelStorage.getNumberOfPixels());
-    pixelStorage.resizeBuffers(0, totalActivePixels);
+    if (totalActivePixels < pixelStorage.getNumberOfPixels()) {
+      // Only resize if you are actually shrinking the array. If you have a
+      // shared storage (i.e. from calling window), that can mess up storage
+      // for other objects. You should only have to shrink the array when you
+      // created it larger than necessary.
+      pixelStorage.resizeBuffers(0, totalActivePixels);
+    }
     this->runLengths->resize(runLengthSize);
   }
 

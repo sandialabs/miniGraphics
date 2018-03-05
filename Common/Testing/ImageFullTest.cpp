@@ -449,8 +449,13 @@ static void TestWindow() {
 
   std::unique_ptr<ImageType> originalImage = createImage1<ImageType>();
 
-  std::unique_ptr<const Image> windowImage = originalImage->window(MID1, MID3);
-  compareImages(*windowImage, *createImage1<ImageType>(MID1, MID3));
+  std::unique_ptr<const Image> windowImage = originalImage->window(MID1, MID2);
+  compareImages(*windowImage, *createImage1<ImageType>(MID1, MID2));
+
+  std::cout << "  Two windows from the same image." << std::endl;
+  std::unique_ptr<const Image> windowImage2 = originalImage->window(MID2, MID3);
+  compareImages(*windowImage2, *createImage1<ImageType>(MID2, MID3));
+  compareImages(*windowImage, *createImage1<ImageType>(MID1, MID2));
 
   std::cout << "  Window of window" << std::endl;
   windowImage = originalImage->window(MID1, MID3 + 10);
