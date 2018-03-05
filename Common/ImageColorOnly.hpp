@@ -296,7 +296,7 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
 
     ColorType* cBuffer = this->getColorBuffer();
 
-    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+    for (int pixelIndex = 0; pixelIndex < numPixels; ++pixelIndex) {
       for (int colorComponent = 0; colorComponent < ColorVecSize;
            ++colorComponent) {
         cBuffer[pixelIndex * ColorVecSize + colorComponent] =
