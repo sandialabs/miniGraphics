@@ -406,6 +406,7 @@ static void TestSubrange() {
 
   constexpr int MID1 = IMAGE_WIDTH * IMAGE_HEIGHT / 3;
   constexpr int MID2 = IMAGE_WIDTH * IMAGE_HEIGHT / 2;
+  constexpr int MID3 = 2 * IMAGE_WIDTH * IMAGE_HEIGHT / 3;
 
   std::unique_ptr<ImageSparse> srcImage = createImage1<ImageType>()->compress();
 
@@ -420,6 +421,11 @@ static void TestSubrange() {
   std::cout << "    End" << std::endl;
   subImage = srcImage->copySubrange(MID2, IMAGE_WIDTH * IMAGE_HEIGHT);
   compareImages(*subImage, *createImage1<ImageType>(MID2));
+
+  std::cout << "  Subrange of subrange" << std::endl;
+  subImage = srcImage->copySubrange(MID1, MID3 + 10);
+  subImage = subImage->copySubrange(MID2 - MID1, MID3 - MID1);
+  compareImages(*subImage, *createImage1<ImageType>(MID2, MID3));
 }
 
 template <typename ImageType>
@@ -491,6 +497,48 @@ static void TestBlend() {
 }
 
 template <typename ImageType>
+static void TestWindow() {
+  std::cout << "  Window image" << std::endl;
+  constexpr int MID1 = IMAGE_WIDTH * IMAGE_HEIGHT / 3;
+  constexpr int MID2 = IMAGE_WIDTH * IMAGE_HEIGHT / 2;
+  constexpr int MID3 = 2 * IMAGE_WIDTH * IMAGE_HEIGHT / 3;
+
+  std::unique_ptr<ImageSparse> originalImage =
+      createImage1<ImageType>()->compress();
+
+  std::unique_ptr<const Image> windowImage = originalImage->window(MID1, MID2);
+  compareImages(*windowImage, *createImage1<ImageType>(MID1, MID2));
+
+  std::cout << "  Two windows from the same image." << std::endl;
+  std::unique_ptr<const Image> windowImage2 = originalImage->window(MID2, MID3);
+  compareImages(*windowImage2, *createImage1<ImageType>(MID2, MID3));
+  compareImages(*windowImage, *createImage1<ImageType>(MID1, MID2));
+
+  std::cout << "  Window of window" << std::endl;
+  windowImage = originalImage->window(MID1, MID3 + 10);
+  windowImage = windowImage->window(MID2 - MID1, MID3 - MID1);
+  compareImages(*windowImage, *createImage1<ImageType>(MID2, MID3));
+
+  std::cout << "  Window transfer" << std::endl;
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  std::unique_ptr<Image> destImage = windowImage->createNew();
+  std::vector<MPI_Request> recvRequests =
+      destImage->IReceive(rank, MPI_COMM_WORLD);
+
+  windowImage->Send(rank, MPI_COMM_WORLD);
+
+  MPI_Waitall(recvRequests.size(), recvRequests.data(), MPI_STATUSES_IGNORE);
+  compareImages(*windowImage, *destImage);
+
+  std::cout << "  Window blend" << std::endl;
+  std::unique_ptr<Image> blendedImage =
+      windowImage->blend(*createImage2<ImageType>(MID2, MID3)->compress());
+  compareImages(*blendedImage, *createImageCombined<ImageType>(MID2, MID3));
+}
+
+template <typename ImageType>
 static void DoImageTest(const std::string& imageTypeName) {
   std::cout << imageTypeName << std::endl;
   TestCompressUncompress<ImageType>();
@@ -499,6 +547,7 @@ static void DoImageTest(const std::string& imageTypeName) {
   TestTransfer<ImageType>();
   TestSubrange<ImageType>();
   TestBlend<ImageType>();
+  TestWindow<ImageType>();
 }
 
 #define DO_IMAGE_TEST(ImageType) DoImageTest<ImageType>(#ImageType)

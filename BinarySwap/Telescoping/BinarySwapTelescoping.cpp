@@ -42,9 +42,9 @@ static int imagePieceToRank(int piece, int numProc) {
   return rankToImagePiece(piece, numProc);
 }
 
-static std::unique_ptr<Image> getSubregion(const Image &image,
-                                           int pieceIndex,
-                                           int numPieces) {
+static std::unique_ptr<const Image> getSubregion(const Image &image,
+                                                 int pieceIndex,
+                                                 int numPieces) {
   int subRegionBegin = 0;
   int subRegionEnd = image.getNumberOfPixels();
 
@@ -61,7 +61,7 @@ static std::unique_ptr<Image> getSubregion(const Image &image,
     }
   }
 
-  return image.copySubrange(subRegionBegin, subRegionEnd);
+  return image.window(subRegionBegin, subRegionEnd);
 }
 
 static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
@@ -157,7 +157,7 @@ void BinarySwapTelescoping::composeLittleGroup(Image *localImage,
   int firstCorrespondingPieceIndex =
       myPieceIndex * numImagePiecesInEachLittleProc;
 
-  std::vector<std::unique_ptr<Image>> subImages;
+  std::vector<std::unique_ptr<const Image>> subImages;
   std::vector<MPI_Request> sendRequests;
   for (int subPieceIndex = 0; subPieceIndex < numImagePiecesInEachLittleProc;
        ++subPieceIndex) {

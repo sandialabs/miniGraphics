@@ -41,11 +41,11 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
 
   while (numProc > 1) {
     // At each iteration of the binary-swap algorithm, divide the image in half.
-    std::unique_ptr<Image> topHalf =
-        workingImage->copySubrange(0, workingImage->getNumberOfPixels() / 2);
-    std::unique_ptr<Image> bottomHalf =
-        workingImage->copySubrange(workingImage->getNumberOfPixels() / 2,
-                                   workingImage->getNumberOfPixels());
+    std::unique_ptr<const Image> topHalf =
+        workingImage->window(0, workingImage->getNumberOfPixels() / 2);
+    std::unique_ptr<const Image> bottomHalf =
+        workingImage->window(workingImage->getNumberOfPixels() / 2,
+                             workingImage->getNumberOfPixels());
 
     bool haveRemainder = ((numProc % 2) == 1);
     if (haveRemainder && (rank == (numProc - 1))) {
@@ -66,8 +66,8 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
       break;
     }
 
-    std::unique_ptr<Image> toKeep;
-    std::unique_ptr<Image> toSend;
+    std::unique_ptr<const Image> toKeep;
+    std::unique_ptr<const Image> toSend;
 
     int partnerRank;
 

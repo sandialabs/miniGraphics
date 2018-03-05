@@ -44,7 +44,7 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
 
   std::shared_ptr<std::vector<ColorType>> colorBuffer;
 
-  static const int COLOR_BUFFER_TAG = 12900;  // Should be constexpr
+  static constexpr int COLOR_BUFFER_TAG = 12900;
 
  public:
   ImageColorOnly(int _width, int _height)
@@ -61,10 +61,12 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
   ~ImageColorOnly() = default;
 
   ColorType* getColorBuffer(int pixelIndex = 0) {
-    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
+    return this->colorBuffer->data() +
+           ((pixelIndex + this->bufferOffset) * ColorVecSize);
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
-    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
+    return this->colorBuffer->data() +
+           ((pixelIndex + this->bufferOffset) * ColorVecSize);
   }
 
   void resizeBuffers(int newRegionBegin, int newRegionEnd) {
@@ -294,7 +296,7 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
 
     ColorType* cBuffer = this->getColorBuffer();
 
-    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+    for (int pixelIndex = 0; pixelIndex < numPixels; ++pixelIndex) {
       for (int colorComponent = 0; colorComponent < ColorVecSize;
            ++colorComponent) {
         cBuffer[pixelIndex * ColorVecSize + colorComponent] =

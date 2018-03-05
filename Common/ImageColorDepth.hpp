@@ -72,17 +72,19 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
   ~ImageColorDepth() = default;
 
   ColorType* getColorBuffer(int pixelIndex = 0) {
-    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
+    return this->colorBuffer->data() +
+           ((pixelIndex + this->bufferOffset) * ColorVecSize);
   }
   const ColorType* getColorBuffer(int pixelIndex = 0) const {
-    return this->colorBuffer->data() + (pixelIndex * ColorVecSize);
+    return this->colorBuffer->data() +
+           ((pixelIndex + this->bufferOffset) * ColorVecSize);
   }
 
   DepthType* getDepthBuffer(int pixelIndex = 0) {
-    return this->depthBuffer->data() + pixelIndex;
+    return this->depthBuffer->data() + pixelIndex + this->bufferOffset;
   }
   const DepthType* getDepthBuffer(int pixelIndex = 0) const {
-    return this->depthBuffer->data() + pixelIndex;
+    return this->depthBuffer->data() + pixelIndex + this->bufferOffset;
   }
 
   void resizeBuffers(int newRegionBegin, int newRegionEnd) {
@@ -367,7 +369,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     ColorType* cBuffer = this->getColorBuffer();
     DepthType* dBuffer = this->getDepthBuffer();
 
-    for (int pixelIndex = 1; pixelIndex < numPixels; ++pixelIndex) {
+    for (int pixelIndex = 0; pixelIndex < numPixels; ++pixelIndex) {
       for (int colorComponent = 0; colorComponent < ColorVecSize;
            ++colorComponent) {
         cBuffer[pixelIndex * ColorVecSize + colorComponent] =
