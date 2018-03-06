@@ -13,12 +13,14 @@ int ImageSparse::RunLengthIterator::advance(int numPixels) {
   while (numPixels > 0) {
     if (numPixels < this->workingRegion.backgroundPixels) {
       this->workingRegion.backgroundPixels -= numPixels;
+      this->verify();
       return numActivePixels;
     } else {
       numPixels -= this->workingRegion.backgroundPixels;
       this->workingRegion.backgroundPixels = 0;
       if (numPixels < this->workingRegion.foregroundPixels) {
         this->workingRegion.foregroundPixels -= numPixels;
+        this->verify();
         return numActivePixels + numPixels;
       } else {
         numPixels -= this->workingRegion.foregroundPixels;
@@ -28,6 +30,7 @@ int ImageSparse::RunLengthIterator::advance(int numPixels) {
       }
     }
   }
+  this->verify();
   return numActivePixels;
 }
 
@@ -42,6 +45,7 @@ void ImageSparse::RunLengthIterator::copyPixels(
       // Only background pixels to copy over.
       outRunlengths.push_back(RunLengthRegion(numPixels, 0));
       this->workingRegion.backgroundPixels -= numPixels;
+      this->updateWorkingRegion();
       return;
     } else if (numPixels <= this->getWorkingPixels()) {
       // Copy over all background pixels and remaining foreground pixels
@@ -51,6 +55,7 @@ void ImageSparse::RunLengthIterator::copyPixels(
           RunLengthRegion(this->workingRegion.backgroundPixels, numPixels));
       this->workingRegion.backgroundPixels = 0;
       this->workingRegion.foregroundPixels -= numPixels;
+      this->updateWorkingRegion();
       return;
     } else {
       // Copy over entire run length and iterate to next one
@@ -59,7 +64,9 @@ void ImageSparse::RunLengthIterator::copyPixels(
       numPixels -= this->getWorkingPixels();
       this->workingRegion = *this->currentRegion;
       ++this->currentRegion;
+      this->updateWorkingRegion();
     }
+    this->verify();
   }
 }
 

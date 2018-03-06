@@ -40,6 +40,12 @@ class ImageSparse : public Image {
       }
     }
 
+    inline void verify() const {
+      assert((this->currentRegion == this->endRegion) ||
+             (this->workingRegion.backgroundPixels > 0) ||
+             (this->workingRegion.foregroundPixels > 0));
+    }
+
    public:
     RunLengthIterator(const std::vector<RunLengthRegion>& runLengths)
         : currentRegion(runLengths.begin()), endRegion(runLengths.end()) {
