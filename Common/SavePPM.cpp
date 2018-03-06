@@ -8,9 +8,12 @@
 
 #include "SavePPM.hpp"
 
+#include <Common/ImageFull.hpp>
+#include <Common/ImageSparse.hpp>
+
 #include <fstream>
 
-bool SavePPM(const ImageFull& image, const std::string& filename) {
+static bool doSavePPM(const ImageFull &image, const std::string &filename) {
   std::ofstream file(filename.c_str(),
                      std::ios_base::binary | std::ios_base::out);
 
@@ -29,4 +32,33 @@ bool SavePPM(const ImageFull& image, const std::string& filename) {
 
   file.close();
   return !file.fail();
+}
+
+static bool doSavePPM(const Image &image, const std::string &filename) {
+  const ImageFull *fullImage = dynamic_cast<const ImageFull *>(&image);
+  if (fullImage != nullptr) {
+    return doSavePPM(*fullImage, filename);
+  }
+
+  const ImageSparse *sparseImage = dynamic_cast<const ImageSparse *>(&image);
+  if (sparseImage != nullptr) {
+    return doSavePPM(*sparseImage->uncompress(), filename);
+  }
+
+  return false;
+}
+
+bool SavePPM(const Image &image, const std::string &filename) {
+  int totalPixels = image.getWidth() * image.getHeight();
+
+  if ((image.getRegionBegin() == 0) && (image.getRegionEnd() == totalPixels)) {
+    return doSavePPM(image, filename);
+  }
+
+  // If we only have a region of the image, blend it to a clear image to fill
+  // it to its width and height.
+  std::unique_ptr<Image> blankImage =
+      image.createNew(image.getWidth(), image.getHeight(), 0, totalPixels);
+  blankImage->clear();
+  return doSavePPM(*image.blend(*blankImage), filename);
 }
