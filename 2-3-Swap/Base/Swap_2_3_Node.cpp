@@ -137,12 +137,12 @@ void Swap_2_3_Node::setup(MPI_Group _group,
       for (int i = 0; i < subSize1; ++i) {
         this->regionIndices[3 * i] = this->subnodes[0]->regionIndices[i];
         this->regionIndices[3 * i + 1] =
-            (this->subnodes[0]->regionIndices[i] +
+            (2 * this->subnodes[0]->regionIndices[i] +
              this->subnodes[0]->regionIndices[i + 1]) /
             3;
         this->regionIndices[3 * i + 2] =
-            2 * (this->subnodes[0]->regionIndices[i] +
-                 this->subnodes[0]->regionIndices[i + 1]) /
+            (this->subnodes[0]->regionIndices[i] +
+             2 * this->subnodes[0]->regionIndices[i + 1]) /
             3;
       }
     } else {
