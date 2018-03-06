@@ -148,11 +148,14 @@ class ImageSparseColorDepth : public ImageSparse {
     topImage->shrinkArrays();
     bottomImage->shrinkArrays();
 
-    if (topImage->pixelStorage->getNumberOfPixels() < 1) {
-      return bottomImage->deepCopy();
-    }
-    if (bottomImage->pixelStorage->getNumberOfPixels() < 1) {
-      return topImage->deepCopy();
+    if ((topImage->getRegionBegin() == bottomImage->getRegionBegin()) &&
+        (topImage->getRegionEnd() == bottomImage->getRegionEnd())) {
+      if (topImage->pixelStorage->getNumberOfPixels() < 1) {
+        return bottomImage->deepCopy();
+      }
+      if (bottomImage->pixelStorage->getNumberOfPixels() < 1) {
+        return topImage->deepCopy();
+      }
     }
 
     int totalRegionBegin =
