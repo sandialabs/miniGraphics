@@ -77,7 +77,8 @@ std::unique_ptr<Image> BinarySwapTelescoping::composeBigGroup(
     Image *localImage,
     MPI_Group bigGroup,
     MPI_Group littleGroup,
-    MPI_Comm communicator) {
+    MPI_Comm communicator,
+    YamlWriter &yaml) {
   int myGroupRank;
   MPI_Group_rank(bigGroup, &myGroupRank);
   assert(myGroupRank != MPI_UNDEFINED);
@@ -92,7 +93,7 @@ std::unique_ptr<Image> BinarySwapTelescoping::composeBigGroup(
 
   // Start by doing a normal binary swap.
   std::unique_ptr<Image> composedImage =
-      BinarySwapBase().compose(localImage, bigGroup, communicator);
+      BinarySwapBase().compose(localImage, bigGroup, communicator, yaml);
 
   // Figure out how many image pieces each process in the little group holds.
   int numImagePiecesInEachLittleProc = myGroupSize / otherGroupSize;
@@ -121,7 +122,8 @@ std::unique_ptr<Image> BinarySwapTelescoping::composeBigGroup(
 void BinarySwapTelescoping::composeLittleGroup(Image *localImage,
                                                MPI_Group bigGroup,
                                                MPI_Group littleGroup,
-                                               MPI_Comm communicator) {
+                                               MPI_Comm communicator,
+                                               YamlWriter &yaml) {
   int myGroupRank;
   MPI_Group_rank(littleGroup, &myGroupRank);
   assert(myGroupRank != MPI_UNDEFINED);
@@ -134,7 +136,7 @@ void BinarySwapTelescoping::composeLittleGroup(Image *localImage,
 
   // Recursively call myself to composite my group.
   std::unique_ptr<Image> composedImage =
-      this->compose(localImage, littleGroup, communicator);
+      this->compose(localImage, littleGroup, communicator, yaml);
 
   // The compose method will only return an image in the top power-of-two
   // processes. The rest are empty. The rest of this function only deals with
@@ -177,7 +179,8 @@ void BinarySwapTelescoping::composeLittleGroup(Image *localImage,
 
 std::unique_ptr<Image> BinarySwapTelescoping::compose(Image *localImage,
                                                       MPI_Group group,
-                                                      MPI_Comm communicator) {
+                                                      MPI_Comm communicator,
+                                                      YamlWriter &yaml) {
   // The base binary-swap algorithm only operates on process groups with a size
   // of a power-of-two. This compositing algorithm first identifies a large
   // subgroup that is a power-of-two and runs the base binary-swap on that
@@ -194,7 +197,7 @@ std::unique_ptr<Image> BinarySwapTelescoping::compose(Image *localImage,
   // Special case: we already have a power of two. Just call the base
   // binary-swap and return.
   if (targetGroupSize == originalGroupSize) {
-    return BinarySwapBase().compose(localImage, group, communicator);
+    return BinarySwapBase().compose(localImage, group, communicator, yaml);
   }
 
   // Split up the group into two partitions.
@@ -214,10 +217,11 @@ std::unique_ptr<Image> BinarySwapTelescoping::compose(Image *localImage,
   std::unique_ptr<Image> resultImage;
 
   if (bigGroupRank != MPI_UNDEFINED) {
-    resultImage =
-        this->composeBigGroup(localImage, bigGroup, littleGroup, communicator);
+    resultImage = this->composeBigGroup(
+        localImage, bigGroup, littleGroup, communicator, yaml);
   } else {
-    this->composeLittleGroup(localImage, bigGroup, littleGroup, communicator);
+    this->composeLittleGroup(
+        localImage, bigGroup, littleGroup, communicator, yaml);
     resultImage = localImage->copySubrange(0, 0);
   }
 

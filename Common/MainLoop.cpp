@@ -450,8 +450,8 @@ static std::unique_ptr<ImageFull> doComposeImage(const RunOptions& runOptions,
     // the reported composite time in many papers.
     Timer timePartialComposite(yaml, "partial-composite-seconds");
 
-    compositeImage =
-        compositor.compose(imageToCompose.get(), composeGroup, communicator);
+    compositeImage = compositor.compose(
+        imageToCompose.get(), composeGroup, communicator, yaml);
   }
 
   std::unique_ptr<ImageFull> uncompressedCompositeImage;

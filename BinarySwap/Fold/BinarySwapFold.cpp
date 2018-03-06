@@ -28,7 +28,8 @@ static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
 
 std::unique_ptr<Image> BinarySwapFold::compose(Image *localImage,
                                                MPI_Group group,
-                                               MPI_Comm communicator) {
+                                               MPI_Comm communicator,
+                                               YamlWriter &yaml) {
   // The base binary-swap algorithm only operates on process groups with a size
   // of a power-of-two. This compositing algorithm first shrinks the given
   // process group to one that is a power-of-two. It does this by taking an
@@ -51,7 +52,7 @@ std::unique_ptr<Image> BinarySwapFold::compose(Image *localImage,
   // Special case: we already have a power of two. Just call the base
   // binary-swap and return.
   if (numProcsToRemove == 0) {
-    return BinarySwapBase().compose(localImage, group, communicator);
+    return BinarySwapBase().compose(localImage, group, communicator, yaml);
   }
 
   std::vector<int> procsToRemove(numProcsToRemove);
@@ -86,8 +87,8 @@ std::unique_ptr<Image> BinarySwapFold::compose(Image *localImage,
   MPI_Group_excl(group, numProcsToRemove, procsToRemove.data(), &subGroup);
 
   // Now call the base binary-swap algorithm.
-  std::unique_ptr<Image> resultImage =
-      BinarySwapBase().compose(workingImage.get(), subGroup, communicator);
+  std::unique_ptr<Image> resultImage = BinarySwapBase().compose(
+      workingImage.get(), subGroup, communicator, yaml);
 
   // Cleanup
   MPI_Group_free(&subGroup);

@@ -8,12 +8,22 @@
 
 cmake_minimum_required(VERSION 3.3)
 
-project(miniGraphics)
+project(miniGraphics2-3-SwapBase CXX)
 
-option(MINIGRAPHICS_ENABLE_TESTING "Turn on/off building tests." ON)
-if (MINIGRAPHICS_ENABLE_TESTING)
-  enable_testing()
-endif()
+include(../../CMake/miniGraphicsMacros.cmake)
 
-add_subdirectory(BinarySwap)
-add_subdirectory(2-3-Swap)
+set(srcs
+  main.cpp
+  Swap_2_3_Base.cpp
+  Swap_2_3_Node.cpp
+  )
+
+set(headers
+  Swap_2_3_Base.hpp
+  Swap_2_3_Node.hpp
+  )
+
+miniGraphics_executable(2-3-SwapBase
+  SOURCES ${srcs}
+  HEADERS ${headers}
+  )

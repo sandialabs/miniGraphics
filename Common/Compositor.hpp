@@ -36,7 +36,8 @@ class Compositor {
   ///
   virtual std::unique_ptr<Image> compose(Image *localImage,
                                          MPI_Group group,
-                                         MPI_Comm communicator) = 0;
+                                         MPI_Comm communicator,
+                                         YamlWriter &yaml) = 0;
 
   /// If a compositor can be controled by some custom command line arguments,
   /// it should override this method to get the options and set up the state.

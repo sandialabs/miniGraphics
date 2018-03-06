@@ -6,12 +6,12 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef BINARYSWAPBASE_HPP
-#define BINARYSWAPBASE_HPP
+#ifndef SWAP_2_3_BASE_HPP
+#define SWAP_2_3_BASE_HPP
 
 #include <Common/Compositor.hpp>
 
-class BinarySwapBase : public Compositor {
+class Swap_2_3_Base : public Compositor {
  public:
   std::unique_ptr<Image> compose(Image *localImage,
                                  MPI_Group group,
@@ -19,4 +19,4 @@ class BinarySwapBase : public Compositor {
                                  YamlWriter &yaml) final;
 };
 
-#endif  // BINARYSWABASEP_HPP
+#endif  // SWAP_2_3_BASE_HPP
