@@ -15,7 +15,8 @@ class BinarySwapBase : public Compositor {
  public:
   std::unique_ptr<Image> compose(Image *localImage,
                                  MPI_Group group,
-                                 MPI_Comm communicator) final;
+                                 MPI_Comm communicator,
+                                 YamlWriter &yaml) final;
 };
 
 #endif  // BINARYSWABASEP_HPP

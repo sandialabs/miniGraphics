@@ -21,7 +21,8 @@ static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
 
 std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
                                                     MPI_Group group,
-                                                    MPI_Comm communicator) {
+                                                    MPI_Comm communicator,
+                                                    YamlWriter &) {
   // Binary-swap-remainder is a recursive algorithm that operates very similar
   // to the base algorithm. (You should understand the base algorithm before
   // reading this one.) The only difference is that at an iteration if the

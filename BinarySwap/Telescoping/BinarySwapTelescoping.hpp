@@ -16,16 +16,19 @@ class BinarySwapTelescoping : public Compositor {
   std::unique_ptr<Image> composeBigGroup(Image *localImage,
                                          MPI_Group bigGroup,
                                          MPI_Group littleGroup,
-                                         MPI_Comm communicator);
+                                         MPI_Comm communicator,
+                                         YamlWriter &yaml);
   void composeLittleGroup(Image *localImage,
                           MPI_Group bigGroup,
                           MPI_Group littleGroup,
-                          MPI_Comm communicator);
+                          MPI_Comm communicator,
+                          YamlWriter &yaml);
 
  public:
   std::unique_ptr<Image> compose(Image *localImage,
                                  MPI_Group group,
-                                 MPI_Comm communicator) final;
+                                 MPI_Comm communicator,
+                                 YamlWriter &yaml) final;
 };
 
 #endif  // BINARYSWAPFOLD_HPP
