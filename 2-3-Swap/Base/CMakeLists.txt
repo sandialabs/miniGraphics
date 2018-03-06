@@ -14,10 +14,12 @@ include(../../CMake/miniGraphicsMacros.cmake)
 
 set(srcs
   main.cpp
+  Swap_2_3_Base.cpp
   Swap_2_3_Node.cpp
   )
 
 set(headers
+  Swap_2_3_Base.hpp
   Swap_2_3_Node.hpp
   )
 

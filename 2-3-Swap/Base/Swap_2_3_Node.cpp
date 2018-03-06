@@ -69,7 +69,8 @@ void Swap_2_3_Node::setup(MPI_Group _group,
         this->regionIndices[2 * i] = this->subnodes[0]->regionIndices[i];
         this->regionIndices[2 * i + 1] =
             (this->subnodes[0]->regionIndices[i] +
-             this->subnodes[0]->regionIndices[i + 1]) / 2;
+             this->subnodes[0]->regionIndices[i + 1]) /
+            2;
       }
     } else {
       // Divide image evenly
