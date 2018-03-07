@@ -41,8 +41,12 @@ class Compositor {
 
   /// If a compositor can be controled by some custom command line arguments,
   /// it should override this method to get the options and set up the state.
-  /// It shouldl also use the given YamlWriter to record the options used (even
+  /// It should also use the given YamlWriter to record the options used (even
   /// if default values are used).
+  ///
+  /// This method is also given an MPI communicator. It can be assumed that
+  /// the composition will happen on the same communicator (or a trival copy
+  /// of it).
   ///
   /// This method should return true if all the options are OK, false
   /// otherwise. If false is returned, then a usage statement will be outputted
@@ -51,6 +55,7 @@ class Compositor {
   /// error before returning.
   ///
   virtual bool setOptions(const std::vector<option::Option> &options,
+                          MPI_Comm communicator,
                           YamlWriter &yaml);
 
   virtual ~Compositor() = default;

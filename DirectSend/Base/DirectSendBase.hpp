@@ -39,6 +39,7 @@ class DirectSendBase : public Compositor {
                                         YamlWriter &yaml);
 
   bool setOptions(const std::vector<option::Option> &options,
+                  MPI_Comm communicator,
                   YamlWriter &yaml) override;
   static std::vector<option::Descriptor> getOptionVector();
 };

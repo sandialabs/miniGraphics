@@ -6,10 +6,10 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "Compositor.hpp"
+#include <Common/MainLoop.hpp>
+#include "RadixKBase.hpp"
 
-bool Compositor::setOptions(const std::vector<option::Option>&,
-                            MPI_Comm,
-                            YamlWriter&) {
-  return true;
+int main(int argc, char *argv[]) {
+  RadixKBase compositor;
+  return MainLoop(argc, argv, &compositor, compositor.getOptionVector());
 }
