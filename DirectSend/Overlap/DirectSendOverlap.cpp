@@ -182,6 +182,10 @@ static std::unique_ptr<Image> ProcessIncomingImages(
                 &receiveIndex,
                 MPI_STATUSES_IGNORE);
     --numPending;
+    // Make sure all the messages have come in
+    MPI_Waitall(incoming[receiveIndex].receiveRequests.size(),
+                incoming[receiveIndex].receiveRequests.data(),
+                MPI_STATUSES_IGNORE);
     incoming[receiveIndex].status = IncomingDirectSendImage::READY;
 
     // Check all incoming images and find candidates to blend
