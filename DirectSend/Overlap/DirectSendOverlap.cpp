@@ -287,6 +287,7 @@ std::vector<option::Descriptor> DirectSendOverlap::getOptionVector() {
 }
 
 bool DirectSendOverlap::setOptions(const std::vector<option::Option>& options,
+                                   MPI_Comm,
                                    YamlWriter& yaml) {
   if (options[MAX_IMAGE_SPLIT]) {
     this->maxSplit = atoi(options[MAX_IMAGE_SPLIT].arg);

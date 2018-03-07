@@ -858,7 +858,7 @@ int MainLoop(int argc,
     return 1;
   }
 
-  if (!compositor->setOptions(options, yaml)) {
+  if (!compositor->setOptions(options, MPI_COMM_WORLD, yaml)) {
     option::printUsage(std::cerr, usage.data());
     return 1;
   }

@@ -8,7 +8,8 @@
 
 #include "Compositor.hpp"
 
-bool Compositor::setOptions(const std::vector<option::Option>& options,
-                            YamlWriter& yaml) {
+bool Compositor::setOptions(const std::vector<option::Option>&,
+                            MPI_Comm,
+                            YamlWriter&) {
   return true;
 }
