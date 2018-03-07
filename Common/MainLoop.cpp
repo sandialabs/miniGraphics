@@ -842,24 +842,32 @@ int MainLoop(int argc,
   }
 
   if (options[HELP]) {
-    option::printUsage(std::cout, usage.data());
+    if (rank == 0) {
+      option::printUsage(std::cout, usage.data());
+    }
     return 0;
   }
 
   if (options[DUMMY]) {
-    std::cerr << "Unknown option: " << options[DUMMY].name << std::endl;
-    option::printUsage(std::cerr, usage.data());
+    if (rank == 0) {
+      std::cerr << "Unknown option: " << options[DUMMY].name << std::endl;
+      option::printUsage(std::cerr, usage.data());
+    }
     return 1;
   }
 
   if (parse.nonOptionsCount() > 0) {
-    std::cerr << "Unknown option: " << parse.nonOption(0) << std::endl;
-    option::printUsage(std::cerr, usage.data());
+    if (rank == 0) {
+      std::cerr << "Unknown option: " << parse.nonOption(0) << std::endl;
+      option::printUsage(std::cerr, usage.data());
+    }
     return 1;
   }
 
   if (!compositor->setOptions(options, MPI_COMM_WORLD, yaml)) {
-    option::printUsage(std::cerr, usage.data());
+    if (rank == 0) {
+      option::printUsage(std::cerr, usage.data());
+    }
     return 1;
   }
 

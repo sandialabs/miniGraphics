@@ -8,14 +8,22 @@
 
 cmake_minimum_required(VERSION 3.3)
 
-project(miniGraphics)
+project(miniGraphicsRadixKBase CXX)
 
-option(MINIGRAPHICS_ENABLE_TESTING "Turn on/off building tests." ON)
-if (MINIGRAPHICS_ENABLE_TESTING)
-  enable_testing()
-endif()
+include(../../CMake/miniGraphicsMacros.cmake)
 
-add_subdirectory(BinarySwap)
-add_subdirectory(DirectSend)
-add_subdirectory(2-3-Swap)
-add_subdirectory(RadixK)
+set(srcs
+  main.cpp
+  RadixKBase.cpp
+  ../../DirectSend/Overlap/DirectSendOverlap.cpp
+  )
+
+set(headers
+  RadixKBase.hpp
+  ../../DirectSend/Overlap/DirectSendOverlap.hpp
+  )
+
+miniGraphics_executable(RadixKBase
+  SOURCES ${srcs}
+  HEADERS ${headers}
+  )
