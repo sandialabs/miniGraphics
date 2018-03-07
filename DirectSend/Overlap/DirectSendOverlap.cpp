@@ -6,7 +6,7 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#include "DirectSendBase.hpp"
+#include "DirectSendOverlap.hpp"
 
 #include <Common/MainLoop.hpp>
 
@@ -22,6 +22,12 @@ static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
   MPI_Group_translate_ranks(group, 1, &rank, commGroup, &realRank);
   return realRank;
 }
+
+struct IncomingDirectSendImage {
+  std::unique_ptr<Image> imageBuffer;
+  std::vector<MPI_Request> receiveRequests;
+  enum { WAITING, READY, EMPTY } status;
+};
 
 static void getPieceRange(int imageSize,
                           int pieceIndex,
@@ -45,13 +51,14 @@ static void PostReceives(
     MPI_Group sendGroup,
     MPI_Group recvGroup,
     MPI_Comm communicator,
-    std::vector<MPI_Request>& requestsOut,
-    std::vector<std::unique_ptr<const Image>>& incomingImagesOut) {
+    std::vector<IncomingDirectSendImage>& incomingImagesOut) {
   int recvGroupRank;
   MPI_Group_rank(recvGroup, &recvGroupRank);
   if (recvGroupRank == MPI_UNDEFINED) {
     // I am not receiving anything. Just create an "empty" incoming image
-    incomingImagesOut.push_back(localImage->window(0, 0));
+    incomingImagesOut.resize(1);
+    incomingImagesOut[0].imageBuffer = localImage->copySubrange(0, 0);
+    incomingImagesOut[0].status = IncomingDirectSendImage::READY;
     return;
   }
   int recvGroupSize;
@@ -74,20 +81,27 @@ static void PostReceives(
   for (int sendGroupIndex = 0; sendGroupIndex < sendGroupSize;
        ++sendGroupIndex) {
     if (sendGroupIndex != sendGroupRank) {
-      std::unique_ptr<Image> recvImageBuffer =
+      incomingImagesOut[sendGroupIndex].imageBuffer =
           localImage->createNew(localImage->getWidth(),
                                 localImage->getHeight(),
                                 rangeBegin,
                                 rangeEnd);
-      std::vector<MPI_Request> newRequests = recvImageBuffer->IReceive(
-          getRealRank(sendGroup, sendGroupIndex, communicator), communicator);
-      requestsOut.insert(
-          requestsOut.end(), newRequests.begin(), newRequests.end());
-      incomingImagesOut[sendGroupIndex].reset(recvImageBuffer.release());
+      incomingImagesOut[sendGroupIndex].receiveRequests =
+          incomingImagesOut[sendGroupIndex].imageBuffer->IReceive(
+              getRealRank(sendGroup, sendGroupIndex, communicator),
+              communicator);
+      incomingImagesOut[sendGroupIndex].status =
+          IncomingDirectSendImage::WAITING;
     } else {
       // "Sending" to self. Just record a shallow copy of the image.
-      incomingImagesOut[sendGroupIndex] =
+      std::unique_ptr<const Image> selfSendImage =
           localImage->window(rangeBegin, rangeEnd);
+      // I know, this const cast is bad form. But the next thing to happen to
+      // this image is to get blended with something else. The risk is low
+      // and it's just too much trouble to get the const-ness exact.
+      incomingImagesOut[sendGroupIndex].imageBuffer.reset(
+          const_cast<Image*>(selfSendImage.release()));
+      incomingImagesOut[sendGroupIndex].status = IncomingDirectSendImage::READY;
     }
   }
 }
@@ -138,40 +152,79 @@ static void PostSends(
 }
 
 static std::unique_ptr<Image> ProcessIncomingImages(
-    std::vector<MPI_Request>& requests,
-    std::vector<std::unique_ptr<const Image>>& incomingImages) {
-  if (requests.size() > 0) {
-    MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+    std::vector<IncomingDirectSendImage>& incoming) {
+  assert(!incoming.empty());
+
+  // Collect the last request for each incoming image. We will wait for these
+  // last requests to see which image gets here first.
+  std::vector<MPI_Request> lastRequests;
+  lastRequests.reserve(incoming.size());
+  int numPending = 0;
+  for (auto&& in : incoming) {
+    switch (in.status) {
+      case IncomingDirectSendImage::WAITING:
+        lastRequests.push_back(in.receiveRequests.back());
+        in.receiveRequests.pop_back();
+        ++numPending;
+        break;
+      case IncomingDirectSendImage::READY:
+      case IncomingDirectSendImage::EMPTY:
+        assert(in.receiveRequests.empty());
+        lastRequests.push_back(MPI_REQUEST_NULL);
+        break;
+    }
   }
 
-  assert(incomingImages.size() > 0);
-  if (incomingImages.size() == 1) {
-    // Unexpected corner case where there is just one image.
-    return incomingImages[0]->deepCopy();
+  while (numPending > 0) {
+    int receiveIndex;
+    MPI_Waitany(lastRequests.size(),
+                lastRequests.data(),
+                &receiveIndex,
+                MPI_STATUSES_IGNORE);
+    --numPending;
+    incoming[receiveIndex].status = IncomingDirectSendImage::READY;
+
+    // Check all incoming images and find candidates to blend
+    for (auto targetIn = incoming.begin(); targetIn != incoming.end();
+         ++targetIn) {
+      if (targetIn->status == IncomingDirectSendImage::READY) {
+        // This image is ready to blend. Find any other images that can be
+        // blended with it.
+        for (auto sourceIn = targetIn + 1; sourceIn != incoming.end();
+             ++sourceIn) {
+          if (sourceIn->status == IncomingDirectSendImage::READY) {
+            // Blend these two images together. Store the result in target and
+            // zero out the source.
+            targetIn->imageBuffer =
+                targetIn->imageBuffer->blend(*sourceIn->imageBuffer);
+            sourceIn->status = IncomingDirectSendImage::EMPTY;
+            sourceIn->imageBuffer.reset();
+          } else if (sourceIn->status == IncomingDirectSendImage::WAITING) {
+            if (targetIn->imageBuffer->blendIsOrderDependent()) {
+              // If blend is order dependent, we cannot blend any other images
+              break;
+            }
+          } else /* sourceIn->status == EMPTY */ {
+            // Just skip over empty images.
+          }
+        }
+      }
+    }
   }
 
-  std::unique_ptr<Image> workingImage =
-      incomingImages[0]->blend(*incomingImages[1]);
-  for (int imageIndex = 2; imageIndex < incomingImages.size(); ++imageIndex) {
-    workingImage = workingImage->blend(*incomingImages[imageIndex]);
-  }
+  // Resulting image should be in first incoming state.
+  assert(incoming.front().status == IncomingDirectSendImage::READY);
 
-  return workingImage;
+  return std::unique_ptr<Image>(incoming.front().imageBuffer.release());
 }
 
-std::unique_ptr<Image> DirectSendBase::compose(Image* localImage,
-                                               MPI_Group sendGroup,
-                                               MPI_Group recvGroup,
-                                               MPI_Comm communicator,
-                                               YamlWriter&) {
-  std::vector<MPI_Request> recvRequests;
-  std::vector<std::unique_ptr<const Image>> incomingImages;
-  PostReceives(localImage,
-               sendGroup,
-               recvGroup,
-               communicator,
-               recvRequests,
-               incomingImages);
+std::unique_ptr<Image> DirectSendOverlap::compose(Image* localImage,
+                                                  MPI_Group sendGroup,
+                                                  MPI_Group recvGroup,
+                                                  MPI_Comm communicator,
+                                                  YamlWriter&) {
+  std::vector<IncomingDirectSendImage> incomingImages;
+  PostReceives(localImage, sendGroup, recvGroup, communicator, incomingImages);
 
   std::vector<MPI_Request> sendRequests;
   std::vector<std::unique_ptr<const Image>> outgoingImages;
@@ -182,8 +235,7 @@ std::unique_ptr<Image> DirectSendBase::compose(Image* localImage,
             sendRequests,
             outgoingImages);
 
-  std::unique_ptr<Image> resultImage =
-      ProcessIncomingImages(recvRequests, incomingImages);
+  std::unique_ptr<Image> resultImage = ProcessIncomingImages(incomingImages);
 
   if (sendRequests.size() > 0) {
     MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUSES_IGNORE);
@@ -192,12 +244,12 @@ std::unique_ptr<Image> DirectSendBase::compose(Image* localImage,
   return resultImage;
 }
 
-DirectSendBase::DirectSendBase() : maxSplit(DEFAULT_MAX_IMAGE_SPLIT) {}
+DirectSendOverlap::DirectSendOverlap() : maxSplit(DEFAULT_MAX_IMAGE_SPLIT) {}
 
-std::unique_ptr<Image> DirectSendBase::compose(Image* localImage,
-                                               MPI_Group group,
-                                               MPI_Comm communicator,
-                                               YamlWriter& yaml) {
+std::unique_ptr<Image> DirectSendOverlap::compose(Image* localImage,
+                                                  MPI_Group group,
+                                                  MPI_Comm communicator,
+                                                  YamlWriter& yaml) {
   int groupSize;
   MPI_Group_size(group, &groupSize);
 
@@ -216,7 +268,7 @@ std::unique_ptr<Image> DirectSendBase::compose(Image* localImage,
 
 enum optionIndex { MAX_IMAGE_SPLIT };
 
-std::vector<option::Descriptor> DirectSendBase::getOptionVector() {
+std::vector<option::Descriptor> DirectSendOverlap::getOptionVector() {
   std::vector<option::Descriptor> usage;
   // clang-format off
   usage.push_back(
@@ -230,8 +282,8 @@ std::vector<option::Descriptor> DirectSendBase::getOptionVector() {
   return usage;
 }
 
-bool DirectSendBase::setOptions(const std::vector<option::Option>& options,
-                                YamlWriter& yaml) {
+bool DirectSendOverlap::setOptions(const std::vector<option::Option>& options,
+                                   YamlWriter& yaml) {
   if (options[MAX_IMAGE_SPLIT]) {
     this->maxSplit = atoi(options[MAX_IMAGE_SPLIT].arg);
   }

@@ -6,5 +6,22 @@
 ## the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 ## certain rights in this software.
 
-add_subdirectory(Base)
-add_subdirectory(Overlap)
+cmake_minimum_required(VERSION 3.3)
+
+project(miniGraphicsDirectSendOverlap CXX)
+
+include(../../CMake/miniGraphicsMacros.cmake)
+
+set(srcs
+  main.cpp
+  DirectSendOverlap.cpp
+  )
+
+set(headers
+  DirectSendOverlap.hpp
+  )
+
+miniGraphics_executable(DirectSendOverlap
+  SOURCES ${srcs}
+  HEADERS ${headers}
+  )
