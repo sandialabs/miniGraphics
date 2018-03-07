@@ -11,5 +11,5 @@
 
 int main(int argc, char *argv[]) {
   DirectSendBase compositor;
-  return MainLoop(argc, argv, &compositor);
+  return MainLoop(argc, argv, &compositor, compositor.getOptionVector());
 }

@@ -12,11 +12,35 @@
 #include <Common/Compositor.hpp>
 
 class DirectSendBase : public Compositor {
+  int maxSplit;
+
  public:
+  DirectSendBase();
+
   std::unique_ptr<Image> compose(Image *localImage,
                                  MPI_Group group,
                                  MPI_Comm communicator,
                                  YamlWriter &yaml) final;
+
+  /// Performs the direct-send compositing by sending a piece of the image from
+  /// every process in sendGroup to each process in recvGroup. The end result
+  /// will be a composited piece in each member of recvGroup.
+  ///
+  /// sendGroup and recvGroup can contain common processes. In fact, it is
+  /// common for the two groups to be the same and even more common for every
+  /// process in recvGroup to be in sendGroup (although that is not necessary).
+  /// Any process in sendGroup that is not in recvGroup will return an image
+  /// with an empty range.
+  ///
+  static std::unique_ptr<Image> compose(Image *localImage,
+                                        MPI_Group sendGroup,
+                                        MPI_Group recvGroup,
+                                        MPI_Comm communicator,
+                                        YamlWriter &yaml);
+
+  bool setOptions(const std::vector<option::Option> &options,
+                  YamlWriter &yaml) override;
+  static std::vector<option::Descriptor> getOptionVector();
 };
 
 #endif  // DIRECTSENDBASE_HPP
