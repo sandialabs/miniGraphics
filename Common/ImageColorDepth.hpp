@@ -88,8 +88,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
   }
 
   void resizeBuffers(int newRegionBegin, int newRegionEnd) {
-    this->resize(
-        this->getWidth(), this->getHeight(), newRegionBegin, newRegionEnd);
+    this->resizeRegion(newRegionBegin, newRegionEnd);
     this->colorBuffer->resize(this->getNumberOfPixels() * ColorVecSize);
     this->depthBuffer->resize(this->getNumberOfPixels());
   }

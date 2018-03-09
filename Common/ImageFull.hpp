@@ -72,10 +72,8 @@ class ImageFull : public Image {
     std::unique_ptr<const Image> windowedImageHolder = this->shallowCopy();
     ImageFull* windowedImage = const_cast<ImageFull*>(
         dynamic_cast<const ImageFull*>(windowedImageHolder.get()));
-    windowedImage->resize(this->getWidth(),
-                          this->getHeight(),
-                          subregionBegin + this->getRegionBegin(),
-                          subregionEnd + this->getRegionBegin());
+    windowedImage->resizeRegion(subregionBegin + this->getRegionBegin(),
+                                subregionEnd + this->getRegionBegin());
     windowedImage->bufferOffset = this->bufferOffset + subregionBegin;
 
     return windowedImageHolder;

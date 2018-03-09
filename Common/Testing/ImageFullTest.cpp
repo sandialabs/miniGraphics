@@ -104,6 +104,9 @@ static std::unique_ptr<ImageType> createColorDepthImage1(int regionBegin,
     }
   }
 
+  image->setValidViewport(Viewport(
+      BORDER, BORDER, IMAGE_WIDTH - BORDER - 1, IMAGE_HEIGHT - BORDER - 1));
+
   return image;
 }
 
@@ -122,6 +125,9 @@ static std::unique_ptr<ImageType> createColorOnlyImage1(int regionBegin,
       image->setColor(pixelIndex - regionBegin, color);
     }
   }
+
+  image->setValidViewport(Viewport(
+      BORDER, BORDER, IMAGE_WIDTH - BORDER - 1, IMAGE_HEIGHT - BORDER - 1));
 
   return image;
 }

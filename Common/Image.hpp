@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <Common/Color.hpp>
+#include <Common/Viewport.hpp>
 
 #include <mpi.h>
 
@@ -29,11 +30,18 @@ class Image {
     int regionBegin;
     int regionEnd;
 
-    Internals(int _width, int _height, int _regionBegin, int _regionEnd)
+    Viewport validViewport;
+
+    Internals(int _width,
+              int _height,
+              int _regionBegin,
+              int _regionEnd,
+              const Viewport& _validViewport)
         : width(_width),
           height(_height),
           regionBegin(_regionBegin),
-          regionEnd(_regionEnd) {
+          regionEnd(_regionEnd),
+          validViewport(_validViewport) {
       assert(this->width >= 0);
       assert(this->height >= 0);
       assert(this->regionBegin >= 0);
@@ -44,22 +52,51 @@ class Image {
   Internals internals;
 
  protected:
-  void resize(int _width, int _height, int _regionBegin, int _regionEnd) {
-    this->internals = Internals(_width, _height, _regionBegin, _regionEnd);
+  void resizeRegion(int _regionBegin, int _regionEnd) {
+    this->internals.regionBegin = _regionBegin;
+    this->internals.regionEnd = _regionEnd;
   }
 
- public:
+ protected:
   Image(int _width, int _height)
-      : internals(_width, _height, 0, _width * _height) {}
+      : internals(_width,
+                  _height,
+                  0,
+                  _width * _height,
+                  Viewport(0, 0, _width - 1, _height - 1)) {}
   Image(int _width, int _height, int _regionBegin, int _regionEnd)
-      : internals(_width, _height, _regionBegin, _regionEnd) {}
+      : internals(_width,
+                  _height,
+                  _regionBegin,
+                  _regionEnd,
+                  Viewport(0, 0, _width - 1, _height - 1)) {}
+  Image(int _width,
+        int _height,
+        int _regionBegin,
+        int _regionEnd,
+        const Viewport& _validViewport)
+      : internals(_width,
+                  _height,
+                  _regionBegin,
+                  _regionEnd,
+                  _validViewport.intersectWith(
+                      Viewport(0, 0, _width - 1, _height - 1))) {}
 
+ public:
   virtual ~Image();
 
   int getWidth() const { return this->internals.width; }
   int getHeight() const { return this->internals.height; }
   int getRegionBegin() const { return this->internals.regionBegin; }
   int getRegionEnd() const { return this->internals.regionEnd; }
+
+  const Viewport& getValidViewport() const {
+    return this->internals.validViewport;
+  }
+  void setValidViewport(const Viewport& _validViewport) {
+    this->internals.validViewport = _validViewport.intersectWith(
+        Viewport(0, 0, this->getWidth(), this->getHeight()));
+  }
 
   /// \brief Returns the number of (valid) pixels in the image.
   ///
