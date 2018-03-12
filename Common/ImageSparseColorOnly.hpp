@@ -531,6 +531,10 @@ class ImageSparseColorOnly : public ImageSparse {
 
     // Make sure run length buffer large enough for maximum size image.
     this->runLengths->resize(this->getNumberOfPixels() / 2 + 1);
+    // Also make sure runLengths array is zeroed out so we don't count garbage
+    // as pixels.
+    std::fill(
+        this->runLengths->begin(), this->runLengths->end(), RunLengthRegion());
     MPI_Request runLengthsRequest;
     MPI_Irecv(this->runLengths->data(),
               sizeof(RunLengthRegion) * this->runLengths->size(),
