@@ -13,6 +13,7 @@
 #include <glm/mat4x4.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 // A set of colors automatically assigned to mesh regions on each process.
 // These colors come from color brewer (qualitative set 3 with 12 colors).
@@ -41,14 +42,23 @@ void meshBroadcast(Mesh& mesh, float overlap, MPI_Comm communicator) {
   MPI_Comm_size(communicator, &numProc);
 
   if (rank == 0) {
-    int gridDim = static_cast<int>(ceil(cbrt(numProc)));
+    int gridDims[3];
+    gridDims[0] = gridDims[1] = gridDims[2] =
+        static_cast<int>(std::floor(std::cbrt(numProc)));
+    for (int dim = 0; dim < 3; ++dim) {
+      if ((gridDims[0] * gridDims[1] * gridDims[2]) < numProc) {
+        ++gridDims[dim];
+      } else {
+        break;
+      }
+    }
     glm::vec3 spacing =
         (1.0f - overlap) * (mesh.getBoundsMax() - mesh.getBoundsMin());
 
     for (int dest = 1; dest < numProc; ++dest) {
-      glm::vec3 gridLocation(dest % gridDim,
-                             (dest / gridDim) % gridDim,
-                             dest / (gridDim * gridDim));
+      glm::vec3 gridLocation(dest % gridDims[0],
+                             (dest / gridDims[0]) % gridDims[1],
+                             dest / (gridDims[0] * gridDims[1]));
       glm::mat4 transform =
           glm::translate(glm::mat4(1.0f), spacing * gridLocation);
 
