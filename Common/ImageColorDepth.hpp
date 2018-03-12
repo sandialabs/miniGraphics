@@ -94,11 +94,19 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     this->depthBuffer->resize(this->getNumberOfPixels());
   }
 
+  Color getColor(int x, int y) const {
+    return this->getColor(this->pixelIndex(x, y));
+  }
+
   Color getColor(int pixelIndex) const final {
     assert(pixelIndex >= 0);
     assert(pixelIndex < this->getNumberOfPixels());
 
     return Features::decodeColor(this->getColorBuffer(pixelIndex));
+  }
+
+  void setColor(int x, int y, const Color& color) {
+    this->setColor(this->pixelIndex(x, y), color);
   }
 
   void setColor(int pixelIndex, const Color& color) final {
@@ -108,11 +116,19 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     Features::encodeColor(color, this->getColorBuffer(pixelIndex));
   }
 
+  float getDepth(int x, int y) const {
+    return this->getDepth(this->pixelIndex(x, y));
+  }
+
   float getDepth(int pixelIndex) const final {
     assert(pixelIndex >= 0);
     assert(pixelIndex < this->getNumberOfPixels());
 
     return Features::decodeDepth(this->getDepthBuffer(pixelIndex));
+  }
+
+  void setDepth(int x, int y, float depth) {
+    this->setDepth(this->pixelIndex(x, y), depth);
   }
 
   void setDepth(int pixelIndex, float depth) final {

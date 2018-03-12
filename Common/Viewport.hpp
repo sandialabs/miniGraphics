@@ -27,7 +27,7 @@ class Viewport {
 
   int getMinX() const { return this->minX; }
   int getMinY() const { return this->minY; }
-  int getMaxX() const { return this->maxY; }
+  int getMaxX() const { return this->maxX; }
   int getMaxY() const { return this->maxY; }
 
   int getWidth() const { return this->maxX - this->minX + 1; }

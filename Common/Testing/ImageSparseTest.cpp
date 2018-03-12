@@ -48,7 +48,7 @@ template <typename ImageType>
 using ImageIsColorOnly = std::is_base_of<ImageColorOnlyBase, ImageType>;
 
 constexpr int IMAGE_WIDTH = 100;
-constexpr int IMAGE_HEIGHT = 100;
+constexpr int IMAGE_HEIGHT = 110;
 constexpr int BORDER = 10;
 
 static void compareImages(const ImageFull& image1, const ImageFull& image2) {
@@ -331,6 +331,35 @@ static void TestCompressUncompress() {
   std::unique_ptr<ImageSparse> sparseImage = fullImage->compress();
 
   compareImages(*fullImage, *sparseImage->uncompress());
+
+  std::cout << "  Compress skips over empty regions" << std::endl;
+  Viewport validViewport = fullImage->getValidViewport();
+  TEST_ASSERT(validViewport.getMinX() > 0);
+  TEST_ASSERT(validViewport.getMinY() > 0);
+  TEST_ASSERT(validViewport.getMaxX() < IMAGE_WIDTH - 1);
+  TEST_ASSERT(validViewport.getMaxY() < IMAGE_HEIGHT - 1);
+  Color notBackground(1.0f, 0.5f, 0.25f, 1.0f);
+  for (int y = 0; y < validViewport.getMinY(); ++y) {
+    for (int x = 0; x < IMAGE_WIDTH; ++x) {
+      fullImage->setColor(x, y, notBackground);
+      fullImage->setDepth(x, y, 0.5f);
+    }
+  }
+  for (int y = validViewport.getMinY(); y <= validViewport.getMaxY(); ++y) {
+    for (int x = 0; x < validViewport.getMinX(); ++x) {
+      fullImage->setColor(x, y, notBackground);
+    }
+    for (int x = validViewport.getMaxX() + 1; x < IMAGE_WIDTH; ++x) {
+      fullImage->setColor(x, y, notBackground);
+    }
+  }
+  for (int y = validViewport.getMaxY() + 1; y < IMAGE_HEIGHT; ++y) {
+    for (int x = 0; x < IMAGE_WIDTH; ++x) {
+      fullImage->setColor(x, y, notBackground);
+    }
+  }
+  sparseImage = fullImage->compress();
+  compareImages(*sparseImage->uncompress(), *createImage1<ImageType>());
 }
 
 template <typename ImageType>
@@ -532,8 +561,8 @@ static void TestWindow() {
   compareImages(*windowImage, *destImage);
 
   std::cout << "  Window blend" << std::endl;
-  std::unique_ptr<Image> blendedImage =
-      windowImage->blend(*createImage2<ImageType>(MID2, MID3)->compress());
+  std::unique_ptr<Image> blendedImage = windowImage->blend(
+      *createImage2<ImageType>()->compress()->copySubrange(MID2, MID3));
   compareImages(*blendedImage, *createImageCombined<ImageType>(MID2, MID3));
 }
 

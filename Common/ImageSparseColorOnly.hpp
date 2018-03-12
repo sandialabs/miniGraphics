@@ -94,25 +94,85 @@ class ImageSparseColorOnly : public ImageSparse {
   }
 
   void compress(const StorageType& toCompress) {
-    int numPixels = toCompress.getNumberOfPixels();
     int numActivePixels = 0;
-    int iPixel = 0;
+    int iPixel;
     this->runLengths->resize(0);
-    while (iPixel < numPixels) {
-      RunLengthRegion runLength;
-      while ((iPixel < numPixels) &&
-             this->isBackground(toCompress.getColorBuffer(iPixel))) {
-        ++runLength.backgroundPixels;
-        ++iPixel;
-      }
-      while ((iPixel < numPixels) &&
-             !this->isBackground(toCompress.getColorBuffer(iPixel))) {
-        ++runLength.foregroundPixels;
-        ++iPixel;
-      }
-      numActivePixels += runLength.foregroundPixels;
-      this->runLengths->push_back(runLength);
+    RunLengthRegion workingRunLength;
+    const Viewport& validViewport = toCompress.getValidViewport();
+
+    // There is currently little reason to compress an image with a range
+    // narrower than the full image, and the implementation would add
+    // complication here. For now, I am disallowing that.
+    if ((toCompress.getRegionBegin() > 0) ||
+        (toCompress.getRegionEnd() <
+         (toCompress.getWidth() * toCompress.getHeight()))) {
+      std::cerr << "Compression of subregion images currently not supported"
+                << std::endl;
+      abort();
     }
+
+    // Skip over pixels at the bottom of the image
+    workingRunLength.backgroundPixels =
+        validViewport.getMinY() * toCompress.getWidth();
+    iPixel = workingRunLength.backgroundPixels;
+
+    for (int y = validViewport.getMinY(); y <= validViewport.getMaxY(); ++y) {
+      if (validViewport.getMinX() > 0) {
+        // Skip pixels at left of the image
+        if (workingRunLength.foregroundPixels > 0) {
+          this->runLengths->push_back(workingRunLength);
+          workingRunLength = RunLengthRegion();
+        }
+        int numToSkip = validViewport.getMinX();
+        workingRunLength.backgroundPixels += numToSkip;
+        iPixel += numToSkip;
+      }
+      int x = validViewport.getMinX();
+      while (x <= validViewport.getMaxX()) {
+        if (workingRunLength.foregroundPixels == 0) {
+          while ((x <= validViewport.getMaxX()) &&
+                 this->isBackground(toCompress.getColorBuffer(iPixel))) {
+            ++workingRunLength.backgroundPixels;
+            ++x;
+            ++iPixel;
+          }
+        }
+        while ((x <= validViewport.getMaxX()) &&
+               !this->isBackground(toCompress.getColorBuffer(iPixel))) {
+          ++workingRunLength.foregroundPixels;
+          ++x;
+          ++iPixel;
+          ++numActivePixels;
+        }
+        if (x <= validViewport.getMaxX()) {
+          this->runLengths->push_back(workingRunLength);
+          workingRunLength = RunLengthRegion();
+        }
+      }
+      if (validViewport.getMaxX() < toCompress.getWidth() - 1) {
+        // Skip pixels at right of the image
+        if (workingRunLength.foregroundPixels > 0) {
+          this->runLengths->push_back(workingRunLength);
+          workingRunLength = RunLengthRegion();
+        }
+        int numToSkip = toCompress.getWidth() - validViewport.getMaxX() - 1;
+        workingRunLength.backgroundPixels += numToSkip;
+        iPixel += numToSkip;
+      }
+    }
+
+    // Skip over pixels at top of the image
+    if (validViewport.getMaxY() < toCompress.getHeight() - 1) {
+      if (workingRunLength.foregroundPixels > 0) {
+        this->runLengths->push_back(workingRunLength);
+        workingRunLength = RunLengthRegion();
+      }
+      int numToSkip = (toCompress.getHeight() - validViewport.getMaxY() - 1) *
+                      toCompress.getWidth();
+      workingRunLength.backgroundPixels += numToSkip;
+    }
+
+    this->runLengths->push_back(workingRunLength);
 
     this->pixelStorage->resizeBuffers(0, numActivePixels);
 

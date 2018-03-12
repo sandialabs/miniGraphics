@@ -75,11 +75,19 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
     this->colorBuffer->resize(this->getNumberOfPixels() * ColorVecSize);
   }
 
+  Color getColor(int x, int y) const {
+    return this->getColor(this->pixelIndex(x, y));
+  }
+
   Color getColor(int pixelIndex) const final {
     assert(pixelIndex >= 0);
     assert(pixelIndex < this->getNumberOfPixels());
 
     return Features::decodeColor(this->getColorBuffer(pixelIndex));
+  }
+
+  void setColor(int x, int y, const Color& color) {
+    this->setColor(this->pixelIndex(x, y), color);
   }
 
   void setColor(int pixelIndex, const Color& color) final {
@@ -89,9 +97,18 @@ class ImageColorOnly : public ImageFull, ImageColorOnlyBase {
     Features::encodeColor(color, this->getColorBuffer(pixelIndex));
   }
 
+  float getDepth(int, int) const {
+    // No depth
+    return 1.0f;
+  }
+
   float getDepth(int) const final {
     // No depth
     return 1.0f;
+  }
+
+  void setDepth(int, int, float) {
+    // No depth
   }
 
   void setDepth(int, float) final {

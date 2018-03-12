@@ -46,7 +46,7 @@ using ImageIsColorDepth = std::is_base_of<ImageColorDepthBase, ImageType>;
 template <typename ImageType>
 using ImageIsColorOnly = std::is_base_of<ImageColorOnlyBase, ImageType>;
 
-constexpr int IMAGE_WIDTH = 100;
+constexpr int IMAGE_WIDTH = 110;
 constexpr int IMAGE_HEIGHT = 100;
 constexpr int BORDER = 10;
 
