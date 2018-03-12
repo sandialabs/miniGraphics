@@ -43,6 +43,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <fstream>
 #include <iomanip>
@@ -424,6 +425,31 @@ static void doLocalPaint(ImageFull& localImage,
   } else {
     painter.paint(mesh, localImage, modelview, projection);
   }
+
+  // Figure out a reasonable valid viewport
+  const glm::vec3& boundsMin = mesh.getBoundsMin();
+  const glm::vec3& boundsMax = mesh.getBoundsMax();
+  std::array<glm::vec3, 8> boundingBoxVerts = {
+      glm::vec3(boundsMin.x, boundsMin.y, boundsMin.z),
+      glm::vec3(boundsMax.x, boundsMin.y, boundsMin.z),
+      glm::vec3(boundsMin.x, boundsMax.y, boundsMin.z),
+      glm::vec3(boundsMax.x, boundsMax.y, boundsMin.z),
+      glm::vec3(boundsMin.x, boundsMin.y, boundsMax.z),
+      glm::vec3(boundsMax.x, boundsMin.y, boundsMax.z),
+      glm::vec3(boundsMin.x, boundsMax.y, boundsMax.z),
+      glm::vec3(boundsMax.x, boundsMax.y, boundsMax.z)};
+  glm::ivec4 viewport(0, 0, localImage.getWidth(), localImage.getHeight());
+  Viewport validViewport(localImage.getWidth(), localImage.getHeight(), -1, -1);
+  for (int vert = 0; vert < 8; ++vert) {
+    glm::vec3 projectedVertex =
+        glm::project(boundingBoxVerts[vert], modelview, projection, viewport);
+    Viewport vertexViewport(static_cast<int>(std::floor(projectedVertex.x)),
+                            static_cast<int>(std::floor(projectedVertex.y)),
+                            static_cast<int>(std::ceil(projectedVertex.x)),
+                            static_cast<int>(std::ceil(projectedVertex.y)));
+    validViewport = validViewport.unionWith(vertexViewport);
+  }
+  localImage.setValidViewport(validViewport);
 }
 
 static std::unique_ptr<ImageFull> doComposeImage(const RunOptions& runOptions,

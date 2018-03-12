@@ -46,10 +46,16 @@ class ImageSparseColorDepth : public ImageSparse {
       int _height,
       int _regionBegin,
       int _regionEnd,
+      const Viewport& _validViewport,
       std::shared_ptr<StorageType> _pixelStorage,
       std::shared_ptr<std::vector<RunLengthRegion>> _runLengths,
       const BackgroundInfo& _background)
-      : ImageSparse(_width, _height, _regionBegin, _regionEnd, _runLengths),
+      : ImageSparse(_width,
+                    _height,
+                    _regionBegin,
+                    _regionEnd,
+                    _validViewport,
+                    _runLengths),
         pixelStorage(_pixelStorage),
         background(_background) {}
 
@@ -58,9 +64,14 @@ class ImageSparseColorDepth : public ImageSparse {
       : ImageSparse(toCompress.getWidth(),
                     toCompress.getHeight(),
                     toCompress.getRegionBegin(),
-                    toCompress.getRegionEnd()) {
-    std::unique_ptr<Image> imageBuffer =
-        toCompress.createNew(this->getWidth(), this->getHeight(), 0, 0);
+                    toCompress.getRegionEnd(),
+                    toCompress.getValidViewport()) {
+    std::unique_ptr<Image> imageBuffer = toCompress.createNew(
+        this->getWidth(),
+        this->getHeight(),
+        0,
+        0,
+        Viewport(0, 0, this->getWidth() - 1, this->getHeight() - 1));
     StorageType* pixelStorageP = dynamic_cast<StorageType*>(imageBuffer.get());
     if (pixelStorageP != nullptr) {
       imageBuffer.release();
@@ -79,25 +90,85 @@ class ImageSparseColorDepth : public ImageSparse {
   }
 
   void compress(const StorageType& toCompress) {
-    int numPixels = toCompress.getNumberOfPixels();
     int numActivePixels = 0;
     int iPixel = 0;
     this->runLengths->resize(0);
-    while (iPixel < numPixels) {
-      RunLengthRegion runLength;
-      while ((iPixel < numPixels) &&
-             this->isBackground(*toCompress.getDepthBuffer(iPixel))) {
-        ++runLength.backgroundPixels;
-        ++iPixel;
-      }
-      while ((iPixel < numPixels) &&
-             !this->isBackground(*toCompress.getDepthBuffer(iPixel))) {
-        ++runLength.foregroundPixels;
-        ++iPixel;
-      }
-      numActivePixels += runLength.foregroundPixels;
-      this->runLengths->push_back(runLength);
+    RunLengthRegion workingRunLength;
+    const Viewport& validViewport = toCompress.getValidViewport();
+
+    // There is currently little reason to compress an image with a range
+    // narrower than the full image, and the implementation would add
+    // complication here. For now, I am disallowing that.
+    if ((toCompress.getRegionBegin() > 0) ||
+        (toCompress.getRegionEnd() <
+         (toCompress.getWidth() * toCompress.getHeight()))) {
+      std::cerr << "Compression of subregion images currently not supported"
+                << std::endl;
+      abort();
     }
+
+    // Skip over pixels at the bottom of the image
+    workingRunLength.backgroundPixels =
+        validViewport.getMinY() * toCompress.getWidth();
+    iPixel = workingRunLength.backgroundPixels;
+
+    for (int y = validViewport.getMinY(); y <= validViewport.getMaxY(); ++y) {
+      if (validViewport.getMinX() > 0) {
+        // Skip pixels at left of the image
+        if (workingRunLength.foregroundPixels > 0) {
+          this->runLengths->push_back(workingRunLength);
+          workingRunLength = RunLengthRegion();
+        }
+        int numToSkip = validViewport.getMinX();
+        workingRunLength.backgroundPixels += numToSkip;
+        iPixel += numToSkip;
+      }
+      int x = validViewport.getMinX();
+      while (x <= validViewport.getMaxX()) {
+        if (workingRunLength.foregroundPixels == 0) {
+          while ((x <= validViewport.getMaxX()) &&
+                 this->isBackground(*toCompress.getDepthBuffer(iPixel))) {
+            ++workingRunLength.backgroundPixels;
+            ++x;
+            ++iPixel;
+          }
+        }
+        while ((x <= validViewport.getMaxX()) &&
+               !this->isBackground(*toCompress.getDepthBuffer(iPixel))) {
+          ++workingRunLength.foregroundPixels;
+          ++x;
+          ++iPixel;
+          ++numActivePixels;
+        }
+        if (x <= validViewport.getMaxX()) {
+          this->runLengths->push_back(workingRunLength);
+          workingRunLength = RunLengthRegion();
+        }
+      }
+      if (validViewport.getMaxX() < toCompress.getWidth() - 1) {
+        // Skip pixels at right of the image
+        if (workingRunLength.foregroundPixels > 0) {
+          this->runLengths->push_back(workingRunLength);
+          workingRunLength = RunLengthRegion();
+        }
+        int numToSkip = toCompress.getWidth() - validViewport.getMaxX() - 1;
+        workingRunLength.backgroundPixels += numToSkip;
+        iPixel += numToSkip;
+      }
+    }
+
+    // Skip over pixels at top of the image
+    if (validViewport.getMaxY() < toCompress.getHeight() - 1) {
+      if (workingRunLength.foregroundPixels > 0) {
+        this->runLengths->push_back(workingRunLength);
+        workingRunLength = RunLengthRegion();
+      }
+      int numToSkip = (toCompress.getHeight() - validViewport.getMaxY() - 1) *
+                      toCompress.getWidth();
+      workingRunLength.backgroundPixels += numToSkip;
+    }
+
+    this->runLengths->push_back(workingRunLength);
 
     this->pixelStorage->resizeBuffers(0, numActivePixels);
 
@@ -176,7 +247,11 @@ class ImageSparseColorDepth : public ImageSparse {
         bottomImage->pixelStorage->getDepthBuffer();
 
     std::unique_ptr<Image> outImageHolder = this->createNew(
-        this->getWidth(), this->getHeight(), totalRegionBegin, totalRegionEnd);
+        this->getWidth(),
+        this->getHeight(),
+        totalRegionBegin,
+        totalRegionEnd,
+        this->getValidViewport().unionWith(otherImage->getValidViewport()));
     ThisType* outImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((outImage != NULL) && "Internal error: createNew bad type.");
     outImage->pixelStorage->resizeBuffers(0, maxNumActivePixels);
@@ -349,9 +424,7 @@ class ImageSparseColorDepth : public ImageSparse {
   std::unique_ptr<Image> copySubrange(int subregionBegin,
                                       int subregionEnd) const final {
     std::unique_ptr<Image> outImageHolder =
-        this->createNew(this->getWidth(),
-                        this->getHeight(),
-                        subregionBegin + this->getRegionBegin(),
+        this->createNew(subregionBegin + this->getRegionBegin(),
                         subregionEnd + this->getRegionBegin());
     ThisType* subImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((subImage != NULL) && "Internal error: createNew bad type.");
@@ -380,9 +453,7 @@ class ImageSparseColorDepth : public ImageSparse {
   std::unique_ptr<const Image> window(int subregionBegin,
                                       int subregionEnd) const final {
     std::unique_ptr<Image> outImageHolder =
-        this->createNew(this->getWidth(),
-                        this->getHeight(),
-                        subregionBegin + this->getRegionBegin(),
+        this->createNew(subregionBegin + this->getRegionBegin(),
                         subregionEnd + this->getRegionBegin());
     ThisType* subImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((subImage != NULL) && "Internal error: createNew bad type.");
@@ -413,7 +484,8 @@ class ImageSparseColorDepth : public ImageSparse {
         this->pixelStorage->createNew(this->getWidth(),
                                       this->getHeight(),
                                       this->getRegionBegin(),
-                                      this->getRegionEnd());
+                                      this->getRegionEnd(),
+                                      this->getValidViewport());
     std::unique_ptr<StorageType> outImage(
         dynamic_cast<StorageType*>(outImageTmp.release()));
     assert(outImage && "Internal error: Storage type not as expected.");
@@ -536,7 +608,7 @@ class ImageSparseColorDepth : public ImageSparse {
                                        int _regionBegin,
                                        int _regionEnd) const final {
     std::unique_ptr<Image> pixelStorageCopy =
-        this->pixelStorage->createNew(_width, _height, 0, 0);
+        this->pixelStorage->createNew(0, 0);
     StorageType* pixelStorageCopyCast =
         dynamic_cast<StorageType*>(pixelStorageCopy.release());
     assert(pixelStorageCopyCast != nullptr);
@@ -547,6 +619,7 @@ class ImageSparseColorDepth : public ImageSparse {
                                       _height,
                                       _regionBegin,
                                       _regionEnd,
+                                      Viewport(0, 0, _width - 1, _height - 1),
                                       pixelStorageCopyShared,
                                       newRunLengths,
                                       this->background);

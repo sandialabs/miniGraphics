@@ -46,7 +46,7 @@ using ImageIsColorDepth = std::is_base_of<ImageColorDepthBase, ImageType>;
 template <typename ImageType>
 using ImageIsColorOnly = std::is_base_of<ImageColorOnlyBase, ImageType>;
 
-constexpr int IMAGE_WIDTH = 100;
+constexpr int IMAGE_WIDTH = 110;
 constexpr int IMAGE_HEIGHT = 100;
 constexpr int BORDER = 10;
 
@@ -71,15 +71,14 @@ static void compareImages(const ImageFull& image1, const ImageFull& image2) {
     }
   }
 
-#if 0
-  if (!(numBadPixels <= BAD_PIXEL_THRESHOLD * numPixels) &&
-      (image1.getRegionBegin() == 0) &&
-      (image1.getRegionEnd() == image1.getNumberOfPixels())) {
+  if (numBadPixels <= BAD_PIXEL_THRESHOLD * numPixels) {
+    std::cout << "    OK (image compare)" << std::endl;
+  } else {
+    std::cout << "    *** FAILED! *** (image compare)" << std::endl;
     SavePPM(image1, "image1.ppm");
     SavePPM(image2, "image2.ppm");
+    exit(1);
   }
-#endif
-  TEST_ASSERT(numBadPixels <= BAD_PIXEL_THRESHOLD * numPixels);
 }
 
 static void compareImages(const Image& image1, const Image& image2) {
@@ -105,6 +104,9 @@ static std::unique_ptr<ImageType> createColorDepthImage1(int regionBegin,
     }
   }
 
+  image->setValidViewport(Viewport(
+      BORDER, BORDER, IMAGE_WIDTH - BORDER - 1, IMAGE_HEIGHT - BORDER - 1));
+
   return image;
 }
 
@@ -123,6 +125,9 @@ static std::unique_ptr<ImageType> createColorOnlyImage1(int regionBegin,
       image->setColor(pixelIndex - regionBegin, color);
     }
   }
+
+  image->setValidViewport(Viewport(
+      BORDER, BORDER, IMAGE_WIDTH - BORDER - 1, IMAGE_HEIGHT - BORDER - 1));
 
   return image;
 }
@@ -159,11 +164,10 @@ static std::unique_ptr<ImageType> createColorDepthImage2(int regionBegin,
   for (int pixelIndex = regionBegin; pixelIndex < regionEnd; ++pixelIndex) {
     int x = pixelIndex % IMAGE_WIDTH;
     int y = pixelIndex / IMAGE_WIDTH;
-    if ((x > BORDER) && (x < IMAGE_WIDTH - BORDER) && (y > BORDER) &&
-        (y < IMAGE_HEIGHT - BORDER) && (x <= (IMAGE_HEIGHT - y))) {
+    if (x <= (IMAGE_HEIGHT - y)) {
       image->setColor(pixelIndex - regionBegin, color);
       image->setDepth(pixelIndex - regionBegin,
-                      static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
+                      0.5f * static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
     }
   }
 
@@ -180,8 +184,7 @@ static std::unique_ptr<ImageType> createColorOnlyImage2(int regionBegin,
   for (int pixelIndex = regionBegin; pixelIndex < regionEnd; ++pixelIndex) {
     int x = pixelIndex % IMAGE_WIDTH;
     int y = pixelIndex / IMAGE_WIDTH;
-    if ((x > BORDER) && (x < IMAGE_WIDTH - BORDER) && (y > BORDER) &&
-        (y < IMAGE_HEIGHT - BORDER) && (x <= (IMAGE_HEIGHT - y))) {
+    if (x <= (IMAGE_HEIGHT - y)) {
       image->setColor(pixelIndex - regionBegin, color);
     }
   }
@@ -223,16 +226,15 @@ static std::unique_ptr<ImageType> createColorDepthImageCombined(int regionBegin,
     int x = pixelIndex % IMAGE_WIDTH;
     int y = pixelIndex / IMAGE_WIDTH;
     if ((x > BORDER) && (x < IMAGE_WIDTH - BORDER) && (y > BORDER) &&
-        (y < IMAGE_HEIGHT - BORDER)) {
-      if ((x <= y) && (x > (IMAGE_HEIGHT - y) || (x < (IMAGE_WIDTH / 2)))) {
-        image->setColor(pixelIndex - regionBegin, color1);
-        image->setDepth(pixelIndex - regionBegin,
-                        static_cast<float>(x) / IMAGE_WIDTH);
-      } else if (x <= (IMAGE_HEIGHT - y)) {
-        image->setColor(pixelIndex - regionBegin, color2);
-        image->setDepth(pixelIndex - regionBegin,
-                        static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
-      }
+        (y < IMAGE_HEIGHT - BORDER) && (x <= y) &&
+        (x > (IMAGE_HEIGHT - y) || (x < (IMAGE_WIDTH / 3)))) {
+      image->setColor(pixelIndex - regionBegin, color1);
+      image->setDepth(pixelIndex - regionBegin,
+                      static_cast<float>(x) / IMAGE_WIDTH);
+    } else if (x <= (IMAGE_HEIGHT - y)) {
+      image->setColor(pixelIndex - regionBegin, color2);
+      image->setDepth(pixelIndex - regionBegin,
+                      0.5f * static_cast<float>(IMAGE_WIDTH - x) / IMAGE_WIDTH);
     }
   }
 
@@ -252,17 +254,15 @@ static std::unique_ptr<ImageType> createColorOnlyImageCombined(int regionBegin,
     int x = pixelIndex % IMAGE_WIDTH;
     int y = pixelIndex / IMAGE_WIDTH;
     if ((x > BORDER) && (x < IMAGE_WIDTH - BORDER) && (y > BORDER) &&
-        (y < IMAGE_HEIGHT - BORDER)) {
-      if (x <= y) {
-        if (x <= (IMAGE_HEIGHT - y)) {
-          image->setColor(pixelIndex - regionBegin, colorBlend);
-        } else {
-          image->setColor(pixelIndex - regionBegin, color1);
-        }
+        (y < IMAGE_HEIGHT - BORDER) && (x <= y)) {
+      if (x <= (IMAGE_HEIGHT - y)) {
+        image->setColor(pixelIndex - regionBegin, colorBlend);
       } else {
-        if (x <= (IMAGE_HEIGHT - y)) {
-          image->setColor(pixelIndex - regionBegin, color2);
-        }
+        image->setColor(pixelIndex - regionBegin, color1);
+      }
+    } else {
+      if (x <= (IMAGE_HEIGHT - y)) {
+        image->setColor(pixelIndex - regionBegin, color2);
       }
     }
   }

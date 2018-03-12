@@ -82,10 +82,7 @@ static void PostReceives(
        ++sendGroupIndex) {
     if (sendGroupIndex != sendGroupRank) {
       incomingImagesOut[sendGroupIndex].imageBuffer =
-          localImage->createNew(localImage->getWidth(),
-                                localImage->getHeight(),
-                                rangeBegin,
-                                rangeEnd);
+          localImage->createNew(rangeBegin, rangeEnd);
       incomingImagesOut[sendGroupIndex].receiveRequests =
           incomingImagesOut[sendGroupIndex].imageBuffer->IReceive(
               getRealRank(sendGroup, sendGroupIndex, communicator),

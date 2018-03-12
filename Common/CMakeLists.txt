@@ -53,6 +53,7 @@ set(headers
   SavePPM.hpp
   Timer.hpp
   Triangle.hpp
+  Viewport.hpp
   YamlWriter.hpp
   )
 

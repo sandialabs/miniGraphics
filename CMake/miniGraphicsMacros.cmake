@@ -124,7 +124,7 @@ function(miniGraphics_executable miniapp_name)
 
   if(MINIGRAPHICS_ENABLE_TESTING AND NOT miniGraphics_executable_DISABLE_TESTS)
     set(base_options
-      --width=100 --height=100
+      --width=110 --height=100
       --trials=1
       --yaml-output=test-runs.yaml
       )

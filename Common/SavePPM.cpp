@@ -57,8 +57,7 @@ bool SavePPM(const Image &image, const std::string &filename) {
 
   // If we only have a region of the image, blend it to a clear image to fill
   // it to its width and height.
-  std::unique_ptr<Image> blankImage =
-      image.createNew(image.getWidth(), image.getHeight(), 0, totalPixels);
+  std::unique_ptr<Image> blankImage = image.createNew(0, totalPixels);
   blankImage->clear();
   return doSavePPM(*image.blend(*blankImage), filename);
 }
