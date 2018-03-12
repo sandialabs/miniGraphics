@@ -16,13 +16,12 @@ class ImageSparse;
 class ImageFull : public Image {
  protected:
   int bufferOffset;
-
- public:
   ImageFull(int _width, int _height)
       : Image(_width, _height, 0, _width * _height), bufferOffset(0) {}
   ImageFull(int _width, int _height, int _regionBegin, int _regionEnd)
       : Image(_width, _height, _regionBegin, _regionEnd), bufferOffset(0) {}
 
+ public:
   /// \brief Gets the color of the n'th pixel.
   virtual Color getColor(int pixelIndex) const = 0;
 

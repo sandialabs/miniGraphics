@@ -52,9 +52,7 @@ static void PostReceivesFromSubtree(
     incoming.resize(incoming.size() + 1);
     incoming.back().relativeSubtreeIndex = relativeSubtreeIndex;
     incoming.back().imageBuffer =
-        myImage.createNew(myImage.getWidth(),
-                          myImage.getHeight(),
-                          std::max(regionBegin, myImage.getRegionBegin()),
+        myImage.createNew(std::max(regionBegin, myImage.getRegionBegin()),
                           std::min(regionEnd, myImage.getRegionEnd()));
     incoming.back().receiveRequests = incoming.back().imageBuffer->IReceive(
         getRealRank(subtree.group, groupIndex, communicator), communicator);

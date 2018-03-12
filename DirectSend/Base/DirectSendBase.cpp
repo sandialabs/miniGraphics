@@ -75,10 +75,7 @@ static void PostReceives(
        ++sendGroupIndex) {
     if (sendGroupIndex != sendGroupRank) {
       std::unique_ptr<Image> recvImageBuffer =
-          localImage->createNew(localImage->getWidth(),
-                                localImage->getHeight(),
-                                rangeBegin,
-                                rangeEnd);
+          localImage->createNew(rangeBegin, rangeEnd);
       std::vector<MPI_Request> newRequests = recvImageBuffer->IReceive(
           getRealRank(sendGroup, sendGroupIndex, communicator), communicator);
       requestsOut.insert(

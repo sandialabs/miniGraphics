@@ -54,7 +54,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
   static constexpr int COLOR_BUFFER_TAG = 12900;
   static constexpr int DEPTH_BUFFER_TAG = 12901;
 
- public:
+ protected:
   ImageColorDepth(int _width, int _height)
       : ImageFull(_width, _height),
         colorBuffer(new std::vector<ColorType>),
@@ -69,6 +69,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     this->resizeBuffers(this->getRegionBegin(), this->getRegionEnd());
   }
 
+ public:
   ~ImageColorDepth() = default;
 
   ColorType* getColorBuffer(int pixelIndex = 0) {
@@ -137,7 +138,11 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
         std::max(topImage->getRegionEnd(), bottomImage->getRegionEnd());
 
     std::unique_ptr<Image> outImageHolder = topImage->createNew(
-        this->getWidth(), this->getHeight(), totalRegionBegin, totalRegionEnd);
+        this->getWidth(),
+        this->getHeight(),
+        totalRegionBegin,
+        totalRegionEnd,
+        this->getValidViewport().unionWith(otherImage->getValidViewport()));
     ThisType* outImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((outImage != NULL) && "Internal error: createNew bad type.");
 
@@ -229,9 +234,7 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
     assert(subregionBegin <= subregionEnd);
 
     std::unique_ptr<Image> outImageHolder =
-        this->createNew(this->getWidth(),
-                        this->getHeight(),
-                        subregionBegin + this->getRegionBegin(),
+        this->createNew(subregionBegin + this->getRegionBegin(),
                         subregionEnd + this->getRegionBegin());
     ThisType* subImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((subImage != NULL) && "Internal error: createNew bad type.");
@@ -276,11 +279,12 @@ class ImageColorDepth : public ImageFull, ImageColorDepthBase {
                recvRank,
                communicator);
 
-    std::unique_ptr<Image> outImageHolder =
-        this->createNew(this->getWidth(),
-                        this->getHeight(),
-                        0,
-                        this->getWidth() * this->getHeight());
+    std::unique_ptr<Image> outImageHolder = this->createNew(
+        this->getWidth(),
+        this->getHeight(),
+        0,
+        this->getWidth() * this->getHeight(),
+        Viewport(0, 0, this->getWidth() - 1, this->getHeight() - 1));
     ThisType* recvImage = dynamic_cast<ThisType*>(outImageHolder.release());
     assert((recvImage != NULL) && "Internal error: createNew bad type.");
 

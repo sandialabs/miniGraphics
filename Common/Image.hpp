@@ -152,7 +152,14 @@ class Image {
   std::unique_ptr<Image> createNew(int _width,
                                    int _height,
                                    int _regionBegin,
-                                   int _regionEnd) const;
+                                   int _regionEnd,
+                                   const Viewport& _validViewport) const;
+
+  /// \brief Creates a new image object of the same type as this one.
+  ///
+  /// The new image is given the same width and height, (but new region) as
+  /// this one. The memory is allocated but no data are set.
+  std::unique_ptr<Image> createNew(int _regionBegin, int _regionEnd) const;
 
   /// \brief Creates a new image object of the same type as this one.
   ///

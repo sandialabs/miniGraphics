@@ -10,22 +10,36 @@
 
 Image::~Image() {}
 
-void Image::clear(const Color &color, float depth) {
+void Image::clear(const Color& color, float depth) {
   this->clearImpl(color, depth);
 }
 
 std::unique_ptr<Image> Image::createNew(int _width,
                                         int _height,
                                         int _regionBegin,
+                                        int _regionEnd,
+                                        const Viewport& _validViewport) const {
+  std::unique_ptr<Image> newImage =
+      this->createNewImpl(_width, _height, _regionBegin, _regionEnd);
+  newImage->setValidViewport(_validViewport);
+  return newImage;
+}
+
+std::unique_ptr<Image> Image::createNew(int _regionBegin,
                                         int _regionEnd) const {
-  return this->createNewImpl(_width, _height, _regionBegin, _regionEnd);
+  return this->createNew(this->getWidth(),
+                         this->getHeight(),
+                         _regionBegin,
+                         _regionEnd,
+                         this->getValidViewport());
 }
 
 std::unique_ptr<Image> Image::createNew() const {
   return this->createNew(this->getWidth(),
                          this->getHeight(),
                          this->getRegionBegin(),
-                         this->getRegionEnd());
+                         this->getRegionEnd(),
+                         this->getValidViewport());
 }
 
 void Image::Send(int destRank, MPI_Comm communicator) const {

@@ -90,16 +90,21 @@ class ImageSparse : public Image {
                     int& numActivePixels);
   };
 
-  ImageSparse(int _width, int _height, int _regionBegin, int _regionEnd)
-      : Image(_width, _height, _regionBegin, _regionEnd),
+  ImageSparse(int _width,
+              int _height,
+              int _regionBegin,
+              int _regionEnd,
+              const Viewport& _validViewport)
+      : Image(_width, _height, _regionBegin, _regionEnd, _validViewport),
         runLengths(new std::vector<RunLengthRegion>) {}
 
   ImageSparse(int _width,
               int _height,
               int _regionBegin,
               int _regionEnd,
+              const Viewport& _validViewport,
               std::shared_ptr<std::vector<RunLengthRegion>> _runLengths)
-      : Image(_width, _height, _regionBegin, _regionEnd),
+      : Image(_width, _height, _regionBegin, _regionEnd, _validViewport),
         runLengths(_runLengths) {}
 
   RunLengthIterator createRunLengthIterator() const {

@@ -43,10 +43,16 @@ class ImageSparseColorOnly : public ImageSparse {
       int _height,
       int _regionBegin,
       int _regionEnd,
+      const Viewport& _validViewport,
       std::shared_ptr<StorageType> _pixelStorage,
       std::shared_ptr<std::vector<RunLengthRegion>> _runLengths,
       const BackgroundInfo& _background)
-      : ImageSparse(_width, _height, _regionBegin, _regionEnd, _runLengths),
+      : ImageSparse(_width,
+                    _height,
+                    _regionBegin,
+                    _regionEnd,
+                    _validViewport,
+                    _runLengths),
         pixelStorage(_pixelStorage),
         background(_background) {}
 
@@ -55,9 +61,14 @@ class ImageSparseColorOnly : public ImageSparse {
       : ImageSparse(toCompress.getWidth(),
                     toCompress.getHeight(),
                     toCompress.getRegionBegin(),
-                    toCompress.getRegionEnd()) {
-    std::unique_ptr<Image> imageBuffer =
-        toCompress.createNew(this->getWidth(), this->getHeight(), 0, 0);
+                    toCompress.getRegionEnd(),
+                    toCompress.getValidViewport()) {
+    std::unique_ptr<Image> imageBuffer = toCompress.createNew(
+        this->getWidth(),
+        this->getHeight(),
+        0,
+        0,
+        Viewport(0, 0, this->getWidth() - 1, this->getHeight() - 1));
     StorageType* pixelStorageP = dynamic_cast<StorageType*>(imageBuffer.get());
     if (pixelStorageP != nullptr) {
       imageBuffer.release();
@@ -173,7 +184,11 @@ class ImageSparseColorOnly : public ImageSparse {
         bottomImage->pixelStorage->getColorBuffer();
 
     std::unique_ptr<Image> outImageHolder = this->createNew(
-        this->getWidth(), this->getHeight(), totalRegionBegin, totalRegionEnd);
+        this->getWidth(),
+        this->getHeight(),
+        totalRegionBegin,
+        totalRegionEnd,
+        this->getValidViewport().unionWith(otherImage->getValidViewport()));
     ThisType* outImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((outImage != NULL) && "Internal error: createNew bad type.");
     outImage->pixelStorage->resizeBuffers(0, maxNumActivePixels);
@@ -309,9 +324,7 @@ class ImageSparseColorOnly : public ImageSparse {
   std::unique_ptr<Image> copySubrange(int subregionBegin,
                                       int subregionEnd) const final {
     std::unique_ptr<Image> outImageHolder =
-        this->createNew(this->getWidth(),
-                        this->getHeight(),
-                        subregionBegin + this->getRegionBegin(),
+        this->createNew(subregionBegin + this->getRegionBegin(),
                         subregionEnd + this->getRegionBegin());
     ThisType* subImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((subImage != NULL) && "Internal error: createNew bad type.");
@@ -340,9 +353,7 @@ class ImageSparseColorOnly : public ImageSparse {
   std::unique_ptr<const Image> window(int subregionBegin,
                                       int subregionEnd) const final {
     std::unique_ptr<Image> outImageHolder =
-        this->createNew(this->getWidth(),
-                        this->getHeight(),
-                        subregionBegin + this->getRegionBegin(),
+        this->createNew(subregionBegin + this->getRegionBegin(),
                         subregionEnd + this->getRegionBegin());
     ThisType* subImage = dynamic_cast<ThisType*>(outImageHolder.get());
     assert((subImage != NULL) && "Internal error: createNew bad type.");
@@ -373,7 +384,8 @@ class ImageSparseColorOnly : public ImageSparse {
         this->pixelStorage->createNew(this->getWidth(),
                                       this->getHeight(),
                                       this->getRegionBegin(),
-                                      this->getRegionEnd());
+                                      this->getRegionEnd(),
+                                      this->getValidViewport());
     std::unique_ptr<StorageType> outImage(
         dynamic_cast<StorageType*>(outImageTmp.release()));
     assert(outImage && "Internal error: Storage type not as expected.");
@@ -491,7 +503,7 @@ class ImageSparseColorOnly : public ImageSparse {
                                        int _regionBegin,
                                        int _regionEnd) const final {
     std::unique_ptr<Image> pixelStorageCopy =
-        this->pixelStorage->createNew(_width, _height, 0, 0);
+        this->pixelStorage->createNew(0, 0);
     StorageType* pixelStorageCopyCast =
         dynamic_cast<StorageType*>(pixelStorageCopy.release());
     assert(pixelStorageCopyCast != nullptr);
@@ -502,6 +514,7 @@ class ImageSparseColorOnly : public ImageSparse {
                                       _height,
                                       _regionBegin,
                                       _regionEnd,
+                                      Viewport(0, 0, _width - 1, _height - 1),
                                       pixelStorageCopyShared,
                                       newRunLengths,
                                       this->background);
