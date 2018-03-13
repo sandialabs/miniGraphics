@@ -12,6 +12,13 @@
 #include <algorithm>
 #include <vector>
 
+#include <string.h>
+
+#if WIN32
+// Because MS has to be different for no good reason
+#define strdup _strdup
+#endif
+
 int main(int argc, char *argv[]) {
   IceTBase compositor;
 
@@ -19,7 +26,7 @@ int main(int argc, char *argv[]) {
   // understand the format used by our Image classes).
   std::vector<char *> newargv(argc + 1);
   std::copy(argv, argv + argc, newargv.begin());
-  newargv[argc] = "--disable-image-compress";
+  newargv[argc] = strdup("--disable-image-compress");
 
   return MainLoop(argc + 1, newargv.data(), &compositor);
 }
