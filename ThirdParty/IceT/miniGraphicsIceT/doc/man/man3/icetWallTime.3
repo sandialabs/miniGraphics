@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Mon Sep 22 15:51:55 MDT 2014
+.\" Manual page created with latex2man on Tue Mar 13 15:04:33 MDT 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -10,7 +10,7 @@
 
 .fi
 ..
-.TH "icetWallTime" "3" "July 11, 2011" "\fBIceT \fPReference" "\fBIceT \fPReference"
+.TH "icetWallTime" "3" "February 10, 2015" "\fBIceT \fPReference" "\fBIceT \fPReference"
 .SH NAME
 
 \fBicetWallTime \-\- timer function\fP
@@ -28,55 +28,57 @@ IceTDouble \fBicetWallTime\fP(	void	)
 .SH Description
 
 .PP
-Retrieves the current time, in seconds. The returned values of 
+Retrieves the current time, in seconds. The returned values of
 \fBicetWallTime\fP
-are only valid in relation to each other. That is, 
-the time may or may not have anything to do with the current date or 
-time. However, the difference of values between two calls to 
+are only valid in relation to each other. That is,
+the time may or may not have anything to do with the current date or
+time. However, the difference of values between two calls to
 \fBicetWallTime\fP
-is the elapsed time in seconds between the two 
+is the elapsed time in seconds between the two
 calls. Thus, \fBicetWallTime\fP
-is handy for determining the running 
+is handy for determining the running
 time of various subprocesses. \fBicetWallTime\fP
-is used internally 
-for determining the values for the state variables 
+is used internally for
+determining the values for the state variables
 \fBICET_BUFFER_READ_TIME\fP,
 \fBICET_BUFFER_WRITE_TIME\fP,
 \fBICET_COLLECT_TIME\fP,
 \fBICET_COMPARE_TIME\fP,
 \fBICET_COMPOSITE_TIME\fP,
 \fBICET_COMPRESS_TIME\fP,
+\fBICET_INTERLACE_TIME\fP,
 \fBICET_RENDER_TIME\fP,
-and \fBICET_TOTAL_DRAW_TIME\fP\&.
+and
+\fBICET_TOTAL_DRAW_TIME\fP\&.
 .PP
 .SH Return Value
 
 .PP
-The current time, in seconds. 
+The current time, in seconds.
 .PP
 .SH Errors
 
 .PP
-None. 
+None.
 .PP
 .SH Warnings
 
 .PP
-None. 
+None.
 .PP
 .SH Bugs
 
 .PP
-None known. 
+None known.
 .PP
 .SH Copyright
 
-Copyright (C)2003 Sandia Corporation 
+Copyright (C)2003 Sandia Corporation
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
-U.S. Government retains certain rights in this software. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the
+U.S. Government retains certain rights in this software.
 .PP
-This source code is released under the New BSD License. 
+This source code is released under the New BSD License.
 .PP
 .SH See Also
 

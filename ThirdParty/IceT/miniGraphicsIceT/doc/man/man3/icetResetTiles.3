@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Fri Sep 26 14:31:03 MDT 2014
+.\" Manual page created with latex2man on Tue Mar 13 15:04:31 MDT 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -29,54 +29,54 @@ void \fBicetResetTiles\fP(	void	);
 
 .PP
 \fBIceT \fPdefines its display as a set of tiles. \fBicetResetTiles\fP
-will 
-empty this set. The set of tiles is filled again with calls to 
+will
+empty this set. The set of tiles is filled again with calls to
 \fBicetAddTile\fP\&.
 .PP
 As a side effect, \fBicetResetTiles\fP
-will also zero out the 
-renderable window size (specified with state variables 
+will also zero out the
+renderable window size (specified with state variables
 \fBICET_PHYSICAL_RENDER_WIDTH\fP
-and 
+and
 \fBICET_PHYSICAL_RENDER_HEIGHT\fP).
-The size will be reset with 
+The size will be reset with
 calls to \fBicetAddTile\fP\&.
 .PP
 .SH Errors
 
 .PP
-None. 
+None.
 .PP
 .SH Warnings
 
 .PP
-None. 
+None.
 .PP
 .SH Bugs
 
 .PP
-None known. 
+None known.
 .PP
 .SH Notes
 
 .PP
 As a rule, a call to \fBicetResetTiles\fP
-should always be followed 
+should always be followed
 with one or more calls to \fBicetAddTile\fP\&.
 \fBicetDrawFrame\fP,
 \fBicetCompositeImage\fP,
 and \fBicetGLDrawFrame\fP
-will not work 
-properly if no tiles are in existence. 
+will not work
+properly if no tiles are in existence.
 .PP
 .SH Copyright
 
-Copyright (C)2003 Sandia Corporation 
+Copyright (C)2003 Sandia Corporation
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
-U.S. Government retains certain rights in this software. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the
+U.S. Government retains certain rights in this software.
 .PP
-This source code is released under the New BSD License. 
+This source code is released under the New BSD License.
 .PP
 .SH See Also
 

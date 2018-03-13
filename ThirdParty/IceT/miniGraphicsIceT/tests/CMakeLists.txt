@@ -25,14 +25,15 @@ OpenGL contexts. Supported values are GLUT and GLFW."
       MESSAGE(STATUS "Cannot find GLUT library. OpenGL tests disabled.")
     ENDIF (GLUT_FOUND)
   ELSEIF (ICET_OPENGL_WINDOW_LIBRARY STREQUAL GLFW)
-    FIND_PACKAGE(GLFW)
-    IF (GLFW_FOUND)
-      INCLUDE_DIRECTORIES(${GLFW_INCLUDE_DIR})
+    FIND_PACKAGE(glfw3)
+    IF (glfw3_FOUND)
+      #INCLUDE_DIRECTORIES(${GLFW_INCLUDE_DIR})
+      SET(GLFW_LIBRARY glfw)
       SET(ICET_TESTS_USE_OPENGL 1)
       SET(ICET_TESTS_USE_GLFW 1)
-    ELSE (GLFW_FOUND)
+    ELSE (glfw3_FOUND)
       MESSAGE(WARNING "Cannot find GLFW library. OpenGL tests disabled.")
-    ENDIF (GLFW_FOUND)
+    ENDIF (glfw3_FOUND)
   ELSE ()
     MESSAGE(SEND_ERROR "Invalid value for ICET_OPENGL_WINDOW_LIBRARY: ${ICET_OPENGL_WINDOW_LIBRARY}")
   ENDIF ()
@@ -46,6 +47,7 @@ SET(IceTTestSrcs
   BackgroundCorrect.c
   CompressionSize.c
   FloatingViewport.c
+  ImageConvert.c
   Interlace.c
   MaxImageSplit.c
   OddImageSizes.c

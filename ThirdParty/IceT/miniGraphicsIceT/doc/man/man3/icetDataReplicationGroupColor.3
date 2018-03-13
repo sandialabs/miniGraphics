@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Mon Sep 22 15:51:53 MDT 2014
+.\" Manual page created with latex2man on Tue Mar 13 15:04:21 MDT 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -28,57 +28,57 @@ void \fBicetDataReplicationGroupColor\fP(	IceTInt	\fIcolor\fP  );
 .SH Description
 
 .PP
-\fBIceT \fPhas the ability to take advantage of geometric data that is 
-replicated among processes. If a group of processes share the same 
-geometry data, then \fBIceT \fPwill split the region of the display that the 
-data projects onto among the processes, thereby reducing the total amount 
-of image composition work that needs to be done. 
+\fBIceT \fPhas the ability to take advantage of geometric data that is
+replicated among processes. If a group of processes share the same
+geometry data, then \fBIceT \fPwill split the region of the display that the
+data projects onto among the processes, thereby reducing the total amount
+of image composition work that needs to be done.
 .PP
 Despite the name of the function, \fBicetDataReplicationGroupColor\fP
-has nothing to do the color of the data being replicated. Instead, 
+has nothing to do the color of the data being replicated. Instead,
 \fIcolor\fP
-is used to mark the local process as part of a given group. 
+is used to mark the local process as part of a given group.
 When \fBicetDataReplicationGroupColor\fP
-is called, it finds all other 
-processes that have the same color and builds a group based on this 
-information. 
+is called, it finds all other
+processes that have the same color and builds a group based on this
+information.
 .PP
 \fBicetDataReplicationGroupColor\fP
-must be called on every processes 
-before the function will return. 
+must be called on every processes
+before the function will return.
 .PP
 .SH Errors
 
 .PP
-None. 
+None.
 .PP
 .SH Warnings
 
 .PP
-None. 
+None.
 .PP
 .SH Bugs
 
 .PP
 \fBIceT \fPassumes that \fBicetDataReplicationGroup\fP
-is called with the 
-exact same parameters on all processes belonging to a given group. 
-Likewise, \fBIceT \fPalso assumes that all processes have called 
+is called with the
+exact same parameters on all processes belonging to a given group.
+Likewise, \fBIceT \fPalso assumes that all processes have called
 \fBicetBoundingVertices\fP
 or \fBicetBoundingBox\fP
-with the exact 
-same parameters on all processes belonging to a given group. These 
-requirements are not strictly enforced, but failing to do so may cause 
-some of the geometry to not be rendered. 
+with the exact
+same parameters on all processes belonging to a given group. These
+requirements are not strictly enforced, but failing to do so may cause
+some of the geometry to not be rendered.
 .PP
 .SH Copyright
 
-Copyright (C)2003 Sandia Corporation 
+Copyright (C)2003 Sandia Corporation
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
-U.S. Government retains certain rights in this software. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the
+U.S. Government retains certain rights in this software.
 .PP
-This source code is released under the New BSD License. 
+This source code is released under the New BSD License.
 .PP
 .SH See Also
 

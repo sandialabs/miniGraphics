@@ -172,6 +172,7 @@ typedef struct { IceTVoid *opaque_internals; } IceTImage;
 
 #define ICET_IMAGE_COLOR_RGBA_UBYTE     (IceTEnum)0xC001
 #define ICET_IMAGE_COLOR_RGBA_FLOAT     (IceTEnum)0xC002
+#define ICET_IMAGE_COLOR_RGB_FLOAT      (IceTEnum)0xC003
 #define ICET_IMAGE_COLOR_NONE           (IceTEnum)0xC000
 
 #define ICET_IMAGE_DEPTH_FLOAT          (IceTEnum)0xD001

@@ -205,6 +205,56 @@
 #endif
 #include "decompress_template_body.h"
 #undef COPY_PIXEL
+            } else if (_color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+                IceTFloat *_color;
+                const IceTFloat *_c_in;
+                const IceTFloat *_d_in;
+                IceTFloat _background_color[4];
+                _color = icetImageGetColorf(OUTPUT_IMAGE);
+#ifdef OFFSET
+                _color += 3*(OFFSET);
+#endif
+                icetGetFloatv(ICET_BACKGROUND_COLOR, _background_color);
+#ifdef COMPOSITE
+#define COPY_PIXEL(c_src, c_dest, d_src, d_dest)                \
+                                if (d_src[0] < d_dest[0]) {     \
+                                    c_dest[0] = c_src[0];       \
+                                    c_dest[1] = c_src[1];       \
+                                    c_dest[2] = c_src[2];       \
+                                    d_dest[0] = d_src[0];       \
+                                }
+#else
+#define COPY_PIXEL(c_src, c_dest, d_src, d_dest)                \
+                                c_dest[0] = c_src[0];           \
+                                c_dest[1] = c_src[1];           \
+                                c_dest[2] = c_src[2];           \
+                                d_dest[0] = d_src[0];
+#endif
+#define DT_COMPRESSED_IMAGE     INPUT_SPARSE_IMAGE
+#define DT_READ_PIXEL(src)      _c_in = (IceTFloat *)src;       \
+                                src += 3*sizeof(IceTFloat);     \
+                                _d_in = (IceTFloat *)src;       \
+                                src += sizeof(IceTFloat);       \
+                                COPY_PIXEL(_c_in, _color,       \
+                                           _d_in, _depth);      \
+                                _color += 3;  _depth++;
+#ifdef COMPOSITE
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += 3*count;  _depth += count;
+#else
+#define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
+                                {                                       \
+                                    IceTSizeType __i;                   \
+                                    for (__i = 0; __i < count; __i++) { \
+                                        _color[0] =_background_color[0];\
+                                        _color[1] =_background_color[1];\
+                                        _color[2] =_background_color[2];\
+                                        _color += 3;                    \
+                                        *(_depth++) = 1.0f;             \
+                                    }                                   \
+                                }
+#endif
+#include "decompress_template_body.h"
+#undef COPY_PIXEL
             } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
                 const IceTFloat *_d_in;
 #ifdef COMPOSITE
@@ -342,6 +392,44 @@
                                         _color[2] =_background_color[2];\
                                         _color[3] =_background_color[3];\
                                         _color += 4;                    \
+                                    }                                   \
+                                }
+#endif
+#include "decompress_template_body.h"
+#undef COPY_PIXEL
+        } else if (_color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+            IceTFloat *_color;
+            const IceTFloat *_c_in;
+            IceTFloat _background_color[4];
+            _color = icetImageGetColorf(OUTPUT_IMAGE);
+#ifdef OFFSET
+            _color += 3*(OFFSET);
+#endif
+#ifdef CORRECT_BACKGROUND
+            icetGetFloatv(ICET_TRUE_BACKGROUND_COLOR, _background_color);
+#else
+            icetGetFloatv(ICET_BACKGROUND_COLOR, _background_color);
+#endif
+#define COPY_PIXEL(c_src, c_dest)                               \
+                                c_dest[0] = c_src[0];           \
+                                c_dest[1] = c_src[1];           \
+                                c_dest[2] = c_src[2];
+#define DT_COMPRESSED_IMAGE     INPUT_SPARSE_IMAGE
+#define DT_READ_PIXEL(src)      _c_in = (IceTFloat *)src;       \
+                                src += 3*sizeof(IceTFloat);     \
+                                COPY_PIXEL(_c_in, _color);      \
+                                _color += 3;
+#ifdef COMPOSITE
+#define DT_INCREMENT_INACTIVE_PIXELS(count) _color += 3*count;
+#else
+#define DT_INCREMENT_INACTIVE_PIXELS(count)                             \
+                                {                                       \
+                                    IceTSizeType __i;                   \
+                                    for (__i = 0; __i < count; __i++) { \
+                                        _color[0] =_background_color[0];\
+                                        _color[1] =_background_color[1];\
+                                        _color[2] =_background_color[2];\
+                                        _color += 3;                    \
                                     }                                   \
                                 }
 #endif

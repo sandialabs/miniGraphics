@@ -238,6 +238,7 @@ static IceTSizeType colorPixelSize(IceTEnum color_format)
     switch (color_format) {
       case ICET_IMAGE_COLOR_RGBA_UBYTE: return 4;
       case ICET_IMAGE_COLOR_RGBA_FLOAT: return 4*sizeof(IceTFloat);
+      case ICET_IMAGE_COLOR_RGB_FLOAT:  return 3*sizeof(IceTFloat);
       case ICET_IMAGE_COLOR_NONE:       return 0;
       default:
           icetRaiseError(ICET_INVALID_ENUM,
@@ -387,6 +388,7 @@ IceTImage icetImageAssignBuffer(IceTVoid *buffer,
 
     if (   (color_format != ICET_IMAGE_COLOR_RGBA_UBYTE)
         && (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+        && (color_format != ICET_IMAGE_COLOR_RGB_FLOAT)
         && (color_format != ICET_IMAGE_COLOR_NONE) ) {
         icetRaiseError(ICET_INVALID_ENUM,
                        "Invalid color format 0x%X.", color_format);
@@ -522,6 +524,7 @@ IceTSparseImage icetSparseImageAssignBuffer(IceTVoid *buffer,
 
     if (   (color_format != ICET_IMAGE_COLOR_RGBA_UBYTE)
         && (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+        && (color_format != ICET_IMAGE_COLOR_RGB_FLOAT)
         && (color_format != ICET_IMAGE_COLOR_NONE) ) {
         icetRaiseError(ICET_INVALID_ENUM,
                        "Invalid color format 0x%X.", color_format);
@@ -828,7 +831,8 @@ const IceTFloat *icetImageGetColorcf(const IceTImage image)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
 
-    if (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT) {
+    if (   (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+        && (color_format != ICET_IMAGE_COLOR_RGB_FLOAT)) {
         icetRaiseError(ICET_INVALID_OPERATION,
                        "Color format 0x%X is not of type float.",
                        color_format);
@@ -841,7 +845,8 @@ IceTFloat *icetImageGetColorf(IceTImage image)
 {
     IceTEnum color_format = icetImageGetColorFormat(image);
 
-    if (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT) {
+    if (   (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+        && (color_format != ICET_IMAGE_COLOR_RGB_FLOAT)) {
         icetRaiseError(ICET_INVALID_OPERATION,
                        "Color format 0x%X is not of type float.",
                        color_format);
@@ -958,6 +963,21 @@ void icetImageCopyColorub(const IceTImage image,
              i++, in++, out++) {
             out[0] = (IceTUByte)(255*in[0]);
         }
+    } else if (   (in_color_format == ICET_IMAGE_COLOR_RGB_FLOAT)
+               && (out_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE) ) {
+        const IceTFloat *in_buffer = icetImageGetColorcf(image);
+        IceTSizeType num_pixels = icetImageGetNumPixels(image);
+        IceTSizeType i;
+        const IceTFloat *in = in_buffer;
+        IceTUByte *out = color_buffer;
+        for (i = 0; i < num_pixels; i++) {
+            out[0] = (IceTUByte)(255*in[0]);
+            out[1] = (IceTUByte)(255*in[1]);
+            out[2] = (IceTUByte)(255*in[2]);
+            out[3] = (IceTUByte)255;
+            in += 3;
+            out += 4;
+        }
     } else {
         icetRaiseError(ICET_SANITY_CHECK_FAIL,
                        "Encountered unexpected color format combination "
@@ -972,7 +992,8 @@ void icetImageCopyColorf(const IceTImage image,
 {
     IceTEnum in_color_format = icetImageGetColorFormat(image);
 
-    if (out_color_format != ICET_IMAGE_COLOR_RGBA_FLOAT) {
+    if (   (out_color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+        && (out_color_format != ICET_IMAGE_COLOR_RGB_FLOAT)) {
         icetRaiseError(ICET_INVALID_ENUM,
                        "Color format 0x%X is not of type float.",
                        out_color_format);
@@ -999,6 +1020,49 @@ void icetImageCopyColorf(const IceTImage image,
         for (i = 0, in = in_buffer, out = color_buffer; i < 4*num_pixels;
              i++, in++, out++) {
             out[0] = (IceTFloat)in[0]/255.0f;
+        }
+    } else if (   (in_color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
+               && (out_color_format == ICET_IMAGE_COLOR_RGB_FLOAT) ) {
+        const IceTUByte *in_buffer = icetImageGetColorcub(image);
+        IceTSizeType num_pixels = icetImageGetNumPixels(image);
+        IceTSizeType i;
+        const IceTUByte *in = in_buffer;
+        IceTFloat *out = color_buffer;
+        for (i = 0; i < num_pixels; i++) {
+            out[0] = (IceTFloat)in[0]/255.0f;
+            out[1] = (IceTFloat)in[1]/255.0f;
+            out[2] = (IceTFloat)in[2]/255.0f;
+            in += 4;
+            out += 3;
+        }
+    } else if (   (in_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT)
+               && (out_color_format == ICET_IMAGE_COLOR_RGB_FLOAT) ) {
+        const IceTFloat *in_buffer = icetImageGetColorcf(image);
+        IceTSizeType num_pixels = icetImageGetNumPixels(image);
+        IceTSizeType i;
+        const IceTFloat *in = in_buffer;
+        IceTFloat *out = color_buffer;
+        for (i = 0; i < num_pixels; i++) {
+            out[0] = (IceTFloat)in[0];
+            out[1] = (IceTFloat)in[1];
+            out[2] = (IceTFloat)in[2];
+            in += 4;
+            out += 3;
+        }
+    } else if (   (in_color_format == ICET_IMAGE_COLOR_RGB_FLOAT)
+               && (out_color_format == ICET_IMAGE_COLOR_RGBA_FLOAT) ) {
+        const IceTFloat *in_buffer = icetImageGetColorcf(image);
+        IceTSizeType num_pixels = icetImageGetNumPixels(image);
+        IceTSizeType i;
+        const IceTFloat *in = in_buffer;
+        IceTFloat *out = color_buffer;
+        for (i = 0; i < num_pixels; i++) {
+            out[0] = (IceTFloat)in[0];
+            out[1] = (IceTFloat)in[1];
+            out[2] = (IceTFloat)in[2];
+            out[3] = 1.0f;
+            in += 3;
+            out += 4;
         }
     } else {
         icetRaiseError(ICET_SANITY_CHECK_FAIL,
@@ -1236,6 +1300,43 @@ void icetImageClearAroundRegion(IceTImage image, const IceTInt *region)
                 color_buffer[4*(y*width + x) + 3] = background_color[3];
             }
         }
+    } else if (color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+        IceTFloat *color_buffer = icetImageGetColorf(image);
+        IceTFloat background_color[4];
+
+        icetGetFloatv(ICET_BACKGROUND_COLOR, background_color);
+
+      /* Clear out bottom. */
+        for (y = 0; y < region[1]; y++) {
+            for (x = 0; x < width; x++) {
+                color_buffer[3*(y*width + x) + 0] = background_color[0];
+                color_buffer[3*(y*width + x) + 1] = background_color[1];
+                color_buffer[3*(y*width + x) + 2] = background_color[2];
+            }
+        }
+      /* Clear out left and right. */
+        if ((region[0] > 0) || (region[0]+region[2] < width)) {
+            for (y = region[1]; y < region[1]+region[3]; y++) {
+                for (x = 0; x < region[0]; x++) {
+                    color_buffer[3*(y*width + x) + 0] = background_color[0];
+                    color_buffer[3*(y*width + x) + 1] = background_color[1];
+                    color_buffer[3*(y*width + x) + 2] = background_color[2];
+                }
+                for (x = region[0]+region[2]; x < width; x++) {
+                    color_buffer[3*(y*width + x) + 0] = background_color[0];
+                    color_buffer[3*(y*width + x) + 1] = background_color[1];
+                    color_buffer[3*(y*width + x) + 2] = background_color[2];
+                }
+            }
+        }
+      /* Clear out top. */
+        for (y = region[1]+region[3]; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                color_buffer[3*(y*width + x) + 0] = background_color[0];
+                color_buffer[3*(y*width + x) + 1] = background_color[1];
+                color_buffer[3*(y*width + x) + 2] = background_color[2];
+            }
+        }
     } else if (color_format != ICET_IMAGE_COLOR_NONE) {
         icetRaiseError(ICET_SANITY_CHECK_FAIL,
                        "Invalid color format 0x%X.", color_format);
@@ -1320,6 +1421,7 @@ IceTImage icetImageUnpackageFromReceive(IceTVoid *buffer)
     color_format = icetImageGetColorFormat(image);
     if (    (color_format != ICET_IMAGE_COLOR_RGBA_UBYTE)
          && (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+         && (color_format != ICET_IMAGE_COLOR_RGB_FLOAT)
          && (color_format != ICET_IMAGE_COLOR_NONE) ) {
         icetRaiseError(ICET_INVALID_VALUE,
                        "Invalid image buffer: invalid color format 0x%X.",
@@ -1408,6 +1510,7 @@ IceTSparseImage icetSparseImageUnpackageFromReceive(IceTVoid *buffer)
     color_format = icetSparseImageGetColorFormat(image);
     if (    (color_format != ICET_IMAGE_COLOR_RGBA_UBYTE)
          && (color_format != ICET_IMAGE_COLOR_RGBA_FLOAT)
+         && (color_format != ICET_IMAGE_COLOR_RGB_FLOAT)
          && (color_format != ICET_IMAGE_COLOR_NONE) ) {
         icetRaiseError(ICET_INVALID_VALUE,
                        "Invalid image buffer: invalid color format 0x%X.",
@@ -2058,6 +2161,7 @@ void icetSetColorFormat(IceTEnum color_format)
 
     if (   (color_format == ICET_IMAGE_COLOR_RGBA_UBYTE)
         || (color_format == ICET_IMAGE_COLOR_RGBA_FLOAT)
+        || (color_format == ICET_IMAGE_COLOR_RGB_FLOAT)
         || (color_format == ICET_IMAGE_COLOR_NONE) ) {
         icetStateSetInteger(ICET_COLOR_FORMAT, color_format);
     } else {
@@ -2317,6 +2421,17 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                         destColorBuffer[4*i+3] = srcColorBuffer[4*i+3];
                     }
                 }
+            } else if (color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+                const IceTFloat *srcColorBuffer = icetImageGetColorf(srcBuffer);
+                IceTFloat *destColorBuffer = icetImageGetColorf(destBuffer);
+                for (i = 0; i < pixels; i++) {
+                    if (srcDepthBuffer[i] < destDepthBuffer[i]) {
+                        destDepthBuffer[i] = srcDepthBuffer[i];
+                        destColorBuffer[3*i+0] = srcColorBuffer[3*i+0];
+                        destColorBuffer[3*i+1] = srcColorBuffer[3*i+1];
+                        destColorBuffer[3*i+2] = srcColorBuffer[3*i+2];
+                    }
+                }
             } else if (color_format == ICET_IMAGE_COLOR_NONE) {
                 for (i = 0; i < pixels; i++) {
                     if (srcDepthBuffer[i] < destDepthBuffer[i]) {
@@ -2369,6 +2484,19 @@ void icetComposite(IceTImage destBuffer, const IceTImage srcBuffer,
                 for (i = 0; i < pixels; i++) {
                     ICET_UNDER_FLOAT(srcColorBuffer + i*4,
                                      destColorBuffer + i*4);
+                }
+            }
+        } else if (color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+            const IceTFloat *srcColorBuffer = icetImageGetColorf(srcBuffer);
+            IceTFloat *destColorBuffer = icetImageGetColorf(destBuffer);
+            icetRaiseWarning(ICET_INVALID_VALUE,
+                             "No alpha channel for blending. "
+                             "On top image used.");
+            if (srcOnTop) {
+                for (i = 0; i < pixels; i++) {
+                    destColorBuffer[3*i+0] = srcColorBuffer[3*i+0];
+                    destColorBuffer[3*i+1] = srcColorBuffer[3*i+1];
+                    destColorBuffer[3*i+2] = srcColorBuffer[3*i+2];
                 }
             }
         } else if (color_format == ICET_IMAGE_COLOR_NONE) {
@@ -2491,6 +2619,8 @@ void icetImageCorrectBackground(IceTImage image)
             ICET_UNDER_FLOAT(background_color, color);
             color += 4;
         }
+    } else if (color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+      /* Nothing to fix. */
     } else {
         icetRaiseError(ICET_SANITY_CHECK_FAIL,
                        "Encountered invalid color buffer type 0x%X"

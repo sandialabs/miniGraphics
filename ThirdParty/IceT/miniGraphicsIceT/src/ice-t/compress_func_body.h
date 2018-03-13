@@ -208,6 +208,48 @@
 #define CT_FULL_HEIGHT          FULL_HEIGHT
 #endif
 #include "compress_template_body.h"
+            } else if (_color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+                const IceTFloat *_color;
+                IceTFloat *_out;
+#ifdef REGION
+                IceTSizeType _region_count = 0;
+#endif
+                _color = icetImageGetColorcf(INPUT_IMAGE);
+#ifdef OFFSET
+                _color += 3*(OFFSET);
+#endif
+#define CT_COMPRESSED_IMAGE     OUTPUT_SPARSE_IMAGE
+#define CT_COLOR_FORMAT         _color_format
+#define CT_DEPTH_FORMAT         _depth_format
+#define CT_PIXEL_COUNT          _pixel_count
+#define CT_ACTIVE()             (_depth[0] < 1.0)
+#define CT_WRITE_PIXEL(dest)    _out = (IceTFloat *)dest;       \
+                                _out[0] = _color[0];            \
+                                _out[1] = _color[1];            \
+                                _out[2] = _color[2];            \
+                                _out[3] = _depth[0];            \
+                                dest += 4*sizeof(IceTFloat);
+#ifdef REGION
+#define CT_INCREMENT_PIXEL()    _color += 3;  _depth++;                 \
+                                _region_count++;                        \
+                                if (_region_count >= _region_width) {   \
+                                    _color += 3*_region_x_skip;         \
+                                    _depth += _region_x_skip;           \
+                                    _region_count = 0;                  \
+                                }
+#else
+#define CT_INCREMENT_PIXEL()    _color += 3;  _depth++;
+#endif
+#ifdef PADDING
+#define CT_PADDING
+#define CT_SPACE_BOTTOM         SPACE_BOTTOM
+#define CT_SPACE_TOP            SPACE_TOP
+#define CT_SPACE_LEFT           SPACE_LEFT
+#define CT_SPACE_RIGHT          SPACE_RIGHT
+#define CT_FULL_WIDTH           FULL_WIDTH
+#define CT_FULL_HEIGHT          FULL_HEIGHT
+#endif
+#include "compress_template_body.h"
             } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
                 IceTFloat *_out;
 #ifdef REGION
@@ -341,6 +383,16 @@
 #define CT_FULL_HEIGHT          FULL_HEIGHT
 #endif
 #include "compress_template_body.h"
+        } else if (_color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+            IceTUInt *_out;
+            icetRaiseError(
+                ICET_INVALID_VALUE,
+                "Compressing image for blending with no alpha channel.");
+            _out = ICET_IMAGE_DATA(OUTPUT_SPARSE_IMAGE);
+            INACTIVE_RUN_LENGTH(_out) = _pixel_count;
+            ACTIVE_RUN_LENGTH(_out) = 0;
+            _out++;
+            icetSparseImageSetActualSize(OUTPUT_SPARSE_IMAGE, _out);
         } else if (_color_format == ICET_IMAGE_COLOR_NONE) {
             IceTUInt *_out;
             icetRaiseWarning(ICET_INVALID_OPERATION,
