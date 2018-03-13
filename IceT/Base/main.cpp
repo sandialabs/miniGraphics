@@ -9,7 +9,17 @@
 #include <Common/MainLoop.hpp>
 #include "IceTBase.hpp"
 
+#include <algorithm>
+#include <vector>
+
 int main(int argc, char *argv[]) {
   IceTBase compositor;
-  return MainLoop(argc, argv, &compositor);
+
+  // Suppress compressing images. IceT does that for us (and does not
+  // understand the format used by our Image classes).
+  std::vector<char *> newargv(argc + 1);
+  std::copy(argv, argv + argc, newargv.begin());
+  newargv[argc] = "--disable-image-compress";
+
+  return MainLoop(argc + 1, newargv.data(), &compositor);
 }
