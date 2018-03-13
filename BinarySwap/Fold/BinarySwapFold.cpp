@@ -23,6 +23,8 @@ static int getRealRank(MPI_Group group, int rank, MPI_Comm communicator) {
 
   int realRank;
   MPI_Group_translate_ranks(group, 1, &rank, commGroup, &realRank);
+
+  MPI_Group_free(&commGroup);
   return realRank;
 }
 

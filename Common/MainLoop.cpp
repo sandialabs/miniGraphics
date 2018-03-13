@@ -946,7 +946,8 @@ int MainLoop(int argc,
   }
 
   if (options[IMAGE_COMPRESS]) {
-    runOptions.compressImages = (options[IMAGE_COMPRESS].type() == ENABLE);
+    runOptions.compressImages =
+        (options[IMAGE_COMPRESS].last()->type() == ENABLE);
   }
 
   if (options[OVERLAP]) {

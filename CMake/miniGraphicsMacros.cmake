@@ -93,6 +93,7 @@ endfunction(miniGraphics_find_power_of_two)
 # The first argument is the name of the miniapp. A target with that name will
 # be created. The remaining arguments are source files.
 function(miniGraphics_executable miniapp_name)
+  message(STATUS "Adding miniapp ${miniapp_name}")
   set(options DISABLE_TESTS POWER_OF_TWO_ONLY)
   set(oneValueArgs)
   set(multiValueArgs HEADERS SOURCES)
