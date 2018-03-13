@@ -102,6 +102,16 @@ void icetGLDrawCallbackFunction(const IceTDouble *projection_matrix,
                          GL_FLOAT,
                          colorBuffer + 4*(  readback_viewport[0]
                                           + width*readback_viewport[1]));
+        } else if (color_format == ICET_IMAGE_COLOR_RGB_FLOAT) {
+            IceTFloat *colorBuffer = icetImageGetColorf(result);
+            glReadPixels((GLint)x_offset,
+                         (GLint)y_offset,
+                         (GLsizei)readback_viewport[2],
+                         (GLsizei)readback_viewport[3],
+                         GL_RGB,
+                         GL_FLOAT,
+                         colorBuffer + 3*(  readback_viewport[0]
+                                          + width*readback_viewport[1]));
         } else if (color_format != ICET_IMAGE_COLOR_NONE) {
             icetRaiseError(ICET_SANITY_CHECK_FAIL,
                            "Invalid color format 0x%X.", color_format);

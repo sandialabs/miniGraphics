@@ -380,6 +380,14 @@ static void RandomTransformDoRender(IceTBoolean transparent,
                          GL_FLOAT,
                          color_buffer);
             break;
+          case ICET_IMAGE_COLOR_RGB_FLOAT:
+              color_buffer = malloc(width*height*3*sizeof(IceTFloat));
+              glReadPixels(0, 0,
+                           width, height,
+                           GL_RGB,
+                           GL_FLOAT,
+                           color_buffer);
+              break;
         case ICET_IMAGE_COLOR_NONE:
             /* Do nothing. */
             break;
@@ -490,8 +498,17 @@ static void RandomTransformTryStrategy()
 
     RandomTransformTryInterlace(ICET_FALSE, local_width, local_height);
 
-    printstat("\nDoing float color buffer.\n");
+    printstat("\nDoing float RGBA color buffer.\n");
     icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_FLOAT);
+    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+    icetEnable(ICET_COMPOSITE_ONE_BUFFER);
+    icetDisable(ICET_ORDERED_COMPOSITE);
+
+    RandomTransformTryInterlace(ICET_FALSE, local_width, local_height);
+
+    printstat("\nDoing float RGB color buffer.\n");
+    icetSetColorFormat(ICET_IMAGE_COLOR_RGB_FLOAT);
     icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
     icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
     icetEnable(ICET_COMPOSITE_ONE_BUFFER);

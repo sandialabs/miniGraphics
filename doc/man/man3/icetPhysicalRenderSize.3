@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Mon Sep 22 15:51:54 MDT 2014
+.\" Manual page created with latex2man on Tue Mar 13 15:04:31 MDT 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -29,33 +29,33 @@ void \fBicetPhysicalRenderSize\fP(	IceTInt	\fIwidth\fP,
 .SH Description
 
 .PP
-Specify the size of images that are rendered with 
+Specify the size of images that are rendered with
 \fBicetPhysicalRenderSize\fP\&.
-This is the size of image that is 
-expected to be rendered by the draw callback (specified with 
+This is the size of image that is
+expected to be rendered by the draw callback (specified with
 \fBicetDrawCallback\fP).
-The width and height are captured in the 
+The width and height are captured in the
 \fBICET_PHYSICAL_RENDER_WIDTH\fP
-and 
+and
 \fBICET_PHYSICAL_RENDER_HEIGHT\fP
-state variables. 
+state variables.
 .PP
-The size of images that are rendered do not have to be the same size as 
-the tile they are rendering so long as they are not smaller in any 
-dimension. In fact, when rendering multiple tiles it can often save time 
-to render larger images. Nevertheless, by default the physical render 
+The size of images that are rendered do not have to be the same size as
+the tile they are rendering so long as they are not smaller in any
+dimension. In fact, when rendering multiple tiles it can often save time
+to render larger images. Nevertheless, by default the physical render
 size is set to the size of the tiles in \fBicetAddTile\fP
-because this 
-is the most common use case. 
+because this
+is the most common use case.
 .PP
-When using the \fbOpenGL \fPrendering layer, the physical rendering size is 
-overridden to the size of the \fbOpenGL \fPviewport in each call to 
+When using the \fbOpenGL \fPrendering layer, the physical rendering size is
+overridden to the size of the \fbOpenGL \fPviewport in each call to
 \fBicetGLDrawFrame\fP\&.
 .PP
 .SH Errors
 
 .PP
-None. 
+None.
 .PP
 .SH Warnings
 
@@ -64,22 +64,22 @@ None.
 \fBICET_INVALID_VALUE\fP
  The \fIwidth\fP
 or \fIheight\fP
-specified is smaller than that for 
-the largest tile. 
+specified is smaller than that for
+the largest tile.
 .PP
 .SH Bugs
 
 .PP
-None known. 
+None known.
 .PP
 .SH Copyright
 
-Copyright (C)2010 Sandia Corporation 
+Copyright (C)2010 Sandia Corporation
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
-U.S. Government retains certain rights in this software. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the
+U.S. Government retains certain rights in this software.
 .PP
-This source code is released under the New BSD License. 
+This source code is released under the New BSD License.
 .PP
 .SH See Also
 

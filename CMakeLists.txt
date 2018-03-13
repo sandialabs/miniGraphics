@@ -5,14 +5,7 @@
 ## This source code is released under the New BSD License.
 #
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-
-# Turn off policy 0017, which makes modules packaged with CMake find
-# any module rather than just others packaged with CMake.  This is
-# necessary for backward compatibility when included from ParaView.
-IF (POLICY CMP0017)
-  CMAKE_POLICY(SET CMP0017 OLD)
-ENDIF (POLICY CMP0017)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.3)
 
 PROJECT(ICET C)
 
@@ -118,44 +111,19 @@ IF (ICET_USE_MPI)
   FIND_PACKAGE(MPI REQUIRED)
   # Mark certain variables as non-advanced.
 
-  IF (DEFINED MPI_C_COMPILER)
-    # Using newer MPI module.
-    # Older MPI module
-    MARK_AS_ADVANCED(CLEAR MPI_C_INCLUDE_PATH)
-    MARK_AS_ADVANCED(CLEAR MPI_C_LIBRARIES)
+  INCLUDE_DIRECTORIES(${MPI_C_INCLUDE_PATH})
+  SET (ICET_MPI_LIBRARIES ${MPI_C_LIBRARIES})
 
-    INCLUDE_DIRECTORIES(${MPI_C_INCLUDE_PATH})
-    SET (ICET_MPI_LIBRARIES ${MPI_C_LIBRARIES})
-  ELSE (DEFINED MPI_C_COMPILER)
-    # Older MPI module
-    MARK_AS_ADVANCED(CLEAR MPI_INCLUDE_PATH)
-    MARK_AS_ADVANCED(CLEAR MPI_LIBRARY)
-    MARK_AS_ADVANCED(CLEAR MPI_EXTRA_LIBRARY)
-
-    INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-    SET(ICET_MPI_LIBRARIES ${MPI_LIBRARY} ${MPI_EXTRA_LIBRARY})
-  ENDIF(DEFINED MPI_C_COMPILER)
-
-  # Set up variables used to run MPI programs.  In CMake 2.8 or later, they are
-  # defined by the FindMPI module.
-  IF (MPIEXEC)
-    SET(ICET_MPIRUN_EXE ${MPIEXEC})
-    SET(ICET_MPI_NUMPROC_FLAG ${MPIEXEC_NUMPROC_FLAG})
-    SET(ICET_MPI_PREFLAGS ${MPIEXEC_PREFLAGS})
-    SET(ICET_MPI_POSTFLAGS ${MPIEXEC_POSTFLAGS})
-  ELSE (MPIEXEC)
-    FIND_PROGRAM(ICET_MPIRUN_EXE NAMES mpiexec mpirun lamexec)
-    SET(ICET_MPI_NUMPROC_FLAG "-np" CACHE STRING "Flag used by MPI start program.  Used to specify the number of processes.")
-    SET(ICET_MPI_PREFLAGS "" CACHE STRING "Flags used by MPI start program.  These are placed directly before the executable.")
-    SET(ICET_MPI_POSTFLAGS "" CACHE STRING "Flags used by MPI start program.  These are placed after all other flags.")
-    MARK_AS_ADVANCED(
-      ICET_MPIRUN_EXE
-      ICET_MPI_NUMPROC_FLAG
-      ICET_MPI_PREFLAGS
-      ICET_MPI_POSTFLAGS
-      )
-  ENDIF (MPIEXEC)
-  SET(ICET_MPI_MAX_NUMPROCS "2" CACHE STRING "Maximum number of processors available to run parallel applications.")
+  # Set up variables used to run MPI programs.
+  SET(ICET_MPIRUN_EXE ${MPIEXEC})
+  SET(ICET_MPI_NUMPROC_FLAG ${MPIEXEC_NUMPROC_FLAG})
+  SET(ICET_MPI_PREFLAGS ${MPIEXEC_PREFLAGS})
+  SET(ICET_MPI_POSTFLAGS ${MPIEXEC_POSTFLAGS})
+  IF(NOT MPIEXEC_MAX_NUMPROCS)
+  SET(MPIEXEC_MAX_NUMPROCS 2)
+  ENDIF()
+  SET(ICET_MPI_MAX_NUMPROCS ${MPIEXEC_MAX_NUMPROCS} CACHE STRING
+    "Maximum number of processors available to run parallel applications.")
   MARK_AS_ADVANCED(ICET_MPI_MAX_NUMPROCS)
   SEPARATE_ARGUMENTS(ICET_MPI_PREFLAGS)
   SEPARATE_ARGUMENTS(ICET_MPI_POSTFLAGS)

@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Mon Sep 22 17:14:18 MDT 2014
+.\" Manual page created with latex2man on Tue Mar 13 15:04:21 MDT 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -29,48 +29,48 @@ void \fBicetDestroyContext\fP(	\fBIceTContext\fP	\fIcontext\fP  );
 
 .PP
 Frees the memory required to hold the state of \fIcontext\fP
-and removes 
+and removes
 \fIcontext\fP
-from existence. 
+from existence.
 .PP
 .SH Errors
 
 .PP
-None. 
+None.
 .PP
 .SH Warnings
 
 .PP
-None. 
+None.
 .PP
 .SH Bugs
 
 .PP
 \fBicetDestroyContext\fP
-will happily delete the current context for 
-you, but subsequent calls to most other \fBIceT \fPfunctions will probably 
-result in seg\-faults unless you make another context current with 
+will happily delete the current context for
+you, but subsequent calls to most other \fBIceT \fPfunctions will probably
+result in seg\-faults unless you make another context current with
 \fBicetCreateContext\fP
 or \fBicetSetContext\fP\&.
-The most notable 
+The most notable
 execptions are the functions with names matching \fBicet*Context\fP,
-which will work correctly without a proper current context. 
+which will work correctly without a proper current context.
 .PP
 .SH Notes
 
 .PP
 Behavior is undefined if \fIcontext\fP
-has never been created or has 
-already been destroyed. 
+has never been created or has
+already been destroyed.
 .PP
 .SH Copyright
 
-Copyright (C)2003 Sandia Corporation 
+Copyright (C)2003 Sandia Corporation
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
-U.S. Government retains certain rights in this software. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the
+U.S. Government retains certain rights in this software.
 .PP
-This source code is released under the New BSD License. 
+This source code is released under the New BSD License.
 .PP
 .SH See Also
 

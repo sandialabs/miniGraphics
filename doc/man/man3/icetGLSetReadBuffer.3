@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Mon Sep 22 15:51:54 MDT 2014
+.\" Manual page created with latex2man on Tue Mar 13 15:04:27 MDT 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -28,17 +28,17 @@ void \fBicetGLSetReadBuffer\fP(	GLenum	\fImode\fP  );
 .SH Description
 
 .PP
-Set the \fbOpenGL \fPbuffer from which to read images to composite. After the 
+Set the \fbOpenGL \fPbuffer from which to read images to composite. After the
 draw callback (specified by \fBicetGLDrawCallback\fP)
 returns, \fBIceT \fP
-grabs the rendered image from the \fbOpenGL \fPbuffer specified by 
+grabs the rendered image from the \fbOpenGL \fPbuffer specified by
 \fImode\fP\&.
-This buffer is also used to write back fully composited 
+This buffer is also used to write back fully composited
 images if the \fBICET_GL_DISPLAY\fP
-option is on. 
+option is on.
 .PP
 \fImode\fP
-is an \fbOpenGL \fPvalue that specifies the buffer. It is passed 
+is an \fbOpenGL \fPvalue that specifies the buffer. It is passed
 to \fBglReadBuffer\fP
 and \fBglDrawBuffer\fP\&.
 Accepted values are \fBGL_FRONT\fP,
@@ -50,11 +50,11 @@ Accepted values are \fBGL_FRONT\fP,
 \fBGL_BACK_LEFT\fP,
 \fBGL_BACK_RIGHT\fP,
 and any of the \fBGL_AUX\fP\fIi\fP
-identifiers. 
+identifiers.
 .PP
-The current read buffer used is stored in the 
+The current read buffer used is stored in the
 \fBICET_GL_READ_BUFFER\fP
-state variable. The default value is 
+state variable. The default value is
 \fBGL_BACK\fP\&.
 .PP
 .SH Errors
@@ -63,34 +63,34 @@ state variable. The default value is
 .TP
 \fBICET_INVALID_OPERATION\fP
  \fBicetGLInitialize\fP
-has not been called for this \fBIceT \fPcontext. 
+has not been called for this \fBIceT \fPcontext.
 .TP
 \fBICET_INVALID_ENUM\fP
  \fImode\fP
-is not a known \fbOpenGL \fPbuffer identifier. 
+is not a known \fbOpenGL \fPbuffer identifier.
 .PP
 .SH Warnings
 
 .PP
-None. 
+None.
 .PP
 .SH Bugs
 
 .PP
 The check of \fImode\fP
 is perfunctory. It just checks \fImode\fP
-against a list of known buffers. It does not check to see if the buffer 
-actually exists or for any other buffers that might be defined in an 
-\fbOpenGL \fPextension. 
+against a list of known buffers. It does not check to see if the buffer
+actually exists or for any other buffers that might be defined in an
+\fbOpenGL \fPextension.
 .PP
 .SH Copyright
 
-Copyright (C)2010 Sandia Corporation 
+Copyright (C)2010 Sandia Corporation
 .PP
-Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the 
-U.S. Government retains certain rights in this software. 
+Under the terms of Contract DE\-AC04\-94AL85000 with Sandia Corporation, the
+U.S. Government retains certain rights in this software.
 .PP
-This source code is released under the New BSD License. 
+This source code is released under the New BSD License.
 .PP
 .SH See Also
 

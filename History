@@ -14,6 +14,10 @@ Revision 2.2:
 	Added the icetCompositeImage function to allow IceT to operate on
 	pre-rendered images rather than rely on a rendering callback.
 
+	Added the ICET_IMAGE_COLOR_RGB_FLOAT color format.
+
+	Update to CMake 3.3.
+
 Revision 2.1:
 	Added Radix-k as a single-image strategy.
 
