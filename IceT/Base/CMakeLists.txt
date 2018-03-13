@@ -15,3 +15,23 @@ include(../../CMake/miniGraphicsMacros.cmake)
 add_subdirectory(${miniGraphics_SOURCE_DIR}/ThirdParty/IceT
   ${CMAKE_BINARY_DIR}/ThirdParty/IceT
   )
+
+set(srcs
+  IceTBase.cpp
+  main.cpp
+  )
+
+set(headers
+  IceTBase.hpp
+  )
+
+miniGraphics_executable(IceTBase
+  SOURCES ${srcs}
+  HEADERS ${headers}
+  )
+
+target_include_directories(IceTBase
+  PRIVATE ${ICET_INCLUDE_DIRS}
+  )
+
+target_link_libraries(IceTBase PRIVATE miniGraphicsIceT)

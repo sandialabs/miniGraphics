@@ -14,4 +14,11 @@ if(NOT TARGET IceTCore)
   set(ICET_BUILD_TESTING OFF CACHE INTERNAL "Always OFF")
 
   add_subdirectory(miniGraphicsIceT)
+
+  add_library(miniGraphicsIceT INTERFACE)
+  target_include_directories(miniGraphicsIceT INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/miniGraphicsIceT/src/include
+    ${CMAKE_CURRENT_BINARY_DIR}/miniGraphicsIceT/src/include
+    )
+  target_link_libraries(miniGraphicsIceT INTERFACE IceTCore IceTMPI)
 endif()
