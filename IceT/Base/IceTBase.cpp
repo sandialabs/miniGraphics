@@ -68,6 +68,21 @@ struct IceTImageProperties<ImageRGBAUByteColorOnly> {
   }
 };
 
+template <>
+struct IceTImageProperties<ImageRGBFloatColorDepth> {
+  static constexpr IceTEnum colorFormat = ICET_IMAGE_COLOR_RGB_FLOAT;
+  static constexpr IceTEnum depthFormat = ICET_IMAGE_DEPTH_FLOAT;
+  static const IceTVoid* colorBuffer(const ImageRGBFloatColorDepth& image) {
+    return image.getColorBuffer();
+  }
+  static const IceTVoid* depthBuffer(const ImageRGBFloatColorDepth& image) {
+    return image.getDepthBuffer();
+  }
+  static const IceTFloat* colorBuffer(const IceTImage image) {
+    return icetImageGetColorf(image);
+  }
+};
+
 IceTBase::IceTBase() { this->communicatorCopy = MPI_COMM_NULL; }
 
 IceTBase::~IceTBase() {
@@ -219,7 +234,7 @@ std::unique_ptr<Image> IceTBase::compose(Image* localImage,
   TRY_IMAGE_TYPE(ImageRGBAFloatColorOnly);
   TRY_IMAGE_TYPE(ImageRGBAUByteColorFloatDepth);
   TRY_IMAGE_TYPE(ImageRGBAUByteColorOnly);
-  // TRY_IMAGE_TYPE(ImageRGBFloatColorDepth);
+  TRY_IMAGE_TYPE(ImageRGBFloatColorDepth);
 
   std::cerr << "Image format not supported by IceT" << std::endl;
   return localImage->copySubrange(0, 0);
