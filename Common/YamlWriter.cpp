@@ -8,6 +8,8 @@
 
 #include "YamlWriter.hpp"
 
+#include <stdexcept>
+
 YamlWriter::YamlWriter(std::ostream& outputStream)
     : OutputStream(outputStream), AtBlockStart(true) {
   this->BlockStack.push(Block(0));

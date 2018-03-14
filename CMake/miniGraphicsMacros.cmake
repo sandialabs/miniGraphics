@@ -66,6 +66,7 @@ function(miniGraphics_target_features target_name)
   target_compile_options(${target_name} PRIVATE ${cxx_flags})
 
   target_compile_features(${target_name} PRIVATE
+    cxx_std_11
     cxx_raw_string_literals
     )
 
