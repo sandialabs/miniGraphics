@@ -802,7 +802,7 @@ int MainLoop(int argc,
      "  --camera-phi=<angle>   Set the camera phi value to a specific value in\n"
      "                         degrees."});
   usage.push_back(
-    {CAMERA_ZOOM,  CAMERA_STILL,  "",  "camera-phi", FloatArg,
+    {CAMERA_ZOOM,  CAMERA_STILL,  "",  "camera-zoom", FloatArg,
      "  --camera-zoom=<factor> Set the camera zoom to a specific value.\n"
      "                         (Default 1.0)"});
   usage.push_back(
