@@ -664,8 +664,19 @@ int MainLoop(int argc,
 
   auto startTime = std::chrono::system_clock::now();
   auto startTime_t = std::chrono::system_clock::to_time_t(startTime);
-  yaml.AddDictionaryEntry("start-time",
-                          std::put_time(std::localtime(&startTime_t), "%c"));
+  auto localStartTime = std::localtime(&startTime_t);
+  // Encode local time in ISO 8601 format
+  std::stringstream startTimeString;
+#define TWO_DIGIT std::setfill('0') << std::setw(2)
+  // clang-format off
+  startTimeString << localStartTime->tm_year + 1900 << "-"
+                  << TWO_DIGIT << localStartTime->tm_mon + 1 << "-"
+                  << TWO_DIGIT << localStartTime->tm_mday << "T"
+                  << TWO_DIGIT << localStartTime->tm_hour << ":"
+                  << TWO_DIGIT << localStartTime->tm_min << ":"
+                  << TWO_DIGIT << localStartTime->tm_sec;
+  // clang-format on
+  yaml.AddDictionaryEntry("start-time", startTimeString.str());
 
   MPI_Init(&argc, &argv);
 
