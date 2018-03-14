@@ -8,7 +8,7 @@ readonly name="glm"
 readonly ownership="glm Upstream <no_one@nowhere.com>"
 readonly subtree="ThirdParty/$name/include"
 readonly repo="https://github.com/g-truc/glm.git"
-readonly tag="0.9.8.5"
+readonly tag="0.9.7.6"
 
 readonly paths="
 copying.txt
