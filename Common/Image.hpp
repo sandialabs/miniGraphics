@@ -95,7 +95,7 @@ class Image {
   }
   void setValidViewport(const Viewport& _validViewport) {
     this->internals.validViewport = _validViewport.intersectWith(
-        Viewport(0, 0, this->getWidth(), this->getHeight()));
+        Viewport(0, 0, this->getWidth() - 1, this->getHeight() - 1));
   }
 
   /// \brief Returns the number of (valid) pixels in the image.
