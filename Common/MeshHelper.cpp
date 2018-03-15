@@ -13,6 +13,7 @@
 #include <glm/mat4x4.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 // A set of colors automatically assigned to mesh regions on each process.
@@ -139,14 +140,24 @@ Mesh meshVisibilitySort(const Mesh& mesh,
   for (int triIndex = 0; triIndex < mesh.getNumberOfTriangles(); ++triIndex) {
     Triangle triangle = mesh.getTriangle(triIndex);
 
-    glm::vec3 originalCentroid =
-        0.333f * (triangle.vertex[0] + triangle.vertex[1] + triangle.vertex[2]);
+    std::array<float, 3> vertexDists;
+    for (int vertI = 0; vertI < 3; ++vertI) {
+      glm::vec4 transformedVert =
+          fullTransform * glm::vec4(triangle.vertex[vertI], 1.0f);
+      vertexDists[vertI] = transformedVert.z / transformedVert.w;
+      // Make sure closest vert is in index 0
+      if (vertexDists[0] > vertexDists[vertI]) {
+        std::swap(vertexDists[0], vertexDists[vertI]);
+      }
+    }
 
-    glm::vec4 transformedCentroid =
-        fullTransform * glm::vec4(originalCentroid, 1.0f);
-
-    triList.push_back(
-        DistIndex(transformedCentroid.z / transformedCentroid.w, triIndex));
+    // Weight the point to sort by toward the closest vertex. Generally, the
+    // closest vertex tends to be a better indicator of visibility depth than
+    // centroid, but use the other two vertices to break ties in polygons that
+    // share vertices.
+    triList.push_back(DistIndex(
+        0.9f * vertexDists[0] + 0.05f * (vertexDists[1] + vertexDists[2]),
+        triIndex));
   }
 
   // Sort the array with a compare function that causes the array to be sorted
