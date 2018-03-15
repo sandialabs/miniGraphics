@@ -41,4 +41,6 @@ void Timer::stop() {
       std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> secondsElapsed = endTime - startTime;
   this->yaml.AddDictionaryEntry(this->description, secondsElapsed.count());
+  // The following make isRunning return false.
+  this->description = "";
 }
