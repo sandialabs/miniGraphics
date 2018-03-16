@@ -81,7 +81,7 @@ void Swap_2_3_Node::setup(MPI_Group _group,
     }
     this->regionIndices[this->groupSize] = imageSize;
 
-    std::vector<int> mergedRanks(imageSize);
+    std::vector<int> mergedRanks(this->groupSize);
     std::vector<int> count(subSize1);
     for (int i = 0; i < subSize1; ++i) {
       count[i] = i;
@@ -89,23 +89,23 @@ void Swap_2_3_Node::setup(MPI_Group _group,
     std::vector<int> subRanks(subSize1);
     MPI_Group_translate_ranks(this->subnodes[0]->group,
                               subSize1,
-                              &count.front(),
+                              count.data(),
                               _group,
-                              &subRanks.front());
+                              subRanks.data());
     for (int i = 0; i < subSize1; ++i) {
       mergedRanks[i * 2] = subRanks[i];
     }
 
     MPI_Group_translate_ranks(this->subnodes[1]->group,
                               subSize2,
-                              &count.front(),
+                              count.data(),
                               _group,
-                              &subRanks.front());
+                              subRanks.data());
     for (int i = 0; i < subSize2; ++i) {
       mergedRanks[i * 2 + 1] = subRanks[i];
     }
 
-    MPI_Group_incl(_group, groupSize, &mergedRanks.front(), &this->group);
+    MPI_Group_incl(_group, groupSize, mergedRanks.data(), &this->group);
   } else {
     // Divide by 3
     int subSize2 = this->groupSize / 3;
@@ -154,7 +154,7 @@ void Swap_2_3_Node::setup(MPI_Group _group,
     }
     this->regionIndices[this->groupSize] = imageSize;
 
-    std::vector<int> mergedRanks(imageSize);
+    std::vector<int> mergedRanks(this->groupSize);
     std::vector<int> count(subSize1);
     for (int i = 0; i < subSize1; ++i) {
       count[i] = i;
@@ -162,32 +162,32 @@ void Swap_2_3_Node::setup(MPI_Group _group,
     std::vector<int> subRanks(subSize1);
     MPI_Group_translate_ranks(this->subnodes[0]->group,
                               subSize1,
-                              &count.front(),
+                              count.data(),
                               _group,
-                              &subRanks.front());
+                              subRanks.data());
     for (int i = 0; i < subSize1; ++i) {
       mergedRanks[i * 3] = subRanks[i];
     }
 
     MPI_Group_translate_ranks(this->subnodes[1]->group,
                               subSize2,
-                              &count.front(),
+                              count.data(),
                               _group,
-                              &subRanks.front());
+                              subRanks.data());
     for (int i = 0; i < subSize2; ++i) {
       mergedRanks[i * 3 + 1] = subRanks[i];
     }
 
     MPI_Group_translate_ranks(this->subnodes[2]->group,
                               subSize2,
-                              &count.front(),
+                              count.data(),
                               _group,
-                              &subRanks.front());
+                              subRanks.data());
     for (int i = 0; i < subSize2; ++i) {
       mergedRanks[i * 3 + 2] = subRanks[i];
     }
 
-    MPI_Group_incl(_group, groupSize, &mergedRanks.front(), &this->group);
+    MPI_Group_incl(_group, groupSize, mergedRanks.data(), &this->group);
   }
 }
 
