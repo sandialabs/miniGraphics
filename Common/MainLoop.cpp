@@ -540,8 +540,7 @@ static void checkImage(const ImageFull& fullCompositeImage,
     }
   }
   std::cout << (100 * numBadPixels) / numPixels << "% bad pixels." << std::endl;
-//  if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
-  if (true) {
+  if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
     std::cout << "Composite image appears bad!" << std::endl;
 
     // Make unique(ish) file names using the current time.
@@ -550,6 +549,7 @@ static void checkImage(const ImageFull& fullCompositeImage,
     auto localStartTime = std::localtime(&startTime_t);
     std::stringstream filedate;
 #define TWO_DIGIT std::setfill('0') << std::setw(2)
+    // clang-format off
     filedate << localStartTime->tm_year + 1900 << "-"
              << TWO_DIGIT << localStartTime->tm_mon + 1 << "-"
              << TWO_DIGIT << localStartTime->tm_mday << "-"
@@ -557,6 +557,7 @@ static void checkImage(const ImageFull& fullCompositeImage,
              << TWO_DIGIT << localStartTime->tm_min << "-"
              << TWO_DIGIT << localStartTime->tm_sec;
 #undef TWO_DIGIT
+    // clang-format on
 
     std::cout << "Writing " << ("reference-" + filedate.str() + ".ppm")
               << std::endl;
