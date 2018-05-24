@@ -460,6 +460,11 @@ static std::unique_ptr<ImageFull> doComposeImage(const RunOptions& runOptions,
                                                  YamlWriter& yaml) {
   Timer timeCompositePlusCollect(yaml, "composite-seconds");
 
+  // The partial composite is the time it takes to compose all the pixels
+  // but leave them on whatever process they ended up in. This is often
+  // the reported composite time in many papers.
+  Timer timePartialComposite(yaml, "partial-composite-seconds");
+
   std::unique_ptr<Image> imageToCompose;
 
   if (runOptions.compressImages) {
@@ -470,15 +475,8 @@ static std::unique_ptr<ImageFull> doComposeImage(const RunOptions& runOptions,
   }
 
   std::unique_ptr<Image> compositeImage;
-  {
-    // The partial composite is the time it takes to compose all the pixels
-    // but leave them on whatever process they ended up in. This is often
-    // the reported composite time in many papers.
-    Timer timePartialComposite(yaml, "partial-composite-seconds");
-
-    compositeImage = compositor.compose(
-        imageToCompose.get(), composeGroup, communicator, yaml);
-  }
+  compositeImage = compositor.compose(
+      imageToCompose.get(), composeGroup, communicator, yaml);
 
   std::unique_ptr<ImageFull> uncompressedCompositeImage;
   if (runOptions.compressImages) {
@@ -492,12 +490,23 @@ static std::unique_ptr<ImageFull> doComposeImage(const RunOptions& runOptions,
         dynamic_cast<ImageFull*>(compositeImage.release()));
   }
 
+  // This barrier makes sure that the times for the partial composite and the
+  // gather are appropriately separated. Hopefully it does not affect the total
+  // time much since the gather cannot complete until every process. (Might
+  // want to make this optional in the future.)
+  MPI_Barrier(communicator);
+
+  timePartialComposite.stop();
+
   std::unique_ptr<ImageFull> gatheredImage;
   {
     Timer timeGather(yaml, "gather-seconds");
 
     gatheredImage = uncompressedCompositeImage->Gather(0, communicator);
   }
+
+  timeCompositePlusCollect.stop();
+
   return gatheredImage;
 }
 
