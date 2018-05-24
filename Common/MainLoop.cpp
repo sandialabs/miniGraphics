@@ -542,8 +542,30 @@ static void checkImage(const ImageFull& fullCompositeImage,
   std::cout << (100 * numBadPixels) / numPixels << "% bad pixels." << std::endl;
   if (numBadPixels > BAD_PIXEL_THRESHOLD * numPixels) {
     std::cout << "Composite image appears bad!" << std::endl;
-    SavePPM(localImage, "reference.ppm");
-    SavePPM(fullCompositeImage, "bad_composite.ppm");
+
+    // Make unique(ish) file names using the current time.
+    auto startTime = std::chrono::system_clock::now();
+    auto startTime_t = std::chrono::system_clock::to_time_t(startTime);
+    auto localStartTime = std::localtime(&startTime_t);
+    std::stringstream filedate;
+#define TWO_DIGIT std::setfill('0') << std::setw(2)
+    // clang-format off
+    filedate << localStartTime->tm_year + 1900 << "-"
+             << TWO_DIGIT << localStartTime->tm_mon + 1 << "-"
+             << TWO_DIGIT << localStartTime->tm_mday << "-"
+             << TWO_DIGIT << localStartTime->tm_hour << "-"
+             << TWO_DIGIT << localStartTime->tm_min << "-"
+             << TWO_DIGIT << localStartTime->tm_sec;
+#undef TWO_DIGIT
+    // clang-format on
+
+    std::cout << "Writing " << ("reference-" + filedate.str() + ".ppm")
+              << std::endl;
+    SavePPM(localImage, "reference-" + filedate.str() + ".ppm");
+
+    std::cout << "Writing " << ("bad-composite-" + filedate.str() + ".ppm")
+              << std::endl;
+    SavePPM(fullCompositeImage, "bad-composite-" + filedate.str() + ".ppm");
     exit(1);
   }
 }
@@ -684,6 +706,7 @@ int MainLoop(int argc,
                   << TWO_DIGIT << localStartTime->tm_hour << ":"
                   << TWO_DIGIT << localStartTime->tm_min << ":"
                   << TWO_DIGIT << localStartTime->tm_sec;
+#undef TWO_DIGIT
   // clang-format on
   yaml.AddDictionaryEntry("start-time", startTimeString.str());
 
