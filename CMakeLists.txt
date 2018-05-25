@@ -15,6 +15,11 @@ if (MINIGRAPHICS_ENABLE_TESTING)
   enable_testing()
 endif()
 
+# These macros are not stricly necessary for this top-level CMake file, but
+# by including it here, we can find the necessary packages once and this
+# will significantly speed up when this file is included in subdirectories.
+include(CMake/miniGraphicsMacros.cmake)
+
 add_subdirectory(BinarySwap)
 add_subdirectory(DirectSend)
 add_subdirectory(2-3-Swap)
