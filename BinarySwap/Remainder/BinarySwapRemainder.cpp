@@ -44,9 +44,9 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
 
   while (numProc > 1) {
     // At each iteration of the binary-swap algorithm, divide the image in half.
-    std::unique_ptr<const Image> topHalf =
+    std::unique_ptr<const Image> firstHalf =
         workingImage->window(0, workingImage->getNumberOfPixels() / 2);
-    std::unique_ptr<const Image> bottomHalf =
+    std::unique_ptr<const Image> secondHalf =
         workingImage->window(workingImage->getNumberOfPixels() / 2,
                              workingImage->getNumberOfPixels());
 
@@ -54,15 +54,15 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
     if (haveRemainder && (rank == (numProc - 1))) {
       // My process is in the remainder. Offload my images to processes in
       // another group and drop out of the composition.
-      std::vector<MPI_Request> topSendRequests = topHalf->ISend(
+      std::vector<MPI_Request> firstSendRequests = firstHalf->ISend(
           getRealRank(workingGroup, numProc - 3, communicator), communicator);
-      std::vector<MPI_Request> bottomSendRequests = bottomHalf->ISend(
+      std::vector<MPI_Request> secondSendRequests = secondHalf->ISend(
           getRealRank(workingGroup, numProc - 2, communicator), communicator);
 
       MPI_Waitall(
-          topSendRequests.size(), topSendRequests.data(), MPI_STATUSES_IGNORE);
-      MPI_Waitall(bottomSendRequests.size(),
-                  bottomSendRequests.data(),
+          firstSendRequests.size(), firstSendRequests.data(), MPI_STATUSES_IGNORE);
+      MPI_Waitall(secondSendRequests.size(),
+                  secondSendRequests.data(),
                   MPI_STATUSES_IGNORE);
 
       workingImage = workingImage->copySubrange(0, 0);
@@ -85,15 +85,15 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
       // The "even" role has the smaller rank. It has the image that goes on
       // top, and we will collect the first half of the image.
       role = PAIR_ROLE_EVEN;
-      toKeep.swap(topHalf);
-      toSend.swap(bottomHalf);
+      toKeep.swap(firstHalf);
+      toSend.swap(secondHalf);
       partnerRank = rank + 1;
     } else {
       // The "odd" role has the larger rank. It has the image that goes on
       // the bottom, and we will collect the second half of the image.
       role = PAIR_ROLE_ODD;
-      toKeep.swap(bottomHalf);
-      toSend.swap(topHalf);
+      toKeep.swap(secondHalf);
+      toSend.swap(firstHalf);
       partnerRank = rank - 1;
     }
 
