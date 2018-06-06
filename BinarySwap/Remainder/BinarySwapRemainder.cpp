@@ -59,8 +59,9 @@ std::unique_ptr<Image> BinarySwapRemainder::compose(Image *localImage,
       std::vector<MPI_Request> secondSendRequests = secondHalf->ISend(
           getRealRank(workingGroup, numProc - 2, communicator), communicator);
 
-      MPI_Waitall(
-          firstSendRequests.size(), firstSendRequests.data(), MPI_STATUSES_IGNORE);
+      MPI_Waitall(firstSendRequests.size(),
+                  firstSendRequests.data(),
+                  MPI_STATUSES_IGNORE);
       MPI_Waitall(secondSendRequests.size(),
                   secondSendRequests.data(),
                   MPI_STATUSES_IGNORE);
