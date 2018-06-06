@@ -6,8 +6,8 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef BINARYSWAPFOLD_HPP
-#define BINARYSWAPFOLD_HPP
+#ifndef BINARYSWAPTELESCOPING_HPP
+#define BINARYSWAPTELESCOPING_HPP
 
 #include <Common/Compositor.hpp>
 
@@ -31,4 +31,4 @@ class BinarySwapTelescoping : public Compositor {
                                  YamlWriter &yaml) final;
 };
 
-#endif  // BINARYSWAPFOLD_HPP
+#endif  // BINARYSWAPTELESCOPING_HPP
