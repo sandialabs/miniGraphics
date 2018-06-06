@@ -6,8 +6,8 @@
 // the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains
 // certain rights in this software.
 
-#ifndef BINARYSWAPBASE_HPP
-#define BINARYSWAPBASE_HPP
+#ifndef BINARYSWAPREMAINDER_HPP
+#define BINARYSWAPREMAINDER_HPP
 
 #include <Common/Compositor.hpp>
 
@@ -19,4 +19,4 @@ class BinarySwapRemainder : public Compositor {
                                  YamlWriter &yaml) final;
 };
 
-#endif  // BINARYSWABASEP_HPP
+#endif  // BINARYSWAPREMANDER_HPP
