@@ -35,6 +35,14 @@ if(MINIGRAPHICS_ENABLE_OPENGL)
   find_package(GLEW REQUIRED)
   find_package(GLFW REQUIRED)
 
+  if (NOT GLEW_LIBRARIES)
+    # Old versions of the GLEW package created GLEW_INCLUDE_DIRS and
+    # GLEW_LIBRARIES variables. New versions just create a GLEW::GLEW
+    # target. If dealing with the new version, set GLEW_LIBRARIES
+    # to the new target.
+    set(GLEW_LIBRARIES GLEW::GLEW)
+  endif()
+
   set(srcs ${srcs}
     PainterOpenGL.cpp
     OpenGL_common/shader.cpp
